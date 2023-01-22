@@ -12,7 +12,7 @@
 
 
 # Compiler
-compiler*
+# compiler*
 log
 *.exe
 *.s
