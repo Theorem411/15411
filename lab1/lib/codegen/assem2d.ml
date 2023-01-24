@@ -39,10 +39,10 @@
  
  (* functions that format assembly output *)
  
- let format_reg = function
+ (* let format_reg = function
    | EAX -> "%eax"
- ;;
- 
+ ;; *)
+(*  
  let format_command = function
    | Add -> "+"
    | Sub -> "-"
@@ -59,7 +59,7 @@
    | Div -> "/"
    | Mod -> "%"
    | Mov -> "mov"
- ;;
+ ;; *)
 
 (*  
  let format_operand = function
@@ -67,17 +67,6 @@
    | Temp t -> Temp.name t
    | Reg r -> format_reg r
  ;;
- 
- let format = function
-   | Binop binop ->
-     sprintf
-       "%s <-- %s %s %s"
-       (format_operand binop.dest)
-       (format_operand binop.lhs)
-       (format_binop binop.op)
-       (format_operand binop.rhs)
-   | Mov mv -> sprintf "%s <-- %s" (format_operand mv.dest) (format_operand mv.src)
-   | Directive dir -> sprintf "%s" dir
-   | Comment comment -> sprintf "/* %s */" comment
+ *)
+ let format = function _ -> "not implemented"
  ;;
-  *)
