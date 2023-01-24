@@ -12,11 +12,13 @@
 open Core
 
 type reg = EAX
+[@@deriving equal]
 
 type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
+  [@@deriving equal]
 
 type operation =
   | Add

@@ -85,6 +85,73 @@ let munch_stm = function
     munch_exp (AS.Reg AS.EAX) e
 ;;
 
+let upsert (context : (AS.operand * AS.operand) list) (d, s) = (d, s) :: context
+
+let rec lookup (context : (AS.operand * AS.operand) list) (x : AS.operand) =
+  match context with
+  | [] -> None
+  | (y, v) :: rest -> if AS.equal_operand x y then Some v else lookup rest x
+;;
+
+let get_new_version context = function
+  | AS.Imm n -> AS.Imm n
+  | c ->
+    (match lookup context c with
+    | None -> c
+    | Some v -> v)
+;;
+
+let evalOP = function
+  | AS.Add -> Int32.( + )
+  | AS.Sub -> Int32.( - )
+  | AS.Mul -> Int32.( * )
+  | AS.Div -> Int32.( / )
+  | AS.Mod -> Int32.( /% )
+;;
+
+let transform (context : (AS.operand * AS.operand) list) (command : AS.instr)
+    : AS.instr * (AS.operand * AS.operand) list
+  =
+  match command with
+  | AS.Mov { dest = AS.Temp td; src = AS.Imm n } ->
+    AS.Directive ("\t\t\t\t\t.skipped " ^ AS.format command), upsert context (AS.Temp td, AS.Imm n)
+  | AS.Mov { dest = AS.Reg r; src = AS.Imm n } ->
+    AS.Mov { dest = AS.Reg r; src = AS.Imm n }, upsert context (AS.Reg r, AS.Imm n)  
+    | AS.Mov { dest = AS.Temp td; src = AS.Temp tc } ->
+    ( AS.Directive ("\t\t\t\t\t.skipped " ^ AS.format command)
+    , upsert context (AS.Temp td, get_new_version context (AS.Temp tc)) )
+  | AS.Mov { dest = AS.Reg td; src = AS.Temp tc } ->
+    ( AS.Mov { dest = AS.Reg td; src = get_new_version context (AS.Temp tc) }
+    , upsert context (AS.Reg td, get_new_version context (AS.Temp tc)) )
+  (* delete the case below to have "normal propogation" *)
+  | AS.Binop { op; dest = d; lhs = l; rhs = r } ->
+    let new_l = get_new_version context l in
+    let new_r = get_new_version context r in
+    (match new_l, new_r with
+    | AS.Imm a, AS.Imm b ->
+      let v = evalOP op a b in
+      (match d with
+      | AS.Temp td ->
+        ( AS.Directive
+            ("\t\t\t.ignored " ^ AS.format (AS.Mov { dest = AS.Temp td; src = AS.Imm v }))
+        , upsert context (d, AS.Imm v) )
+      | AS.Reg r ->
+        AS.Mov { dest = AS.Reg r; src = AS.Imm v }, upsert context (d, AS.Imm v)
+      | AS.Imm _ -> raise (Failure "SHOUD NOT HAPPEN"))
+    | _ -> AS.Binop { op; dest = d; lhs = new_l; rhs = new_r }, context)
+  | _ -> command, context
+;;
+
+let rec prop (context : (AS.operand * AS.operand) list) (commands : AS.instr list)
+    : AS.instr list
+  =
+  match commands with
+  | [] -> []
+  | command :: rest ->
+    let transformed, new_context = transform context command in
+    transformed :: prop new_context rest
+;;
+
 (* To codegen a series of statements, just concatenate the results of
  * codegen-ing each statement. *)
-let codegen = List.concat_map ~f:munch_stm
+let codegen inp = prop [] (List.concat_map ~f:munch_stm inp)
