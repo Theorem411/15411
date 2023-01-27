@@ -1,1 +1,26 @@
 version: 0.0.1
+
+Register Allocation design
+*********************
+* liveness analysis *
+*********************
+
+
+****************************
+* build interference graph * 
+****************************
+
+****************************************************************
+* simplicial elimination ordering to determine vertex ordering *
+****************************************************************
+
+*************************
+* greedy graph coloring *
+*************************
+
+
+Instruction Selection design
+// this part focuses on translating 2-address abstract assembly into x86-64 assembly
+
+The works that need to be addressed here: 
+1. turn binary 
