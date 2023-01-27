@@ -27,6 +27,9 @@ let ordering (graph : t) : vertex list =
 
 (* a greed graph coloring algorithm *)
 type color_map = (color option) Array.t
+
+(* BUG: find the smallest color that is not used in the neighborhodd*)
+let least_color_in_neighbor 
 let rec coloring_aux (graph : t) (cur_color : color_map) = function
   [] -> []
 | v::vs -> (
