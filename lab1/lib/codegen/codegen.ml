@@ -93,7 +93,7 @@ let rec lookup (context : (AS.operand * AS.operand) list) (x : AS.operand) =
   | (y, v) :: rest -> if AS.equal_operand x y then Some v else lookup rest x
 ;;
 
-let get_new_version context = function
+let from_ctx context = function
   | AS.Imm n -> AS.Imm n
   | c ->
     (match lookup context c with
@@ -101,57 +101,38 @@ let get_new_version context = function
     | Some v -> v)
 ;;
 
-let evalOP = function
-  | AS.Add -> Int32.( + )
-  | AS.Sub -> Int32.( - )
-  | AS.Mul -> Int32.( * )
-  | AS.Div -> Int32.( / )
-  | AS.Mod -> Int32.( /% )
+let add_text ?(text = "\t\t\t\t\t.skipped ") command =
+  AS.Comment (text ^ AS.format command)
 ;;
 
-let transform (context : (AS.operand * AS.operand) list) (command : AS.instr)
-    : AS.instr * (AS.operand * AS.operand) list
-  =
+let transform (ctx, command) : AS.instr * (AS.operand * AS.operand) list =
   match command with
-  | AS.Mov { dest = AS.Temp td; src = AS.Imm n } ->
-    AS.Directive ("\t\t\t\t\t.skipped " ^ AS.format command), upsert context (AS.Temp td, AS.Imm n)
-  | AS.Mov { dest = AS.Reg r; src = AS.Imm n } ->
-    AS.Mov { dest = AS.Reg r; src = AS.Imm n }, upsert context (AS.Reg r, AS.Imm n)  
-    | AS.Mov { dest = AS.Temp td; src = AS.Temp tc } ->
-    ( AS.Directive ("\t\t\t\t\t.skipped " ^ AS.format command)
-    , upsert context (AS.Temp td, get_new_version context (AS.Temp tc)) )
+  | AS.Mov { dest = AS.Temp td; src = src } ->
+    add_text command, upsert ctx (AS.Temp td, from_ctx ctx src)
+  | AS.Mov { dest = AS.Reg r; src = AS.Imm n } -> 
+    command, upsert ctx (AS.Reg r, AS.Imm n)
   | AS.Mov { dest = AS.Reg td; src = AS.Temp tc } ->
-    ( AS.Mov { dest = AS.Reg td; src = get_new_version context (AS.Temp tc) }
-    , upsert context (AS.Reg td, get_new_version context (AS.Temp tc)) )
-  (* delete the case below to have "normal propogation" *)
+    ( AS.Mov { dest = AS.Reg td; src = from_ctx ctx (AS.Temp tc) }
+    , upsert ctx (AS.Reg td, from_ctx ctx (AS.Temp tc)) )
   | AS.Binop { op; dest = d; lhs = l; rhs = r } ->
-    let new_l = get_new_version context l in
-    let new_r = get_new_version context r in
-    (match new_l, new_r with
-    | AS.Imm a, AS.Imm b ->
-      let v = evalOP op a b in
-      (match d with
-      | AS.Temp td ->
-        ( AS.Directive
-            ("\t\t\t.ignored " ^ AS.format (AS.Mov { dest = AS.Temp td; src = AS.Imm v }))
-        , upsert context (d, AS.Imm v) )
-      | AS.Reg r ->
-        AS.Mov { dest = AS.Reg r; src = AS.Imm v }, upsert context (d, AS.Imm v)
-      | AS.Imm _ -> raise (Failure "SHOUD NOT HAPPEN"))
-    | _ -> AS.Binop { op; dest = d; lhs = new_l; rhs = new_r }, context)
-  | _ -> command, context
+    let new_l = from_ctx ctx l in
+    let new_r = from_ctx ctx r in
+    (* TODECIDE Add evalutation of operations here *)
+    AS.Binop { op; dest = d; lhs = new_l; rhs = new_r }, ctx
+  | _ -> command, ctx
 ;;
 
-let rec prop (context : (AS.operand * AS.operand) list) (commands : AS.instr list)
-    : AS.instr list
-  =
-  match commands with
-  | [] -> []
-  | command :: rest ->
-    let transformed, new_context = transform context command in
-    transformed :: prop new_context rest
+let transform2 (context, oldcommands) command =
+  let command_to_add, new_context = transform (context, command) in
+  new_context, command_to_add :: oldcommands
+;;
+
+let prop (commands : AS.instr list) : AS.instr list =
+  let _, res = List.fold commands ~init:([], []) ~f:transform2 in
+  let f = (function AS.Comment _ -> false | _ -> true) in
+  List.filter (List.rev res) ~f:f
 ;;
 
 (* To codegen a series of statements, just concatenate the results of
- * codegen-ing each statement. *)
-let codegen inp = prop [] (List.concat_map ~f:munch_stm inp)
+ * codegen-ing each statement.*)
+let codegen inp = prop (List.concat_map ~f:munch_stm inp)
