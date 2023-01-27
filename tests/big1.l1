@@ -1,0 +1,30 @@
+//test return 50
+int main()
+{
+  int f1;
+  int f2;
+  int f3;
+  int f4;
+  int f5;
+  int f6;
+  int f7;
+  int f8;
+
+  f1 = 1;
+  f2 = 1;
+  f3 = f2+f1;
+  f4 = f3+f2;
+  f5 = f4+f3;
+  f6 = f5+f4;
+  f7 = f6+f5;
+  f8 = f7+f6;
+  int a = 1 / f2;
+  int b = 2 / f3;
+  int c = 3 / f4;
+  int d = 5 / f5;
+  int e = 8 / f6;
+  int f = 13 / f7;
+  int g = 21 / f8;
+  int h = 1 + (a + b + c + d + e + f + g) * (a + b + c + d + e + f + g);
+  return h;
+}

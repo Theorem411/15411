@@ -11,11 +11,13 @@
  *)
 
 type reg = EAX
+[@@deriving equal]
 
 type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
+  [@@deriving equal]
 
 type operation =
   | Add
@@ -44,3 +46,5 @@ type instr =
 
 val format : instr -> string
 val reg_name : reg -> string
+
+val equal_operand : operand -> operand -> bool

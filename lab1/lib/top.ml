@@ -214,7 +214,7 @@ let main () =
   let cli_parse_result : cmd_line_args Cmd.t = Cmd.v cmd_line_info cmd_line_term in
   match Cmd.eval_value cli_parse_result with
   | Ok (`Ok cmd_line) -> run cmd_line
-  | Ok (`Version)     -> Stdlib.exit (Cmd.Exit.ok)
-  | Ok (`Help)        -> Stdlib.exit (Cmd.Exit.ok)
-  | Error _           -> Stdlib.exit (Cmd.Exit.cli_error)
+  | Ok `Version -> Stdlib.exit Cmd.Exit.ok
+  | Ok `Help -> Stdlib.exit Cmd.Exit.ok
+  | Error _ -> Stdlib.exit Cmd.Exit.cli_error
 ;;
