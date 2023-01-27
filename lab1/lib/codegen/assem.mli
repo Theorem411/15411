@@ -43,3 +43,4 @@ type instr =
   | Comment of string
 
 val format : instr -> string
+val reg_name : reg -> string

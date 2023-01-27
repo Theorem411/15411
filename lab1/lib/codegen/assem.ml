@@ -71,3 +71,5 @@ let format = function
   | Directive dir -> sprintf "%s" dir
   | Comment comment -> sprintf "/* %s */" comment
 ;;
+
+let reg_name (r:reg) = "EAX";;
