@@ -18,7 +18,7 @@ let is_reg_or_temp (opd: Assem.operand) =
     | Assem.Temp temp -> Some (Assem.Temp temp)
     | _ -> None
 ;;
-
+(*blahs*)
 let live_in_line = function
       Assem.Binop binop -> ( 
         let res = (match (is_reg_or_temp binop.lhs) with 
