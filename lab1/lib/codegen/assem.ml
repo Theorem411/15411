@@ -99,4 +99,3 @@ let format = function
   | Comment comment -> sprintf "/* %s */" comment
 ;;
 
-let reg_name (_ : reg) = "EAX"
