@@ -11,14 +11,27 @@
 
 open Core
 
-type reg = EAX
+type reg =
+  | EAX
+  | EDX
+  | ECX
+  | ESI
+  | EDI
+  | EBX
+  | R8D
+  | R9D
+  | R10D
+  | R12D
+  | R13D
+  | R14D
+  | R15D
 [@@deriving equal]
 
 type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
-  [@@deriving equal]
+[@@deriving equal]
 
 type operation =
   | Add
@@ -45,6 +58,18 @@ type instr =
 
 let format_reg = function
   | EAX -> "%eax"
+  | EBX -> "%ebx"
+  | ECX -> "%ecx"
+  | EDX -> "%edx"
+  | ESI -> "%esi"
+  | EDI -> "%edi"
+  | R8D -> "%r8d"
+  | R9D -> "%r9d"
+  | R10D -> "%r10d"
+  | R12D -> "%r12d"
+  | R13D -> "%r13d"
+  | R14D -> "%r14d"
+  | R15D -> "%r15d"
 ;;
 
 let format_binop = function
@@ -73,3 +98,5 @@ let format = function
   | Directive dir -> sprintf "%s" dir
   | Comment comment -> sprintf "/* %s */" comment
 ;;
+
+let reg_name (_ : reg) = "EAX"
