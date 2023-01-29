@@ -105,7 +105,7 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
  ;;
  
  let coloring (graph : t) : (Vertex.t * int) list = 
-   let n = Vertex.Map.length graph in
+   let _ = Vertex.Map.length graph in
    let vertex_order = ordering graph in
    let color_palette = precolor graph in 
    coloring_aux graph color_palette vertex_order

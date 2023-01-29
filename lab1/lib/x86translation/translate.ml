@@ -1,6 +1,6 @@
 open Core
 module AS = Assem
-
+module V = Vertex
 type __operand =
   | Temp of Temp.t
   | Reg of AS.reg
@@ -8,7 +8,15 @@ type __operand =
 
 type color = int * int [@@deriving compare, equal]
 
-let __regalloc (_ : AS.instr list) : (AS.operand * color) list = []
+let __coloring (_ : AS.instr list) : (V.t * color) list = []
+
+let coloring_adapter: ((V.t * color) -> (AS.operand * color)) = function
+| (V.T t, color) -> (AS.Temp t, color)
+| (V.R V.EAX, color)  -> (AS.Reg AS.EAX, color) 
+| (V.R V.EDX, color)  -> (AS.Reg AS.EDX, color) 
+
+
+let __regalloc (l : AS.instr list) : (AS.operand * color) list = List.map (__coloring l) ~f:coloring_adapter
 let __compare_color = compare_color
 
 let get_free_regs (used_regs : AS.reg list) =
@@ -56,15 +64,13 @@ let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
   let colors_len = List.length to_be_assigned in
   if colors_len > available_len
   then
-    raise
-      (Failure
-         ("TODO: memory spilling: "
-         ^ string_of_int available_len
-         ^ " is not enough for "
-         ^ string_of_int colors_len))
+    let memcell_count = colors_len - available_len in
+    let memcells = List.map (List.range 1 memcell_count) ~f:(fun i -> X86.Mem (4 * i)) in
+    let free_regs = List.map free_regs ~f:(fun x -> X86.X86Reg x) in
+    List.zip_exn to_be_assigned (free_regs @ memcells)
   else (
-    let free_regs_or_mem = List.map free_regs ~f:(fun x -> X86.X86Reg x) in
-    List.zip_exn to_be_assigned (List.take free_regs_or_mem colors_len))
+    let free_regs = List.map free_regs ~f:(fun x -> X86.X86Reg x) in
+    List.zip_exn to_be_assigned (List.take free_regs colors_len))
 ;;
 
 let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) list =
@@ -86,7 +92,7 @@ let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) l
     get_free_regs (List.map used_x86regs_with_color ~f:(fun (r, _) -> r))
   in
   let _ = List.length groups in
-  (* TODO ADD SUPPORT FOR SPILLING *)
+  (* TODO ADD SUPPORT FOR SPILLING ? *)
   let to_be_assigned : color list = get_unassigned_colors groups used_regs_with_color in
   let rest : (color * X86.operand) list = assign_frees free_regs to_be_assigned in
   let used = List.map used_x86regs_with_color ~f:(fun (r, c) -> c, X86.X86Reg r) in

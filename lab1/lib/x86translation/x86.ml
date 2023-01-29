@@ -24,6 +24,8 @@ let __format_reg = function
   | AS.R15D -> "%r15d"
 ;;
 
+
+(* Mem n means that the varialbe is in -n(%rbp) *)
 let format_operand = function
   | Imm n -> "$" ^ Int32.to_string n
   | X86Reg r -> __format_reg r

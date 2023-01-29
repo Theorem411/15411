@@ -26,13 +26,13 @@ type reg =
 | R13D
 | R14D
 | R15D
-[@@deriving equal]
+[@@deriving equal, sexp]
 
 type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
-[@@deriving equal]
+[@@deriving equal, sexp]
 
 type operation =
   | Add

@@ -12,7 +12,7 @@ open Core
   in
   List.fold_right assem ~f:f ~init:[] 
 ;; *)
-let is_reg_or_temp (opd: Assem.operand) = 
+(* let is_reg_or_temp (opd: Assem.operand) = 
   match opd with 
       Assem.Reg reg -> Some (Assem.Reg reg)
     | Assem.Temp temp -> Some (Assem.Temp temp)
@@ -28,6 +28,6 @@ let live_in_line = function
     | Assem.Mov mv -> []
     | _ -> []
 ;;
-let rec live_analysis (assem : Assem.instr list) : Assem.instr list list = 
+let rec live_analysis (_ : Assem.instr list) : Assem.instr list list = raise (Failure "Not Implemented") *)
 
 let live_range : Assem.instr list -> int * int list = raise (Failure "Not Implemented")
