@@ -5,7 +5,7 @@ type operand =
   | Imm of Int32.t
   | X86Reg of AS.reg
   | Mem of int
-[@@deriving equal]
+[@@deriving equal, compare, sexp]
 
 let __format_reg = function
   | AS.EAX -> "%eax"
@@ -40,6 +40,7 @@ type operation =
   | Mod
   | Mov
   | CLTD
+  [@@deriving equal, compare, sexp]
 
 let format_operation = function
   | Add -> "addl"
@@ -64,19 +65,24 @@ type instr =
   | Zero of { op : operation }
   | Directive of string
   | Comment of string
+  | FunName of string
+  | Ret
+  [@@deriving equal, compare, sexp]
 
 let format = function
   | BinCommand binop ->
     sprintf
-      "%s\t%s,%s\n"
+      "\t%s\t%s, %s"
       (format_operation binop.op)
       (format_operand binop.src)
       (format_operand binop.dest)
   | UnCommand binop ->
-    sprintf "%s\t%s\n" (format_operation binop.op) (format_operand binop.src)
-  | Zero z -> sprintf "%s" (format_operation z.op)
-  | Directive dir -> sprintf "%s" dir
+    sprintf "\t%s\t%s" (format_operation binop.op) (format_operand binop.src)
+  | Zero z -> sprintf "\t%s" (format_operation z.op)
+  | Directive dir -> sprintf "\t%s" dir
   | Comment comment -> sprintf "/* %s */" comment
+  | FunName s -> sprintf "%s" s
+  | Ret -> sprintf "\t%s" "ret"
 ;;
 
 let to_opr = function
@@ -88,3 +94,4 @@ let to_opr = function
 ;;
 
 let __FREE_REG = X86Reg AS.R11D
+

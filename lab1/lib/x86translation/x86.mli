@@ -9,12 +9,13 @@ type operation =
   | Mod
   | Mov
   | CLTD
+  [@@deriving equal, compare, sexp]
 
 type operand =
   | Imm of Int32.t
   | X86Reg of AS.reg
   | Mem of int
-[@@deriving equal]
+  [@@deriving equal, compare, sexp]
 
 type instr =
   | BinCommand of
@@ -29,6 +30,9 @@ type instr =
   | Zero of { op : operation }
   | Directive of string
   | Comment of string
+  | FunName of string
+  | Ret
+  [@@deriving equal, compare, sexp]
 
 val to_opr : AS.operation -> operation
 val format : instr -> string

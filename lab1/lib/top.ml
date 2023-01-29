@@ -193,8 +193,19 @@ let compile (cmd : cmd_line_args) : unit =
         List.iter ~f:output_instr assem;
         output_instr (Assem.Directive ".ident\t\"15-411 L1 reference compiler\""))
   | X86_64 ->
-    prerr_endline "x86_64 not implemented yet";
-    exit 1
+    let file = cmd.filename ^ ".s" in
+    say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
+    Out_channel.with_file file ~f:(fun out ->
+        let output_x86_instr instr = Out_channel.fprintf out "%s\n" (X86.format instr) in
+        let translated = Translate.translate assem in
+        output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
+        output_x86_instr (X86.Directive ".text");
+        output_x86_instr (X86.Directive ".globl\t_c0_main");
+        output_x86_instr (X86.Directive ".type\t_c0_main, @function");
+        output_x86_instr (X86.FunName "_c0_main:");
+        List.iter ~f:output_x86_instr translated;
+        output_x86_instr (X86.Ret);
+        output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\""));
 ;;
 
 let run (cmd : cmd_line_args) : unit =

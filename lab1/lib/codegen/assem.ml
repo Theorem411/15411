@@ -12,27 +12,27 @@
 open Core
 
 type reg =
-| EAX
-| EDX
-| ECX
-| ESI
-| EDI
-| EBX
-| R8D
-| R9D
-| R10D
-| R11D
-| R12D
-| R13D
-| R14D
-| R15D
-[@@deriving equal, sexp]
+  | EAX
+  | EDX
+  | ECX
+  | ESI
+  | EDI
+  | EBX
+  | R8D
+  | R9D
+  | R10D
+  | R11D
+  | R12D
+  | R13D
+  | R14D
+  | R15D
+[@@deriving equal, sexp, compare]
 
 type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
-[@@deriving equal, sexp]
+[@@deriving equal, sexp, compare]
 
 type operation =
   | Add
@@ -40,7 +40,8 @@ type operation =
   | Mul
   | Div
   | Mod
-  
+[@@deriving equal, sexp, compare]
+
 type instr =
   | Binop of
       { op : operation
@@ -54,6 +55,7 @@ type instr =
       }
   | Directive of string
   | Comment of string
+[@@deriving equal, sexp, compare]
 
 (* functions that format assembly output *)
 
