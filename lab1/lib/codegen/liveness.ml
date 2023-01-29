@@ -29,3 +29,5 @@ let live_in_line = function
     | _ -> []
 ;;
 let rec live_analysis (assem : Assem.instr list) : Assem.instr list list = 
+
+let live_range : Assem.instr list -> int * int list = raise (Failure "Not Implemented")

@@ -10,13 +10,28 @@
  *
  *)
 
-type reg = EAX | EDX
-[@@deriving compare, sexp]
+ type reg =
+ | EAX
+ | EDX
+ | ECX
+ | ESI
+ | EDI
+ | EBX
+ | R8D
+ | R9D
+ | R10D
+ | R11D
+ | R12D
+ | R13D
+ | R14D
+ | R15D
+[@@deriving equal]
 
 type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
+  [@@deriving equal]
 
 type operation =
   | Add
@@ -44,4 +59,5 @@ type instr =
   | Comment of string
 
 val format : instr -> string
-val reg_name : reg -> string
+
+val equal_operand : operand -> operand -> bool
