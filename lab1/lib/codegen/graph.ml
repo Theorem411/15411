@@ -1,48 +1,112 @@
 open Core
+(** 
+    * Graph type definition
+ *)
+module Vertex = struct 
+  type reg = EAX | EDX [@@deriving compare, sexp] (** OH : why could I use Assem.reg ? *)
+  module T = struct 
+    type t = R of reg | T of Temp.t [@@deriving compare, sexp]
+  end
+  include T
+  include Comparable.Make (T)
+  let reg_enum = function 
+    EAX -> 0
+  | EDX -> 1
+end 
 
-type color = int [@@deriving compare, sexp_of, hash]
-type vertex = int [@@deriving compare, sexp_of, hash]
-type t = int Array.t Array.t (* adjacency list *)
+type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 
-(* this ordering function implements maximum cardinality search, which guarantees
-   to find a simplicial elimination ordering when run on chordal graph \
-   *)
-
-let ordering (graph : t) : vertex list = 
-  let n = Array.length graph in
-  let weights : (vertex, int, Int.comparator_witness) Map.t = Map.of_alist_exn (module Int) (List.init n ~f:(fun (i:int) -> (i, 0))) in 
-  let vertexSet = Set.of_list (module Int) (List.init n ~f:(fun i -> i)) in 
-  let rec aux (vertexSet : (vertex, Int.comparator_witness) Set.t) (weights: (vertex, int, Int.comparator_witness) Map.t) = function 
-    0 -> []
-  | i -> 
-      let (v_max, _) = Map.max_elt_exn weights in 
-      let neighbors_of_v = graph.(v_max) |> Set.of_array (module Int) in 
-      let intersect = Set.inter neighbors_of_v vertexSet in 
-      let incr_fn ~key ~data = if Set.mem intersect key then data+1 else data in 
-      let weights' = Map.mapi weights ~f:incr_fn in
-      v_max :: (aux (Set.remove vertexSet v_max) weights' (i-1))
+(**
+    * Graph utility functions
+*)
+let graph_empty = Vertex.Map.empty
+;;
+let add_edge (graph:t) ((u, v): Vertex.t * Vertex.t) = 
+  let graph = Vertex.Map.update graph u ~f:(fun o -> match o with None -> Vertex.Set.singleton v | Some s -> Vertex.Set.add s v) in
+  let graph = Vertex.Map.update graph v ~f:(fun o -> match o with None -> Vertex.Set.singleton u | Some s -> Vertex.Set.add s u) in 
+    graph
+;;
+let from_list (edge_list: (Vertex.t * Vertex.t) list) = 
+  List.fold edge_list ~init:graph_empty ~f:add_edge
+;;
+let to_list (graph: t) : (Vertex.t * Vertex.t list) list = 
+  let res = Vertex.Map.to_alist ~key_order:`Decreasing graph in 
+  let map_f = (fun (v, vs) -> (v, Vertex.Set.to_list vs)) in
+    List.map res ~f:map_f 
+;;
+(** 
+    graph coloring 
+  *)
+type color_palette_t = (int option) Vertex.Map.t
+(** 
+    precolor: give registers different colors 
+  *)
+let precolor (graph : t) : color_palette_t = 
+  let vs = Vertex.Map.key_set graph in
+  let fold_f acc v = Vertex.Map.update acc v ~f:(fun _ -> match v with Vertex.R r -> Some (Vertex.reg_enum r) | _ -> None) in 
+  Vertex.Set.fold vs ~init:(Vertex.Map.empty) ~f:fold_f
+;;
+(** 
+    initial weighting 
+  *)
+let nbrs_weight (graph: t) (color_palette : color_palette_t) (v: Vertex.t) = 
+  let nbrs = Vertex.Map.find_exn graph v in 
+  let fold_f ncol v = (match (Vertex.Map.find_exn color_palette v) with Some _ -> ncol+1 | None -> ncol) in
+  Vertex.Set.fold nbrs ~init:0 ~f:fold_f
+;;
+let initial_weight (graph : t) : int Vertex.Map.t = 
+  let vs = Vertex.Map.key_set graph in
+  let color_palette = precolor graph in
+  let init_weights = Vertex.Map.of_key_set vs ~f:(nbrs_weight graph color_palette) in
+    init_weights
+;;
+(** 
+    maximum capacity searching 
+  *)
+let ordering (graph: t) : Vertex.t list = 
+  let n = Vertex.Map.length graph in
+  let weights = initial_weight graph in 
+  let wkset = Vertex.Map.key_set graph in
+  let rec aux wkset weights i =
+    if i = 0 then []
+    else 
+      let (v_max, _) = Vertex.Map.max_elt_exn weights in 
+      let nbrs = Vertex.Map.find_exn graph v_max in 
+      let inter = Vertex.Set.inter nbrs wkset in 
+      let incr_fn ~key ~data = if Vertex.Set.mem inter key then data+1 else data in 
+      let wkset' = Set.remove wkset v_max in
+      let weights' = Vertex.Map.mapi weights ~f:incr_fn in
+        v_max :: (aux wkset' weights' (i-1))
+  in  
+    aux wkset weights n
+(** 
+    greedy coloring 
+    *)
+let unused_color_in_nbrs (graph : t) (color_palette : color_palette_t) (v : Vertex.t) = 
+  let nbrs = Vertex.Map.find_exn graph v in 
+  let fold_f = (fun (acc:int list) -> fun v -> match (Vertex.Map.find_exn color_palette v) with None -> acc | Some c -> c::acc) in 
+  let used_colors = Vertex.Set.fold nbrs ~init:[] ~f:fold_f |> Set.of_list (module Int) in
+  let rec aux i_max i = 
+    if (i = i_max) then i_max 
+    else if not (Set.mem used_colors i) then i else aux i_max (i+1)
   in
-    aux vertexSet weights n
+  match (Set.max_elt used_colors) with 
+    None -> 0
+  | Some c_max -> aux c_max 0
 ;;
 
-(* a greed graph coloring algorithm *)
-type color_map = (color option) Array.t
-
-(* BUG: find the smallest color that is not used in the neighborhodd*)
-let least_color_in_neighbor 
-let rec coloring_aux (graph : t) (cur_color : color_map) = function
-  [] -> []
-| v::vs -> (
-  let f x = match cur_color.(x) with None -> false | Some _ -> true in
-  let nbrs_colored = Array.filter ~f:f (graph.(v)) in
-    match Array.min_elt nbrs_colored ~compare:Int.compare with 
-        None -> cur_color.(v) <- (Some 0); ((v, 0) :: coloring_aux graph cur_color vs)
-      | Some c -> cur_color.(v) <- (Some (c+1)); ((v, c+1) :: coloring_aux graph cur_color vs)
-  ) 
-;;
-
-let coloring (graph : t) : (vertex * color) list = 
-  let n = Array.length graph in
-  let vertex_order = ordering graph in
-  coloring_aux graph (Array.init n ~f:(fun v -> None)) vertex_order
-;;
+let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
+   [] -> []
+ | v::vs -> (
+   let c_new = unused_color_in_nbrs graph color_palette v in 
+   let color_palette' = Vertex.Map.update color_palette v ~f:(fun _ -> Some c_new) in 
+   (v, c_new) :: coloring_aux graph color_palette' vs
+   ) 
+ ;;
+ 
+ let coloring (graph : t) : (Vertex.t * int) list = 
+   let n = Vertex.Map.length graph in
+   let vertex_order = ordering graph in
+   let color_palette = precolor graph in 
+   coloring_aux graph color_palette vertex_order
+ ;;

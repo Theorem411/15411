@@ -11,7 +11,8 @@
 
 open Core
 
-type reg = EAX
+type reg = EAX | EDX
+[@@deriving compare, sexp]
 
 type operand =
   | Imm of Int32.t
@@ -24,7 +25,7 @@ type operation =
   | Mul
   | Div
   | Mod
-
+  
 type instr =
   | Binop of
       { op : operation
@@ -43,6 +44,7 @@ type instr =
 
 let format_reg = function
   | EAX -> "%eax"
+  | EDX -> "%edx"
 ;;
 
 let format_binop = function
@@ -72,4 +74,5 @@ let format = function
   | Comment comment -> sprintf "/* %s */" comment
 ;;
 
-let reg_name (r:reg) = "EAX";;
+let reg_name = function EAX -> "%eax" | EDX -> "%edx"
+;;

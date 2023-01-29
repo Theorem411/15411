@@ -10,7 +10,8 @@
  *
  *)
 
-type reg = EAX
+type reg = EAX | EDX
+[@@deriving compare, sexp]
 
 type operand =
   | Imm of Int32.t
