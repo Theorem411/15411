@@ -117,7 +117,7 @@ let transform (ctx, command) : AS.instr * (AS.operand * AS.operand) list =
   | AS.Binop { op; dest = d; lhs = l; rhs = r } ->
     let new_l = from_ctx ctx l in
     let new_r = from_ctx ctx r in
-    (* TODECIDE Add evalutation of operations here *)
+    (* TODO: Decide if Add evalutation of operations here *)
     AS.Binop { op; dest = d; lhs = new_l; rhs = new_r }, ctx
   | _ -> command, ctx
 ;;

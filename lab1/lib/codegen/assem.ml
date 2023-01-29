@@ -26,6 +26,8 @@ type reg =
   | R13D
   | R14D
   | R15D
+  | RBP
+  | RSP
 [@@deriving equal, sexp, compare]
 
 type operand =
@@ -74,6 +76,8 @@ let format_reg = function
   | R13D -> "%r13d"
   | R14D -> "%r14d"
   | R15D -> "%r15d"
+  | RBP -> "%rbp"
+  | RSP -> "%rsp"
 ;;
 
 let format_binop = function

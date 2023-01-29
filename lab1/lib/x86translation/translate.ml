@@ -57,23 +57,7 @@ let __regalloc (l : AS.instr list) : (AS.operand * color) list =
 let __compare_color = compare_color
 
 let get_free_regs (used_regs : AS.reg list) =
-  let all_available_regs =
-    [ AS.EAX
-    ; AS.EDX
-    ; AS.ECX
-    ; AS.ESI
-    ; AS.EDI
-    ; AS.EBX
-    ; AS.R8D
-    ; AS.R9D
-    ; AS.R10D
-    ; AS.R12D
-    ; AS.R13D
-    ; AS.R14D
-    ; AS.R15D
-    ]
-  in
-  List.filter all_available_regs ~f:(fun x ->
+  List.filter X86.all_available_regs ~f:(fun x ->
       not (List.mem used_regs x ~equal:AS.equal_reg))
 ;;
 
@@ -102,7 +86,9 @@ let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
   if colors_len > available_len
   then (
     let memcell_count = colors_len - available_len in
-    let memcells = List.map (List.range 1 (memcell_count + 1)) ~f:(fun i -> X86.Mem (4 * i)) in
+    let memcells =
+      List.map (List.range 1 (memcell_count + 1)) ~f:(fun i -> X86.Mem i)
+    in
     let free_regs = List.map free_regs ~f:(fun x -> X86.X86Reg x) in
     List.zip_exn to_be_assigned (free_regs @ memcells))
   else (
@@ -173,21 +159,39 @@ let translate_line
     let d_final = get_reg d in
     let lhs_final = get_reg lhs in
     let rhs_final = get_reg rhs in
-    List.rev_append
-      [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
-      ; X86.Zero { op = CLTD }
-      ; X86.UnCommand { op = IDiv; src = rhs_final }
-      ; X86.BinCommand
-          { op = Mov
-          ; dest = d_final
-          ; src =
-              (match op with
-              | Div -> X86Reg EAX
-              | Mod -> X86Reg EDX
-              | _ -> raise (Failure "it is only Div/Mod case"))
-          }
-      ]
-      prev_lines
+    let right_commands =
+      match rhs_final with
+      | X86.Imm (n) ->
+        [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
+        ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = X86.Imm (n) }
+        ; X86.Zero { op = CLTD }
+        ; X86.UnCommand { op = IDiv; src =  X86.__FREE_REG }
+        ; X86.BinCommand
+            { op = Mov
+            ; dest = d_final
+            ; src =
+                (match op with
+                | Div -> X86Reg EAX
+                | Mod -> X86Reg EDX
+                | _ -> raise (Failure "it is only Div/Mod case"))
+            }
+        ]
+      | _ ->
+        [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
+        ; X86.Zero { op = CLTD }
+        ; X86.UnCommand { op = IDiv; src = rhs_final }
+        ; X86.BinCommand
+            { op = Mov
+            ; dest = d_final
+            ; src =
+                (match op with
+                | Div -> X86Reg EAX
+                | Mod -> X86Reg EDX
+                | _ -> raise (Failure "it is only Div/Mod case"))
+            }
+        ]
+    in
+    List.rev_append right_commands prev_lines
   (* Translating comments / directive operations *)
   | AS.Directive d -> Directive d :: prev_lines
   | AS.Comment d -> Comment d :: prev_lines
@@ -210,31 +214,31 @@ let get_reg_h (op2col, col2operand) o =
 type random_pair_debug = (color * X86.operand) list [@@deriving sexp]
 type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
 
-let print_source ?(channel = stdout) sexps =
+(* let print_source ?(channel = stdout) sexps =
   let formatter = Format.formatter_of_out_channel channel in
   List.iter sexps ~f:(fun i -> Sexp.pp_hum formatter i);
   Format.pp_print_flush formatter ()
-;;
+;; *)
 
 let translate (program : AS.instr list) : X86.instr list =
-  let () = print_source (List.map program ~f:AS.sexp_of_instr) in
+  (* let () = print_source (List.map program ~f:AS.sexp_of_instr) in *)
   let op2col : (AS.operand * color) list = __regalloc program in
-  let () =
+  (* let () =
     print_source
       (sexp_of_string "\nCOLORING OF TEMPS"
       :: [ sexp_of_another_random_pair_debug op2col ])
-  in
+  in *)
   (* let col2operand : (color * X86.operand) list = assign_colors op2col in *)
   let (col2operand : random_pair_debug) = assign_colors op2col in
-  let () =
+  (* let () =
     print_source (sexp_of_string "\nCOLORING" :: [ sexp_of_random_pair_debug col2operand ])
-  in
+  in *)
   let translated : X86.instr list =
     List.fold program ~init:[] ~f:(translate_line (get_reg_h (op2col, col2operand)))
   in
-  let () =
+  (* let () =
     print_source
       (sexp_of_string "\nX86" :: List.map (List.rev translated) ~f:X86.sexp_of_instr)
-  in
+  in *)
   List.rev translated
 ;;

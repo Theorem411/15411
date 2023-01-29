@@ -203,7 +203,10 @@ let compile (cmd : cmd_line_args) : unit =
         output_x86_instr (X86.Directive ".globl\t_c0_main");
         output_x86_instr (X86.Directive ".type\t_c0_main, @function");
         output_x86_instr (X86.FunName "_c0_main:");
+        output_x86_instr (X86.UnCommand {op=X86.Pushq; src=X86.X86Reg(RBP)} );
+        output_x86_instr (X86.BinCommand { op = Movq; dest = X86.X86Reg (RBP); src = X86.X86Reg (RSP) });
         List.iter ~f:output_x86_instr translated;
+        output_x86_instr (X86.UnCommand {op=X86.Popq; src=X86.X86Reg(RBP)} );
         output_x86_instr (X86.Ret);
         output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\""));
 ;;

@@ -10,21 +10,23 @@
  *
  *)
 
-type reg =
-  | EAX
-  | EDX
-  | ECX
-  | ESI
-  | EDI
-  | EBX
-  | R8D
-  | R9D
-  | R10D
-  | R11D
-  | R12D
-  | R13D
-  | R14D
-  | R15D
+ type reg =
+ | EAX
+ | EDX
+ | ECX
+ | ESI
+ | EDI
+ | EBX
+ | R8D
+ | R9D
+ | R10D
+ | R11D
+ | R12D
+ | R13D
+ | R14D
+ | R15D
+ | RBP
+ | RSP
 [@@deriving equal, sexp, compare]
 
 type operand =

@@ -22,6 +22,8 @@ let __format_reg = function
   | AS.R13D -> "%r13d"
   | AS.R14D -> "%r14d"
   | AS.R15D -> "%r15d"
+  | AS.RBP -> "%rbp"
+  | AS.RSP -> "%rsp"
 ;;
 
 
@@ -29,7 +31,7 @@ let __format_reg = function
 let format_operand = function
   | Imm n -> "$" ^ Int32.to_string n
   | X86Reg r -> __format_reg r
-  | Mem n -> "-" ^ string_of_int n ^ "(%rbp)"
+  | Mem n -> "-" ^ string_of_int (4 * n) ^ "(%rbp)"
 ;;
 
 type operation =
@@ -39,6 +41,9 @@ type operation =
   | IDiv
   | Mod
   | Mov
+  | Pushq
+  | Movq
+  | Popq
   | CLTD
   [@@deriving equal, compare, sexp]
 
@@ -49,6 +54,9 @@ let format_operation = function
   | IDiv -> "idivl"
   | Mov -> "movl"
   | CLTD -> "cltd"
+  | Pushq -> "pushq"
+  | Popq -> "popq"
+  | Movq -> "movq"
   | _ -> raise (Failure "no such operation allowed")
 ;;
 
@@ -92,6 +100,37 @@ let to_opr = function
   | AS.Div -> IDiv
   | AS.Mod -> Mod
 ;;
+
+(* let all_available_regs =
+  [ AS.EAX
+  ; AS.ECX
+  ; AS.ESI
+  ; AS.EDI
+  ; AS.EBX
+  ; AS.R8D
+  ; AS.R9D
+  ; AS.R10D
+  ; AS.R12D
+  ; AS.R13D
+  ; AS.R14D
+  ; AS.R15D
+  (* putting edx last so that it is not priorit`ed *)
+  ; AS.EDX
+  ];;
+   *)
+
+   let all_available_regs =
+    [ AS.EAX
+    ; AS.ECX
+    ; AS.ESI
+    ; AS.EDI
+    ; AS.EBX
+    ; AS.R8D
+    ; AS.R9D
+    ; AS.R10D
+    (* putting edx last so that it is not priorit`ed *)
+    ; AS.EDX
+    ];;
 
 let __FREE_REG = X86Reg AS.R11D
 

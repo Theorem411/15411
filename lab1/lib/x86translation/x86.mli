@@ -8,6 +8,9 @@ type operation =
   | IDiv
   | Mod
   | Mov
+  | Pushq
+  | Movq
+  | Popq
   | CLTD
   [@@deriving equal, compare, sexp]
 
@@ -37,3 +40,4 @@ type instr =
 val to_opr : AS.operation -> operation
 val format : instr -> string
 val __FREE_REG : operand
+val all_available_regs: AS.reg list

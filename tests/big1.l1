@@ -1,26 +1,19 @@
-
-
-//test return -2147483648
-// test register allocation and modular arithmetic
-
+//test return 21212121
+// test div and mod
 int main()
 {
-  int x1;
-  int x2;
-  int x4;
-  int x8;
-  int x15;
-  int x16;
-  int x30;
-  int x31;
+  int a;
+  int b;
+  int c;
+  int d;
+  int e;
+  int f;
+  int g;
+  int h;
 
-  x1 = 2;
-  x2 = x1 * x1;
-  x4 = x2 * x2;
-  x8 = x4 * x4;
-  x16 = x8 * x8;
-  x15 = x16 / x1;
-  x30 = x15 * x15;
-  x31 = x30 * x1;
-  return x31;
+  a = 9 / 4; b = 9 % 4;		// 2 1
+  c = -9 / 4; d = -9 % 4;	// -2 -1
+  e = 9 / -4; f = 9 % -4;	// -2 1
+  g = -9 / -4; h = -9 % -4;	// 2 -1
+  return -h+10*(g+10*(f+10*(-e+10*(-d+10*(-c+10*(b+10*a))))));
 }
