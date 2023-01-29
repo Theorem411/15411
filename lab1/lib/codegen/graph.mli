@@ -13,7 +13,7 @@ end
 (** the graph type *)
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 (** graph utilities *)
-val from_list: (Vertex.t * Vertex.t list) list -> t
+val from_list: (Vertex.t * Vertex.t) list -> Vertex.Set.t Vertex.Map.t
 val to_list: t -> (Vertex.t * Vertex.t list) list
 
 val ordering: t -> Vertex.t list
