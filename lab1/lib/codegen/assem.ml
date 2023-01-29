@@ -12,19 +12,20 @@
 open Core
 
 type reg =
-  | EAX
-  | EDX
-  | ECX
-  | ESI
-  | EDI
-  | EBX
-  | R8D
-  | R9D
-  | R10D
-  | R12D
-  | R13D
-  | R14D
-  | R15D
+| EAX
+| EDX
+| ECX
+| ESI
+| EDI
+| EBX
+| R8D
+| R9D
+| R10D
+| R11D
+| R12D
+| R13D
+| R14D
+| R15D
 [@@deriving equal]
 
 type operand =
@@ -66,6 +67,7 @@ let format_reg = function
   | R8D -> "%r8d"
   | R9D -> "%r9d"
   | R10D -> "%r10d"
+  | R11D -> "%r11d"
   | R12D -> "%r12d"
   | R13D -> "%r13d"
   | R14D -> "%r14d"
