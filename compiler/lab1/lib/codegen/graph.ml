@@ -12,6 +12,13 @@ module Vertex = struct
   let reg_enum = function 
     EAX -> 0
   | EDX -> 1
+  let areg_to_reg = function 
+    AS.EAX -> EAX
+  | AS.EDX -> EDX
+  let op_to_vertex_opt = function
+    AS.Reg r -> Some (R (areg_to_reg r)) 
+  | AS.Temp t -> Some (T t) 
+  | _ -> None
 end 
 
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
@@ -104,9 +111,88 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
    ) 
  ;;
  
- let coloring (graph : t) : (Vertex.t * int) list = 
-   (*_ let _ = Vertex.Map.length graph in *)
-   let vertex_order = ordering graph in
-   let color_palette = precolor graph in 
-   coloring_aux graph color_palette vertex_order
- ;;
+let coloring (graph : t) : (Vertex.t * int) list = 
+  let vertex_order = ordering graph in
+  let color_palette = precolor graph in 
+  coloring_aux graph color_palette vertex_order
+;;
+
+(** Liveness
+    *)
+type live_in_out_t = Vertex.Set.t * Vertex.Set.t 
+(** init live in & out: [{EAX}, {}]*)
+let live_in_out_init : live_in_out_t = (Vertex.Set.singleton (Vertex.R Vertex.EAX), Vertex.Set.empty)
+;;
+let is_use_1 (op:AS.operand) : Vertex.Set.t = 
+  match op with 
+    AS.Reg r -> Vertex.Set.singleton (Vertex.R (Vertex.areg_to_reg r))
+  | AS.Temp t -> Vertex.Set.singleton (Vertex.T t)
+  | _ -> Vertex.Set.empty
+;;
+let is_use_2 (op1, op2) =  Vertex.Set.union (is_use_1 op1) (is_use_1 op2)
+;;
+let is_def (d : AS.operand) : Vertex.Set.t = (** result is either empty or singleton*)
+  match d with 
+    AS.Reg r -> Vertex.Set.singleton (Vertex.R (Vertex.areg_to_reg r))
+  | AS.Temp t -> Vertex.Set.singleton (Vertex.T t)
+  | _ -> Vertex.Set.empty
+;;
+let not_live = function
+    AS.Binop binop -> (
+      match binop.dest with 
+        AS.Reg r -> Vertex.Set.singleton (Vertex.R (Vertex.areg_to_reg r))
+      | AS.Temp t -> Vertex.Set.singleton (Vertex.T (t))
+      | _ -> Vertex.Set.empty)
+  | AS.Mov mv -> 
+      List.filter_map [mv.dest; mv.src] ~f:Vertex.op_to_vertex_opt |> Vertex.Set.of_list
+  | _ -> Vertex.Set.empty
+;;
+let live_in_out_aux (l : AS.instr) in_out = 
+  match in_out with 
+      [] -> [] (** should not get here *)
+    | (_, (_, live_info))::_ -> 
+        let (live_in, live_out) = live_info in
+        (match l with 
+          AS.Binop binop -> 
+            let live_in' = (Vertex.Set.diff live_out (is_def binop.dest)) |> Vertex.Set.union (is_use_2 (binop.lhs, binop.rhs)) in 
+            let live_out' = live_in in (** will modify when branching *)
+            let v_cur = Vertex.op_to_vertex_opt (binop.dest) in
+            let live_set = Vertex.Set.diff live_out' (not_live l) in
+              (v_cur, (live_set, (live_in', live_out')))::in_out
+        | AS.Mov mv -> 
+            let live_in' = (Vertex.Set.diff live_out (is_def mv.dest)) |> Vertex.Set.union (is_use_1 mv.src) in 
+            let live_out' = live_in in (** will modify when branching *)
+            let v_cur = Vertex.op_to_vertex_opt (mv.dest) in
+            let live_set = Vertex.Set.diff live_out' (not_live l) in
+              (v_cur, (live_set, (live_in', live_out')))::in_out
+        | _ -> in_out
+        )
+      
+;;
+let live_in_out (prog : AS.instr list) = 
+  List.fold_right prog ~f:live_in_out_aux ~init:[(None, (Vertex.Set.empty, live_in_out_init))]
+;; 
+
+(** Live ranges: an alternative way to create interference graph (banished)
+    *)
+
+(** mk interference graph using livenes
+    *)
+let mk_interfere_graph (prog : AS.instr list) = 
+  let live_info = live_in_out prog in 
+  let map_f (vopt, (live_after, _)) = (
+    match vopt with 
+        None -> None
+      | Some v -> Some (v, live_after)
+  ) in
+  let live_edge = List.map live_info ~f:map_f in
+  let fold_f acc inter_info = (
+    match inter_info with 
+      None -> acc
+    | Some (v, inter_set) -> 
+        let new_edges = Vertex.Set.to_list inter_set |> List.map ~f:(fun u -> (v, u)) in
+          new_edges :: acc
+  ) in
+  let edge_list_list = List.fold live_edge ~init:[] ~f:fold_f in
+  let edge_list = List.concat edge_list_list in
+    from_list edge_list

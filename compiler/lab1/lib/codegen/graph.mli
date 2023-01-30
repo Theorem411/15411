@@ -5,16 +5,18 @@
 *)
 
 open Core
+
+module AS = Assem
 module Vertex : sig
    type reg = EAX | EDX [@@deriving compare, sexp]
    type t = R of reg | T of Temp.t [@@deriving compare, sexp]
    include Comparable.S with type t := t
 end
-(*_ the graph type *)
+(** the graph type *)
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
-(*_ graph utilities *)
-val from_list: (Vertex.t * Vertex.t) list -> Vertex.Set.t Vertex.Map.t
+(** graph utilities *)
 val to_list: t -> (Vertex.t * Vertex.t list) list
-
-val ordering: t -> Vertex.t list
 val coloring: t -> (Vertex.t * int) list
+
+(** liveness *)
+val mk_interfere_graph : AS.instr list -> t
