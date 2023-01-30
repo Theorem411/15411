@@ -1,11 +1,17 @@
-//test div-by-zero
-// division error due to overflow
+//test return 1
+// test arithmetic operations except for div and mod
 int main()
 {
-  int TMIN;
-  int overflow;
+  int a;
+  int b;
+  int c;
+  int d;
+  int e;
 
-  TMIN = -2147483648;
-  overflow = TMIN / -1;
-  return overflow;
+  a = 0;
+  b = a+1;
+  c = 2*b;
+  d = 3-c;
+  e = -d;
+  return d;
 }
