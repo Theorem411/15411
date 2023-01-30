@@ -11,6 +11,17 @@ type __operand =
 
 type color = int [@@deriving compare, equal, sexp]
 
+(*_ DEBUGGING STAFF  *)
+
+type random_pair_debug = (color * X86.operand) list [@@deriving sexp]
+type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
+
+(* let print_source ?(channel = stdout) sexps =
+  let formatter = Format.formatter_of_out_channel channel in
+  List.iter sexps ~f:(fun i -> Sexp.pp_hum formatter i);
+  Format.pp_print_flush formatter ()
+;; *)
+
 let get_all_addressable_line instr =
   let all_ops : AS.instr -> AS.operand list = function
     | AS.Directive _ | AS.Comment _ -> []
@@ -63,8 +74,9 @@ let get_free_regs (used_regs : AS.reg list) =
 ;;
 
 let group_by_colors (colors : (AS.operand * color) list) =
-  let sorted = List.sort colors ~compare:(fun (_, a) (_, b) -> __compare_color a b) in 
-  List.group sorted ~break:(fun (_, a) (_, b) -> (__equal_color a b))
+  let sorted = List.sort colors ~compare:(fun (_, a) (_, b) -> __compare_color b a) in
+  (*_ let () = print_source (sexp_of_string "\n sorted" :: ([sexp_of_another_random_pair_debug sorted])) in   *)
+  List.group sorted ~break:(fun (_, a) (_, b) -> not (__equal_color a b))
 ;;
 
 let get_unassigned_colors groups used_regs_with_color =
@@ -76,6 +88,7 @@ let get_unassigned_colors groups used_regs_with_color =
         | (_, color) :: _ -> color
         | [] -> raise (Failure "Group can not be empty"))
   in
+  (*_ let () = print_source (sexp_of_string "\nALL_COL" :: (List.map all_colors ~f:sexp_of_color)) in *)
   List.filter all_colors ~f:(fun c ->
       not (List.exists used_regs_with_color ~f:(fun (_, uc) -> equal_color c uc)))
 ;;
@@ -100,6 +113,8 @@ let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
 
 let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) list =
   let groups = group_by_colors op2col in
+  (*_ let () = print_source (sexp_of_string "\n groups len " :: ([sexp_of_int (List.length groups)])) in  *)
+  (*_ let () = print_source (sexp_of_string "\n groups" :: (List.map groups ~f:sexp_of_another_random_pair_debug)) in  *)
   (*_ get (Reg, i) list *)
   let used_regs_with_color =
     List.filter op2col ~f:(fun l ->
@@ -119,6 +134,7 @@ let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) l
   (*_ let _ = List.length groups in *)
   (*_ TODO ADD SUPPORT FOR SPILLING ? *)
   let to_be_assigned : color list = get_unassigned_colors groups used_regs_with_color in
+  (*_ let () = print_source (sexp_of_string "\nTO_BE_ASSIGNED len" :: (List.map to_be_assigned ~f:sexp_of_color)) in *)
   let rest : (color * X86.operand) list = assign_frees free_regs to_be_assigned in
   let used = List.map used_x86regs_with_color ~f:(fun (r, c) -> c, X86.X86Reg r) in
   List.append used rest
@@ -213,19 +229,10 @@ let get_reg_h (op2col, col2operand) o =
   | _ -> get_reg_of_color col2operand (get_color_of_operand op2col o)
 ;;
 
-type random_pair_debug = (color * X86.operand) list [@@deriving sexp]
-type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
-
-(* let print_source ?(channel = stdout) sexps =
-  let formatter = Format.formatter_of_out_channel channel in
-  List.iter sexps ~f:(fun i -> Sexp.pp_hum formatter i);
-  Format.pp_print_flush formatter ()
-;; *)
-
 let translate (program : AS.instr list) : X86.instr list =
   (*_ let () = print_source (List.map program ~f:AS.sexp_of_instr) in *)
   let op2col : (AS.operand * color) list = __regalloc program in
-  (*_ let () =
+  (* let () =
     print_source
       (sexp_of_string "\nCOLORING OF TEMPS"
       :: [ sexp_of_another_random_pair_debug op2col ])
