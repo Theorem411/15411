@@ -8,7 +8,7 @@ open Core
 
 module AS = Assem
 module Vertex : sig
-   type reg = EAX | EDX [@@deriving compare, sexp]
+   type reg [@@deriving compare, sexp]
    type t = R of reg | T of Temp.t [@@deriving compare, sexp]
    include Comparable.S with type t := t
 end

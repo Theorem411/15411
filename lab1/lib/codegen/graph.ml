@@ -5,20 +5,30 @@ open Core
 
 module AS = Assem
 module Vertex = struct 
-  type reg = EAX | EDX [@@deriving compare, sexp] (** OH : why could I use Assem.reg ? *)
+  (* type reg = EAX | EDX [@@deriving compare, sexp]  *)
+  type reg = AS.reg [@@deriving compare, sexp]
+  (** OH : why could I use Assem.reg ? *)
   module T = struct 
     type t = R of reg | T of Temp.t [@@deriving compare, sexp]
   end
   include T
   include Comparable.Make (T)
-  let reg_enum = function 
-    EAX -> 0
-  | EDX -> 1
-  let areg_to_reg = function 
-    AS.EAX -> EAX
-  | AS.EDX -> EDX
+  (* let reg_enum = function 
+    AS.EAX -> 0
+  | AS.EBX -> 1
+  | AS.ECX -> 2
+  | AS.EDX -> 3 
+  | AS.ESI -> 4
+  | AS.EDI -> 5
+  | AS.R8D -> 6 
+  | AS.R9D -> 7
+  | AS.R10D -> 8
+  | AS.R12D -> 9
+  | AS.R13D -> 10
+  | AS.R14D -> 11
+  | AS.R15D -> 12 *)
   let op_to_vertex_opt = function
-    AS.Reg r -> Some (R (areg_to_reg r)) 
+    AS.Reg r -> Some (R r) 
   | AS.Temp t -> Some (T t) 
   | _ -> None
 end 
@@ -52,7 +62,7 @@ type color_palette_t = (int option) Vertex.Map.t
   *)
 let precolor (graph : t) : color_palette_t = 
   let vs = Vertex.Map.key_set graph in
-  let fold_f acc v = Vertex.Map.update acc v ~f:(fun _ -> match v with Vertex.R r -> Some (Vertex.reg_enum r) | _ -> None) in 
+  let fold_f acc v = Vertex.Map.update acc v ~f:(fun _ -> match v with Vertex.R r -> Some (AS.reg_enum r) | _ -> None) in 
   Vertex.Set.fold vs ~init:(Vertex.Map.empty) ~f:fold_f
 ;;
 (** 
@@ -123,27 +133,51 @@ let coloring (graph : t) : (Vertex.t * int) list =
     *)
 type live_in_out_t = Vertex.Set.t * Vertex.Set.t 
 (** init live in & out: [{EAX}, {}]*)
-let live_in_out_init : live_in_out_t = (Vertex.Set.singleton (Vertex.R Vertex.EAX), Vertex.Set.empty)
+let live_in_out_init : live_in_out_t = (Vertex.Set.singleton (Vertex.R AS.EAX), Vertex.Set.empty)
 ;;
-let is_use_1 (op:AS.operand) : Vertex.Set.t = 
+
+
+(* let is_use_1 (op:AS.operand) : Vertex.Set.t = 
   match op with 
-    AS.Reg r -> Vertex.Set.singleton (Vertex.R (Vertex.areg_to_reg r))
+    AS.Reg r -> Vertex.Set.singleton (Vertex.R r)
   | AS.Temp t -> Vertex.Set.singleton (Vertex.T t)
   | _ -> Vertex.Set.empty
 ;;
 let is_use_2 (op1, op2) =  Vertex.Set.union (is_use_1 op1) (is_use_1 op2)
+;; *)
+let is_use (op_lst : AS.operand list) = 
+  List.filter ~f:(fun op -> match op with AS.Reg _ -> true | AS.Temp _ -> true | _ -> false) op_lst 
+  |> List.filter_map ~f:Vertex.op_to_vertex_opt
+  |> Vertex.Set.of_list
+let uses (l : AS.instr) = 
+  match l with 
+    AS.Binop binop -> 
+      let op_lst = (
+        match binop.op with 
+          AS.Div -> [AS.Reg AS.EAX; AS.Reg AS.EDX] 
+        | _ -> []) in
+        is_use (binop.lhs::binop.rhs::op_lst)
+  | AS.Mov mv -> 
+      let op_lst = [mv.src] in
+        is_use (op_lst)
+  | _ -> Vertex.Set.empty 
 ;;
 let is_def (d : AS.operand) : Vertex.Set.t = (** result is either empty or singleton*)
-  match d with 
-    AS.Reg r -> Vertex.Set.singleton (Vertex.R (Vertex.areg_to_reg r))
-  | AS.Temp t -> Vertex.Set.singleton (Vertex.T t)
+  match (Vertex.op_to_vertex_opt d) with 
+  None -> Vertex.Set.empty | Some v -> Vertex.Set.singleton v
+;;
+
+let defs (l : AS.instr) = 
+  match l with 
+    AS.Binop binop -> is_def binop.dest
+  | AS.Mov mv -> is_def mv.dest
   | _ -> Vertex.Set.empty
 ;;
 let not_live = function
     AS.Binop binop -> (
       match binop.dest with 
-        AS.Reg r -> Vertex.Set.singleton (Vertex.R (Vertex.areg_to_reg r))
-      | AS.Temp t -> Vertex.Set.singleton (Vertex.T (t))
+        AS.Reg r -> Vertex.Set.singleton (Vertex.R r)
+      | AS.Temp t -> Vertex.Set.singleton (Vertex.T t)
       | _ -> Vertex.Set.empty)
   | AS.Mov mv -> 
       List.filter_map [mv.dest; mv.src] ~f:Vertex.op_to_vertex_opt |> Vertex.Set.of_list
@@ -154,18 +188,15 @@ let live_in_out_aux (l : AS.instr) in_out =
       [] -> [] (** should not get here *)
     | (_, (_, live_info))::_ -> 
         let (live_in, live_out) = live_info in
+        let live_in' = (Vertex.Set.diff live_out (defs l)) |> Vertex.Set.union (uses l) in 
+        let live_out' = live_in in (** will modify when branching *)
+        let live_set = Vertex.Set.diff live_out' (not_live l) in
         (match l with 
           AS.Binop binop -> 
-            let live_in' = (Vertex.Set.diff live_out (is_def binop.dest)) |> Vertex.Set.union (is_use_2 (binop.lhs, binop.rhs)) in 
-            let live_out' = live_in in (** will modify when branching *)
             let v_cur = Vertex.op_to_vertex_opt (binop.dest) in
-            let live_set = Vertex.Set.diff live_out' (not_live l) in
               (v_cur, (live_set, (live_in', live_out')))::in_out
         | AS.Mov mv -> 
-            let live_in' = (Vertex.Set.diff live_out (is_def mv.dest)) |> Vertex.Set.union (is_use_1 mv.src) in 
-            let live_out' = live_in in (** will modify when branching *)
             let v_cur = Vertex.op_to_vertex_opt (mv.dest) in
-            let live_set = Vertex.Set.diff live_out' (not_live l) in
               (v_cur, (live_set, (live_in', live_out')))::in_out
         | _ -> in_out
         )

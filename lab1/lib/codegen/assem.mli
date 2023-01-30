@@ -10,7 +10,9 @@
  *
  *)
 
-type reg = EAX | EDX
+open Core
+
+type reg = EAX | EBX | ECX | EDX | ESI | EDI | R8D | R9D | R10D | R12D | R13D | R14D | R15D
 [@@deriving compare, sexp]
 
 type operand =
@@ -44,4 +46,5 @@ type instr =
   | Comment of string
 
 val format : instr -> string
-val reg_name : reg -> string
+val reg_enum : reg -> int
+(* val reg_name : reg -> string *)
