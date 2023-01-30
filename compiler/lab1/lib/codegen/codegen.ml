@@ -85,6 +85,54 @@ let munch_stm = function
     munch_exp (AS.Reg AS.EAX) e
 ;;
 
+let upsert (context : (AS.operand * AS.operand) list) (d, s) = (d, s) :: context
+
+let rec lookup (context : (AS.operand * AS.operand) list) (x : AS.operand) =
+  match context with
+  | [] -> None
+  | (y, v) :: rest -> if AS.equal_operand x y then Some v else lookup rest x
+;;
+
+let from_ctx context = function
+  | AS.Imm n -> AS.Imm n
+  | c ->
+    (match lookup context c with
+    | None -> c
+    | Some v -> v)
+;;
+
+let add_text ?(text = "\t\t\t\t\t.skipped ") command =
+  AS.Comment (text ^ AS.format command)
+;;
+
+let transform (ctx, command) : AS.instr * (AS.operand * AS.operand) list =
+  match command with
+  | AS.Mov { dest = AS.Temp td; src = src } ->
+    add_text command, upsert ctx (AS.Temp td, from_ctx ctx src)
+  | AS.Mov { dest = AS.Reg r; src = AS.Imm n } -> 
+    command, upsert ctx (AS.Reg r, AS.Imm n)
+  | AS.Mov { dest = AS.Reg td; src = AS.Temp tc } ->
+    ( AS.Mov { dest = AS.Reg td; src = from_ctx ctx (AS.Temp tc) }
+    , upsert ctx (AS.Reg td, from_ctx ctx (AS.Temp tc)) )
+  | AS.Binop { op; dest = d; lhs = l; rhs = r } ->
+    let new_l = from_ctx ctx l in
+    let new_r = from_ctx ctx r in
+    (* TODO: Decide if Add evalutation of operations here *)
+    AS.Binop { op; dest = d; lhs = new_l; rhs = new_r }, ctx
+  | _ -> command, ctx
+;;
+
+let transform2 (context, oldcommands) command =
+  let command_to_add, new_context = transform (context, command) in
+  new_context, command_to_add :: oldcommands
+;;
+
+let prop (commands : AS.instr list) : AS.instr list =
+  let _, res = List.fold commands ~init:([], []) ~f:transform2 in
+  let f = (function AS.Comment _ -> false | _ -> true) in
+  List.filter (List.rev res) ~f:f
+;;
+
 (* To codegen a series of statements, just concatenate the results of
- * codegen-ing each statement. *)
-let codegen = List.concat_map ~f:munch_stm
+ * codegen-ing each statement.*)
+let codegen inp = prop (List.concat_map ~f:munch_stm inp)
