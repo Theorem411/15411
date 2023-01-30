@@ -10,9 +10,9 @@ module Vertex : sig
    type t = R of reg | T of Temp.t [@@deriving compare, sexp]
    include Comparable.S with type t := t
 end
-(** the graph type *)
+(*_ the graph type *)
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
-(** graph utilities *)
+(*_ graph utilities *)
 val from_list: (Vertex.t * Vertex.t) list -> Vertex.Set.t Vertex.Map.t
 val to_list: t -> (Vertex.t * Vertex.t list) list
 

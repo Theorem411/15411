@@ -1,9 +1,9 @@
 open Core
-(** 
+(*_ 
     * Graph type definition
  *)
 module Vertex = struct 
-  type reg = EAX | EDX [@@deriving compare, sexp] (** OH : why could I use Assem.reg ? *)
+  type reg = EAX | EDX [@@deriving compare, sexp] (*_ OH : why could I use Assem.reg ? *)
   module T = struct 
     type t = R of reg | T of Temp.t [@@deriving compare, sexp]
   end
@@ -16,7 +16,7 @@ end
 
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 
-(**
+(*_
     * Graph utility functions
 *)
 let graph_empty = Vertex.Map.empty
@@ -34,11 +34,11 @@ let to_list (graph: t) : (Vertex.t * Vertex.t list) list =
   let map_f = (fun (v, vs) -> (v, Vertex.Set.to_list vs)) in
     List.map res ~f:map_f 
 ;;
-(** 
+(*_ 
     graph coloring 
   *)
 type color_palette_t = (int option) Vertex.Map.t
-(** 
+(*_ 
     precolor: give registers different colors 
   *)
 let precolor (graph : t) : color_palette_t = 
@@ -46,7 +46,7 @@ let precolor (graph : t) : color_palette_t =
   let fold_f acc v = Vertex.Map.update acc v ~f:(fun _ -> match v with Vertex.R r -> Some (Vertex.reg_enum r) | _ -> None) in 
   Vertex.Set.fold vs ~init:(Vertex.Map.empty) ~f:fold_f
 ;;
-(** 
+(*_ 
     initial weighting 
   *)
 let nbrs_weight (graph: t) (color_palette : color_palette_t) (v: Vertex.t) = 
@@ -60,7 +60,7 @@ let initial_weight (graph : t) : int Vertex.Map.t =
   let init_weights = Vertex.Map.of_key_set vs ~f:(nbrs_weight graph color_palette) in
     init_weights
 ;;
-(** 
+(*_ 
     maximum capacity searching 
   *)
 let ordering (graph: t) : Vertex.t list = 
@@ -79,7 +79,7 @@ let ordering (graph: t) : Vertex.t list =
         v_max :: (aux wkset' weights' (i-1))
   in  
     aux wkset weights n
-(** 
+(*_ 
     greedy coloring 
     *)
 let unused_color_in_nbrs (graph : t) (color_palette : color_palette_t) (v : Vertex.t) = 
@@ -105,7 +105,7 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
  ;;
  
  let coloring (graph : t) : (Vertex.t * int) list = 
-   let _ = Vertex.Map.length graph in
+   (*_ let _ = Vertex.Map.length graph in *)
    let vertex_order = ordering graph in
    let color_palette = precolor graph in 
    coloring_aux graph color_palette vertex_order
