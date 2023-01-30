@@ -98,7 +98,7 @@ let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
 
 let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) list =
   let groups = group_by_colors op2col in
-  (* get (Reg, i) list *)
+  (*_ get (Reg, i) list *)
   let used_regs_with_color =
     List.filter op2col ~f:(fun l ->
         match l with
@@ -114,8 +114,8 @@ let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) l
   let free_regs : AS.reg list =
     get_free_regs (List.map used_x86regs_with_color ~f:(fun (r, _) -> r))
   in
-  let _ = List.length groups in
-  (* TODO ADD SUPPORT FOR SPILLING ? *)
+  (*_ let _ = List.length groups in *)
+  (*_ TODO ADD SUPPORT FOR SPILLING ? *)
   let to_be_assigned : color list = get_unassigned_colors groups used_regs_with_color in
   let rest : (color * X86.operand) list = assign_frees free_regs to_be_assigned in
   let used = List.map used_x86regs_with_color ~f:(fun (r, c) -> c, X86.X86Reg r) in
@@ -221,22 +221,22 @@ type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
 ;; *)
 
 let translate (program : AS.instr list) : X86.instr list =
-  (* let () = print_source (List.map program ~f:AS.sexp_of_instr) in *)
+  (*_ let () = print_source (List.map program ~f:AS.sexp_of_instr) in *)
   let op2col : (AS.operand * color) list = __regalloc program in
-  (* let () =
+  (*_ let () =
     print_source
       (sexp_of_string "\nCOLORING OF TEMPS"
       :: [ sexp_of_another_random_pair_debug op2col ])
   in *)
   (* let col2operand : (color * X86.operand) list = assign_colors op2col in *)
   let (col2operand : random_pair_debug) = assign_colors op2col in
-  (* let () =
+  (*_ let () =
     print_source (sexp_of_string "\nCOLORING" :: [ sexp_of_random_pair_debug col2operand ])
   in *)
   let translated : X86.instr list =
     List.fold program ~init:[] ~f:(translate_line (get_reg_h (op2col, col2operand)))
   in
-  (* let () =
+  (*_ let () =
     print_source
       (sexp_of_string "\nX86" :: List.map (List.rev translated) ~f:X86.sexp_of_instr)
   in *)
