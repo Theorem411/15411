@@ -55,6 +55,7 @@ let __regalloc (l : AS.instr list) : (AS.operand * color) list =
 ;;
 
 let __compare_color = compare_color
+let __equal_color = equal_color
 
 let get_free_regs (used_regs : AS.reg list) =
   List.filter X86.all_available_regs ~f:(fun x ->
@@ -62,7 +63,8 @@ let get_free_regs (used_regs : AS.reg list) =
 ;;
 
 let group_by_colors (colors : (AS.operand * color) list) =
-  List.sort_and_group colors ~compare:(fun (_, a) (_, b) -> __compare_color a b)
+  let sorted = List.sort colors ~compare:(fun (_, a) (_, b) -> __compare_color a b) in 
+  List.group sorted ~break:(fun (_, a) (_, b) -> (__equal_color a b))
 ;;
 
 let get_unassigned_colors groups used_regs_with_color =
