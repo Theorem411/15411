@@ -2,6 +2,8 @@ open Core
 (*_ 
     * Graph type definition
  *)
+
+module AS = Assem
 module Vertex = struct 
   type reg = EAX | EDX [@@deriving compare, sexp] (*_ OH : why could I use Assem.reg ? *)
   module T = struct 
@@ -15,6 +17,7 @@ module Vertex = struct
   let areg_to_reg = function 
     AS.EAX -> EAX
   | AS.EDX -> EDX
+  | _ -> raise (Failure "should not happen rn")
   let op_to_vertex_opt = function
     AS.Reg r -> Some (R (areg_to_reg r)) 
   | AS.Temp t -> Some (T t) 

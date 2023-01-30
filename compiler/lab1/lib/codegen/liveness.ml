@@ -1,4 +1,4 @@
-open Core 
+(*_ open Core 
 (* let rec live_analysis (assem : Assem.instr list) : TS.t list = 
   let f (instr : Assem.instr) (res : TS.t list) : TS.t list = 
     match instr with 
@@ -28,4 +28,4 @@ let live_in_line = function
     | Assem.Mov mv -> []
     | _ -> []
 ;;
-let rec live_analysis (assem : Assem.instr list) : Assem.instr list list = 
+let rec live_analysis (assem : Assem.instr list) : Assem.instr list list =  *)
