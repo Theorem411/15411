@@ -15,10 +15,8 @@ end
 (** the graph type *)
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 (** graph utilities *)
-val from_list: (Vertex.t * Vertex.t) list -> t
 val to_list: t -> (Vertex.t * Vertex.t list) list
-val ordering: t -> Vertex.t list
 val coloring: t -> (Vertex.t * int) list
 
 (** liveness *)
-val mk_interfere_graph : AS.instr Array.t -> t
+val mk_interfere_graph : AS.instr list -> t
