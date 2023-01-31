@@ -129,7 +129,7 @@ let to_opr = function
     ; AS.R9D
     ; AS.R10D
     (* putting edx last so that it is not priorit`ed *)
-    ; AS.EDX
+    (*_ ; AS.EDX *)
     ];;
 
 let __FREE_REG = X86Reg AS.R11D
