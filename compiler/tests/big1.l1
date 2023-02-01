@@ -21,6 +21,6 @@ int main() {
 	z = x % y;
 	x = y;
 	y = z;
-  x /= 8;
+ 	x /= 8;
 	return x / 3 - 1;
 }

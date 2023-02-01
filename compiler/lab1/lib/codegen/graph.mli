@@ -9,14 +9,14 @@ open Core
 module AS = Assem
 module Vertex : sig
    type reg [@@deriving compare, sexp]
-   type t = R of reg | T of Temp.t [@@deriving compare, sexp]
+   type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp]
    include Comparable.S with type t := t
 end
-(** the graph type *)
+(*_ the graph type *)
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
-(** graph utilities *)
+(*_ graph utilities *)
 val to_list: t -> (Vertex.t * Vertex.t list) list
 val coloring: t -> (Vertex.t * int) list
 
-(** liveness *)
+(*_ liveness *)
 val mk_interfere_graph : AS.instr list -> t

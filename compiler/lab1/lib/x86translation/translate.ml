@@ -38,8 +38,8 @@ let get_all_nodes instrs =
 
 let back_coloring_adapter : AS.operand * color -> V.t * color = function
   | AS.Temp t, color -> V.T t, color
-  | AS.Reg AS.EAX, color -> V.R V.EAX, color
-  | AS.Reg AS.EDX, color -> V.R V.EDX, color
+  | AS.Reg AS.EAX, color -> V.R AS.EAX, color
+  | AS.Reg AS.EDX, color -> V.R AS.EDX, color
   | _ -> raise (Failure "Can not happen")
 ;;
 
@@ -60,8 +60,9 @@ let __coloring (program : AS.instr list) : (V.t * color) list =
 
 let coloring_adapter : V.t * color -> AS.operand * color = function
   | V.T t, color -> AS.Temp t, color
-  | V.R V.EAX, color -> AS.Reg AS.EAX, color
-  | V.R V.EDX, color -> AS.Reg AS.EDX, color
+  | V.R AS.EAX, color -> AS.Reg AS.EAX, color
+  | V.R AS.EDX, color -> AS.Reg AS.EDX, color
+  | _ -> raise (Failure "Not now, brah (coloring adapter getting not eax or edx)")
 ;;
 
 let __regalloc (l : AS.instr list) : (AS.operand * color) list =

@@ -7,9 +7,9 @@ module AS = Assem
 module Vertex = struct 
   (* type reg = EAX | EDX [@@deriving compare, sexp]  *)
   type reg = AS.reg [@@deriving compare, sexp]
-  (** OH : why could I use Assem.reg ? *)
+  (*_ OH : why could I use Assem.reg ? *)
   module T = struct 
-    type t = R of reg | T of Temp.t [@@deriving compare, sexp]
+    type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp]
   end
   include T
   include Comparable.Make (T)
@@ -65,7 +65,7 @@ let precolor (graph : t) : color_palette_t =
   let fold_f acc v = Vertex.Map.update acc v ~f:(fun _ -> match v with Vertex.R r -> Some (AS.reg_enum r) | _ -> None) in 
   Vertex.Set.fold vs ~init:(Vertex.Map.empty) ~f:fold_f
 ;;
-(** 
+(*_ 
     initial weighting 
   *)
 let nbrs_weight (graph: t) (color_palette : color_palette_t) (v: Vertex.t) = 
@@ -136,10 +136,10 @@ let coloring (graph : t) : (Vertex.t * int) list =
   coloring_aux graph color_palette vertex_order
 ;;
 
-(** Liveness
+(*_ Liveness
     *)
 type live_in_out_t = Vertex.Set.t * Vertex.Set.t [@@deriving sexp]
-(** init live in & out: [{EAX}, {}]*)
+(*_ init live in & out: [{EAX}, {}]*)
 let live_in_out_init : live_in_out_t = (Vertex.Set.singleton (Vertex.R AS.EAX), Vertex.Set.empty)
 ;;
 
@@ -169,7 +169,7 @@ let uses (l : AS.instr) =
         is_use (op_lst)
   | _ -> Vertex.Set.empty 
 ;;
-let is_def (d : AS.operand) : Vertex.Set.t = (** result is either empty or singleton*)
+let is_def (d : AS.operand) : Vertex.Set.t = (*_ result is either empty or singleton*)
   match (Vertex.op_to_vertex_opt d) with 
   None -> Vertex.Set.empty | Some v -> Vertex.Set.singleton v
 ;;
@@ -192,11 +192,11 @@ let not_live = function
 ;;
 let live_in_out_aux (l : AS.instr) in_out = 
   match in_out with 
-      [] -> [] (** should not get here *)
+      [] -> [] (*_ should not get here *)
     | (_, (_, live_info))::_ -> 
         let (live_in, live_out) = live_info in
         let live_in' = (Vertex.Set.diff live_out (defs l)) |> Vertex.Set.union (uses l) in 
-        let live_out' = live_in in (** will modify when branching *)
+        let live_out' = live_in in (*_ will modify when branching *)
         let live_set = Vertex.Set.diff live_out' (not_live l) in
         (match l with 
           AS.Binop binop -> 
@@ -216,10 +216,10 @@ let live_in_out (prog : AS.instr list) =
 
 type debug_1 = (Vertex.t option * (Vertex.Set.t * live_in_out_t)) list [@@deriving sexp]
 
-(** Live ranges: an alternative way to create interference graph (banished)
+(*_ Live ranges: an alternative way to create interference graph (banished)
     *)
 
-(** mk interference graph using livenes
+(*_ mk interference graph using livenes
     *)
 let mk_interfere_graph (prog : AS.instr list) = 
   let live_info = live_in_out prog in 
