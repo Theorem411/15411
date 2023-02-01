@@ -82,6 +82,7 @@ let initial_weight (graph : t) : int Vertex.Map.t =
 (*_ 
     maximum capacity searching 
   *)
+
 let ordering (graph: t) : Vertex.t list = 
   let n = Vertex.Map.length graph in
   let weights = initial_weight graph in 

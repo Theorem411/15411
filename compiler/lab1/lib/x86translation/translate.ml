@@ -17,7 +17,7 @@ type random_pair_debug = (color * X86.operand) list [@@deriving sexp]
 type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
 
 (*_ CREATES A COLORING THAT IS UNIQUE FOR ALL TEMPS *)
-(*_ ONLY FOR DEBUGGING PURPOSES *)
+(*_ ONLY FOR DEBUGGING PURPOSES
 let get_all_addressable_line instr =
   let all_ops : AS.instr -> AS.operand list = function
     | AS.Directive _ | AS.Comment _ -> []
@@ -28,34 +28,35 @@ let get_all_addressable_line instr =
       match i with
       | AS.Temp _ | AS.Reg _ -> true
       | _ -> false)
-;; 
+;;  *)
 
-let get_all_nodes instrs =
+(* let get_all_nodes instrs =
   List.dedup_and_sort
     ~compare:AS.compare_operand
     (List.concat (List.map instrs ~f:get_all_addressable_line))
-;;
+;; *)
 
-let back_coloring_adapter : AS.operand * color -> V.t * color = function
+(* let back_coloring_adapter : AS.operand * color -> V.t * color = function
   | AS.Temp t, color -> V.T t, color
   | AS.Reg AS.EAX, color -> V.R AS.EAX, color
   | AS.Reg AS.EDX, color -> V.R AS.EDX, color
   | _ -> raise (Failure "Can not happen")
-;;
+;; *)
 
-let __coloring (program : AS.instr list) : (V.t * color) list =
+
+(* let __coloring (program : AS.instr list) : (V.t * color) list =
   let nodes = get_all_nodes program in
   let max_color = List.length nodes in
   let all_colors : color list = List.range 1 (max_color + 1) in
   let coloring = List.zip_exn nodes all_colors in
   List.map coloring ~f:back_coloring_adapter
-;;
+;; *)
 
 (*_ COLORING USING REG ALLOCATOR *)
-(*_ let __coloring (program : AS.instr list) : (V.t * color) list =
+let __coloring (program : AS.instr list) : (V.t * color) list =
   let graph = Graph.mk_interfere_graph program in
   Graph.coloring graph
-;; *)
+;;
 
 
 let coloring_adapter : V.t * color -> AS.operand * color = function
