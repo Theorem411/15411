@@ -27,7 +27,7 @@
  | R15D
  | RBP
  | RSP
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, enum]
 
 type operand =
   | Imm of Int32.t
@@ -63,4 +63,5 @@ type instr =
 [@@deriving equal, sexp, compare]
 
 val format : instr -> string
+val reg_enum : reg -> int
 val equal_operand : operand -> operand -> bool

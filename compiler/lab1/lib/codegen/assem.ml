@@ -28,7 +28,7 @@ type reg =
   | R15D
   | RBP
   | RSP
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, enum]
 
 type operand =
   | Imm of Int32.t
@@ -106,3 +106,6 @@ let format = function
   | Directive dir -> sprintf "%s" dir
   | Comment comment -> sprintf "/* %s */" comment
 ;;
+
+(* let reg_name = function EAX -> "%eax" | EDX -> "%edx" *)
+let reg_enum = reg_to_enum;;
