@@ -69,3 +69,7 @@ DerivedData
 .idea/
 xcshareddata/
 Pods
+
+# Ulan Specific Files
+ulan-test-files
+ulan-test-files/*

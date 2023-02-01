@@ -193,8 +193,22 @@ let compile (cmd : cmd_line_args) : unit =
         List.iter ~f:output_instr assem;
         output_instr (Assem.Directive ".ident\t\"15-411 L1 reference compiler\""))
   | X86_64 ->
-    prerr_endline "x86_64 not implemented yet";
-    exit 1
+    let file = cmd.filename ^ ".s" in
+    say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
+    Out_channel.with_file file ~f:(fun out ->
+        let output_x86_instr instr = Out_channel.fprintf out "%s\n" (X86.format instr) in
+        let translated = Translate.translate assem in
+        output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
+        output_x86_instr (X86.Directive ".text");
+        output_x86_instr (X86.Directive ".globl\t_c0_main");
+        output_x86_instr (X86.Directive ".type\t_c0_main, @function");
+        output_x86_instr (X86.FunName "_c0_main:");
+        output_x86_instr (X86.UnCommand {op=X86.Pushq; src=X86.X86Reg(RBP)} );
+        output_x86_instr (X86.BinCommand { op = Movq; dest = X86.X86Reg (RBP); src = X86.X86Reg (RSP) });
+        List.iter ~f:output_x86_instr translated;
+        output_x86_instr (X86.UnCommand {op=X86.Popq; src=X86.X86Reg(RBP)} );
+        output_x86_instr (X86.Ret);
+        output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\""));
 ;;
 
 let run (cmd : cmd_line_args) : unit =
@@ -214,7 +228,7 @@ let main () =
   let cli_parse_result : cmd_line_args Cmd.t = Cmd.v cmd_line_info cmd_line_term in
   match Cmd.eval_value cli_parse_result with
   | Ok (`Ok cmd_line) -> run cmd_line
-  | Ok (`Version)     -> Stdlib.exit (Cmd.Exit.ok)
-  | Ok (`Help)        -> Stdlib.exit (Cmd.Exit.ok)
-  | Error _           -> Stdlib.exit (Cmd.Exit.cli_error)
+  | Ok `Version -> Stdlib.exit Cmd.Exit.ok
+  | Ok `Help -> Stdlib.exit Cmd.Exit.ok
+  | Error _ -> Stdlib.exit Cmd.Exit.cli_error
 ;;

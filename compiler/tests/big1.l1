@@ -1,0 +1,26 @@
+//test return 0
+// arithmetics
+
+int main() {
+	int x = -0;
+	x += 0x000fFfFfFfF;
+	x -= 0x000FfFfFfFf;
+	x = x + 2;
+	x *= x * x * (x+1);
+	int y = x * (x - 17);
+	x = x * 3;
+
+	int z = x;
+	x = y;
+	z %= y;
+
+	y = x;
+	x = z;
+	y %= z;
+
+	z = x % y;
+	x = y;
+	y = z;
+  x /= 8;
+	return x / 3 - 1;
+}

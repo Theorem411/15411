@@ -3,7 +3,7 @@
  (libraries core cmdliner yojson)
  (inline_tests)
  (preprocess
-  (pps ppx_jane ppx_expect ppx_deriving.enum)))
+  (pps ppx_jane ppx_expect ppx_deriving.enum ppx_js_style)))
 
 ; makes subdirs not be their own module/library
 (include_subdirs unqualified)

@@ -1,5 +1,5 @@
 open Core
-(** 
+(*_ 
     * Graph type definition
  *)
 
@@ -13,7 +13,7 @@ module Vertex = struct
   end
   include T
   include Comparable.Make (T)
-  (* let reg_enum = function 
+  (*_ let reg_enum = function 
     AS.EAX -> 0
   | AS.EBX -> 1
   | AS.ECX -> 2
@@ -35,7 +35,7 @@ end
 
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 
-(**
+(*_
     * Graph utility functions
 *)
 let graph_empty = Vertex.Map.empty
@@ -53,11 +53,11 @@ let to_list (graph: t) : (Vertex.t * Vertex.t list) list =
   let map_f = (fun (v, vs) -> (v, Vertex.Set.to_list vs)) in
     List.map res ~f:map_f 
 ;;
-(** 
+(*_ 
     graph coloring 
   *)
-type color_palette_t = (int option) Vertex.Map.t
-(** 
+type color_palette_t = (int option) Vertex.Map.t [@@deriving sexp]
+(*_ 
     precolor: give registers different colors 
   *)
 let precolor (graph : t) : color_palette_t = 
@@ -79,7 +79,7 @@ let initial_weight (graph : t) : int Vertex.Map.t =
   let init_weights = Vertex.Map.of_key_set vs ~f:(nbrs_weight graph color_palette) in
     init_weights
 ;;
-(** 
+(*_ 
     maximum capacity searching 
   *)
 let ordering (graph: t) : Vertex.t list = 
@@ -98,7 +98,7 @@ let ordering (graph: t) : Vertex.t list =
         v_max :: (aux wkset' weights' (i-1))
   in  
     aux wkset weights n
-(** 
+(*_ 
     greedy coloring 
     *)
 let unused_color_in_nbrs (graph : t) (color_palette : color_palette_t) (v : Vertex.t) = 
@@ -122,16 +122,23 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
    (v, c_new) :: coloring_aux graph color_palette' vs
    ) 
  ;;
+
+ type debug_2 = (Vertex.t * Vertex.t) list  [@@deriving sexp]
+ 
+ type debug_3 = Vertex.t list  [@@deriving sexp]
+ 
  
 let coloring (graph : t) : (Vertex.t * int) list = 
   let vertex_order = ordering graph in
+  let () = CustomDebug.print_with_name "\n vertex order" [sexp_of_debug_3 vertex_order] in
   let color_palette = precolor graph in 
+  let () = CustomDebug.print_with_name "\n color palette" [sexp_of_color_palette_t color_palette] in
   coloring_aux graph color_palette vertex_order
 ;;
 
 (** Liveness
     *)
-type live_in_out_t = Vertex.Set.t * Vertex.Set.t 
+type live_in_out_t = Vertex.Set.t * Vertex.Set.t [@@deriving sexp]
 (** init live in & out: [{EAX}, {}]*)
 let live_in_out_init : live_in_out_t = (Vertex.Set.singleton (Vertex.R AS.EAX), Vertex.Set.empty)
 ;;
@@ -204,7 +211,10 @@ let live_in_out_aux (l : AS.instr) in_out =
 ;;
 let live_in_out (prog : AS.instr list) = 
   List.fold_right prog ~f:live_in_out_aux ~init:[(None, (Vertex.Set.empty, live_in_out_init))]
-;; 
+;;
+
+
+type debug_1 = (Vertex.t option * (Vertex.Set.t * live_in_out_t)) list [@@deriving sexp]
 
 (** Live ranges: an alternative way to create interference graph (banished)
     *)
@@ -228,4 +238,5 @@ let mk_interfere_graph (prog : AS.instr list) =
   ) in
   let edge_list_list = List.fold live_edge ~init:[] ~f:fold_f in
   let edge_list = List.concat edge_list_list in
+  let () = CustomDebug.print_with_name "\nedge_list" [sexp_of_debug_2 edge_list] in
     from_list edge_list
