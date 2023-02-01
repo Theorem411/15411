@@ -95,8 +95,9 @@ let ordering (graph: t) : Vertex.t list =
       let inter = Vertex.Set.inter nbrs wkset in 
       let incr_fn ~key ~data = if Vertex.Set.mem inter key then data+1 else data in 
       let wkset' = Set.remove wkset v_max in
-      let weights' = Vertex.Map.mapi weights ~f:incr_fn in
-        v_max :: (aux wkset' weights' (i-1))
+      let weights' = Vertex.Map.remove weights v_max in
+      let weights'' = Vertex.Map.mapi weights' ~f:incr_fn in
+        v_max :: (aux wkset' weights'' (i-1))
   in  
     aux wkset weights n
 (*_ 
