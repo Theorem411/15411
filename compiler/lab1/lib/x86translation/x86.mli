@@ -4,6 +4,8 @@ module AS = Assem
 type operation =
   | Add
   | Sub
+  | Subq
+  | Addq
   | Mul
   | IDiv
   | Mod

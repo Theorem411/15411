@@ -50,12 +50,14 @@ let __format_reg_quad = function
 let format_operand ?(quad=false)= function
   | Imm n -> "$" ^ Int32.to_string n
   | X86Reg r -> if not quad then __format_reg r else __format_reg_quad r
-  | Mem n -> "-" ^ string_of_int (4 * n) ^ "(%rbp)"
+  | Mem n -> string_of_int (4 * n) ^ "(%rsp)"
 ;;
 
 type operation =
   | Add
   | Sub
+  | Subq
+  | Addq
   | Mul
   | IDiv
   | Mod
@@ -69,6 +71,8 @@ type operation =
 let format_operation = function
   | Add -> "addl"
   | Sub -> "subl"
+  | Addq -> "addq"
+  | Subq -> "subq"
   | Mul -> "imull"
   | IDiv -> "idivl"
   | Mov -> "movl"
@@ -97,6 +101,12 @@ type instr =
 [@@deriving equal, compare, sexp]
 
 let format = function
+| BinCommand {op=Addq|Subq as bop; src=s; dest=d} ->
+  sprintf
+    "\t%s\t%s, %s"
+    (format_operation bop)
+    (format_operand ~quad:true s)
+    (format_operand ~quad:true d)
   | BinCommand binop ->
     sprintf
       "\t%s\t%s, %s"

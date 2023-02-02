@@ -97,7 +97,7 @@ let get_unassigned_colors groups used_regs_with_color =
 ;;
 
 let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
-    : (color * X86.operand) list
+    : (color * X86.operand) list * int
   =
   let available_len = List.length free_regs in
   let colors_len = List.length to_be_assigned in
@@ -106,13 +106,13 @@ let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
     let memcell_count = colors_len - available_len in
     let memcells = List.map (List.range 1 (memcell_count + 1)) ~f:(fun i -> X86.Mem i) in
     let free_regs = List.map free_regs ~f:(fun x -> X86.X86Reg x) in
-    List.zip_exn to_be_assigned (free_regs @ memcells))
+    List.zip_exn to_be_assigned (free_regs @ memcells), memcell_count)
   else (
     let free_regs = List.map free_regs ~f:(fun x -> X86.X86Reg x) in
-    List.zip_exn to_be_assigned (List.take free_regs colors_len))
+    List.zip_exn to_be_assigned (List.take free_regs colors_len), 0)
 ;;
 
-let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) list =
+let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) list * int =
   let groups = group_by_colors op2col in
   (*_ let () = print_source (sexp_of_string "\n groups len " :: ([sexp_of_int (List.length groups)])) in  *)
   (*_ let () = print_source (sexp_of_string "\n groups" :: (List.map groups ~f:sexp_of_another_random_pair_debug)) in  *)
@@ -134,9 +134,9 @@ let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) l
   in
   (*_ let _ = List.length groups in *)
   let to_be_assigned : color list = get_unassigned_colors groups used_regs_with_color in
-  let rest : (color * X86.operand) list = assign_frees free_regs to_be_assigned in
+  let rest, mem_cell_count = assign_frees free_regs to_be_assigned in
   let used = List.map used_x86regs_with_color ~f:(fun (r, c) -> c, X86.X86Reg r) in
-  List.append used rest
+  List.append used rest, mem_cell_count
 ;;
 
 let translate_line
@@ -233,31 +233,57 @@ let get_callee_regs (col2operand : (color * X86.operand) list) =
   X86.X86Reg RBP :: used
 ;;
 
+let callee_handle col2operand =
+  let callee_regs = get_callee_regs col2operand in
+  (* save them into stack *)
+  let callee_start =
+    List.map callee_regs ~f:(fun r -> X86.UnCommand { op = X86.Pushq; src = r })
+  in
+  let rsp_to_rbp =
+    [ X86.BinCommand { op = Movq; dest = X86.X86Reg RBP; src = X86.X86Reg RSP } ]
+  in
+  let callee_finish =
+    List.map (List.rev callee_regs) ~f:(fun r -> X86.UnCommand { op = X86.Popq; src = r })
+  in
+  callee_start, rsp_to_rbp, callee_finish
+;;
+
+let mem_handle = function
+  | 0 -> raise (Failure "can not happen to have 0 count and mem_handle")
+  | cnt ->
+    let n =
+      match Int32.of_int (cnt * 4) with
+      | Some x -> x
+      | None -> raise (Failure "Unexpected None")
+    in
+    ( [ X86.BinCommand { op = X86.Subq; dest = X86.X86Reg RSP; src = X86.Imm n } ]
+    , [ X86.BinCommand { op = X86.Addq; dest = X86.X86Reg RSP; src = X86.Imm n } ] )
+;;
+
 let translate (program : AS.instr list) : X86.instr list =
   let op2col : (AS.operand * color) list = __regalloc program in
-  let col2operand = assign_colors op2col in
-  (* let () =
+  let col2operand, mem_cell_count = assign_colors op2col in
+  let () =
     CustomDebug.print_with_name
       "\nColoring of temps"
       [ sexp_of_another_random_pair_debug op2col ]
   in
   let () =
     CustomDebug.print_with_name "\nColoring" [ sexp_of_random_pair_debug col2operand ]
-  in *)
-  let callee_regs = get_callee_regs col2operand in
-  (* save them into stack *)
-  let callee_start =
-    List.map callee_regs ~f:(fun r -> X86.UnCommand { op = X86.Pushq; src = r })
   in
-  let rbp_to_rsp =
-    [ X86.BinCommand { op = Movq; dest = X86.X86Reg RBP; src = X86.X86Reg RSP } ]
-  in
-  let callee_finish =
-    List.map (List.rev callee_regs) ~f:(fun r -> X86.UnCommand { op = X86.Popq; src = r })
-  in
+  let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in
   let translated : X86.instr list =
     List.fold program ~init:[] ~f:(translate_line (get_reg_h (op2col, col2operand)))
   in
-  (* TODO: optimize append *)
-  callee_start @ rbp_to_rsp @ List.rev translated @ callee_finish
+  (* TODO: optimize appends *)
+  match mem_cell_count with
+  | 0 -> callee_start @ rsp_to_rbp @ List.rev translated @ callee_finish
+  | _ ->
+    let mem_init, mem_finish = mem_handle mem_cell_count in
+    callee_start
+    @ mem_init
+    @ rsp_to_rbp
+    @ List.rev translated
+    @ mem_finish
+    @ callee_finish
 ;;
