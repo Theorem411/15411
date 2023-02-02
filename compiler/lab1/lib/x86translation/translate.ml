@@ -16,6 +16,8 @@ type color = int [@@deriving compare, equal, sexp]
 type random_pair_debug = (color * X86.operand) list [@@deriving sexp]
 type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
 
+let debug_mode_translate = true
+
 (*_ CREATES A COLORING THAT IS UNIQUE FOR ALL TEMPS *)
 (*_ ONLY FOR DEBUGGING PURPOSES *)
 let get_all_addressable_line instr =
@@ -43,7 +45,7 @@ let back_coloring_adapter : AS.operand * color -> V.t * color = function
   | _ -> raise (Failure "Can not happen")
 ;;
 
-let __coloring (program : AS.instr list) : (V.t * color) list =
+let __coloring_debug (program : AS.instr list) : (V.t * color) list =
   let nodes = get_all_nodes program in
   let max_color = List.length nodes in
   let all_colors : color list = List.range 1 (max_color + 1) in
@@ -52,10 +54,13 @@ let __coloring (program : AS.instr list) : (V.t * color) list =
 ;;
 
 (*_ COLORING USING REG ALLOCATOR *)
-(* let __coloring (program : AS.instr list) : (V.t * color) list =
-  let graph = Graph.mk_interfere_graph program in
-  Graph.coloring graph
-;; *)
+let __coloring (program : AS.instr list) : (V.t * color) list =
+  if debug_mode_translate
+  then __coloring_debug program
+  else (
+    let graph = Graph.mk_interfere_graph program in
+    Graph.coloring graph)
+;;
 
 let coloring_adapter : V.t * color -> AS.operand * color = function
   | V.T t, color -> AS.Temp t, color
