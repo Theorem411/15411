@@ -236,14 +236,14 @@ let get_callee_regs (col2operand : (color * X86.operand) list) =
 let translate (program : AS.instr list) : X86.instr list =
   let op2col : (AS.operand * color) list = __regalloc program in
   let col2operand = assign_colors op2col in
-  let () =
+  (* let () =
     CustomDebug.print_with_name
       "\nColoring of temps"
       [ sexp_of_another_random_pair_debug op2col ]
   in
   let () =
     CustomDebug.print_with_name "\nColoring" [ sexp_of_random_pair_debug col2operand ]
-  in
+  in *)
   let callee_regs = get_callee_regs col2operand in
   (* save them into stack *)
   let callee_start =
