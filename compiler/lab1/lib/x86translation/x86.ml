@@ -26,7 +26,6 @@ let __format_reg = function
   | AS.RSP -> "%rsp"
 ;;
 
-
 (* Mem n means that the varialbe is in -n(%rbp) *)
 let format_operand = function
   | Imm n -> "$" ^ Int32.to_string n
@@ -45,7 +44,7 @@ type operation =
   | Movq
   | Popq
   | CLTD
-  [@@deriving equal, compare, sexp]
+[@@deriving equal, compare, sexp]
 
 let format_operation = function
   | Add -> "addl"
@@ -57,7 +56,7 @@ let format_operation = function
   | Pushq -> "pushq"
   | Popq -> "popq"
   | Movq -> "movq"
-  | _ -> raise (Failure "no such operation allowed")
+  | _ -> raise (Failure "no such operation allowed (yet).")
 ;;
 
 type instr =
@@ -75,7 +74,7 @@ type instr =
   | Comment of string
   | FunName of string
   | Ret
-  [@@deriving equal, compare, sexp]
+[@@deriving equal, compare, sexp]
 
 let format = function
   | BinCommand binop ->
@@ -101,36 +100,42 @@ let to_opr = function
   | AS.Mod -> Mod
 ;;
 
-(* let all_available_regs =
+let callee_saved oper =
+  match oper with
+  | X86Reg r ->
+    (match r with
+    | AS.EBX | AS.RSP | AS.RBP -> true
+    | AS.R12D | AS.R13D | AS.R14D | AS.R15D -> true
+    | _ -> false)
+  | _ -> raise (Failure "callee_saved can be applied only on X86Reg reg")
+;;
+
+let caller_saved oper =
+  match oper with
+  | X86Reg r ->
+    (match r with
+    | AS.EAX | AS.EDI | AS.ESI | AS.EDX -> true
+    | AS.ECX | AS.R8D | AS.R9D | AS.R10D | AS.R11D -> true
+    | _ -> false)
+  | _ -> raise (Failure "caller_saved can be applied only on X86Reg reg")
+;;
+
+let all_available_regs =
   [ AS.EAX
-  ; AS.ECX
-  ; AS.ESI
   ; AS.EDI
-  ; AS.EBX
+  ; AS.ESI
+    (*_ not edx before we fix coloring *)
+    (*_ ; AS.EDX *)
+  ; AS.ECX
   ; AS.R8D
   ; AS.R9D
   ; AS.R10D
+  ; AS.EBX
   ; AS.R12D
   ; AS.R13D
   ; AS.R14D
   ; AS.R15D
-  (* putting edx last so that it is not priorit`ed *)
-  ; AS.EDX
-  ];;
-   *)
-
-   let all_available_regs =
-    [ AS.EAX
-    ; AS.ECX
-    ; AS.ESI
-    ; AS.EDI
-    ; AS.EBX
-    ; AS.R8D
-    ; AS.R9D
-    ; AS.R10D
-    (* putting edx last so that it is not priorit`ed *)
-    (*_ ; AS.EDX *)
-    ];;
+  ]
+;;
 
 let __FREE_REG = X86Reg AS.R11D
-
