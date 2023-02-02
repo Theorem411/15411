@@ -227,7 +227,8 @@ let get_reg_h (op2col, col2operand) o =
 ;;
 
 let get_callee_regs (col2operand : (color * X86.operand) list) =
-  let regs = List.map col2operand ~f:(fun (_, r) -> r) in
+  let operands = List.map col2operand ~f:(fun (_, r) -> r) in
+  let regs = List.filter operands ~f:X86.is_reg in
   let used = List.filter regs ~f:X86.callee_saved in
   X86.X86Reg RBP :: used
 ;;
@@ -235,7 +236,6 @@ let get_callee_regs (col2operand : (color * X86.operand) list) =
 let translate (program : AS.instr list) : X86.instr list =
   let op2col : (AS.operand * color) list = __regalloc program in
   let col2operand = assign_colors op2col in
-  let callee_regs = get_callee_regs col2operand in
   let () =
     CustomDebug.print_with_name
       "\nColoring of temps"
@@ -244,6 +244,7 @@ let translate (program : AS.instr list) : X86.instr list =
   let () =
     CustomDebug.print_with_name "\nColoring" [ sexp_of_random_pair_debug col2operand ]
   in
+  let callee_regs = get_callee_regs col2operand in
   (* save them into stack *)
   let callee_start =
     List.map callee_regs ~f:(fun r -> X86.UnCommand { op = X86.Pushq; src = r })

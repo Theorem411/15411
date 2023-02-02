@@ -138,4 +138,8 @@ let all_available_regs =
   ]
 ;;
 
+let is_reg = function
+| X86Reg _ -> true
+| _ -> false;;
+
 let __FREE_REG = X86Reg AS.R11D
