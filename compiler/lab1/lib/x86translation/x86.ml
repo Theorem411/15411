@@ -26,10 +26,30 @@ let __format_reg = function
   | AS.RSP -> "%rsp"
 ;;
 
+let __format_reg_quad = function
+  | AS.EAX -> "%rax"
+  | AS.EBX -> "%rbx"
+  | AS.ECX -> "%rcx"
+  | AS.EDX -> "%rdx"
+  | AS.ESI -> "%rsi"
+  | AS.EDI -> "%rdi"
+  | AS.R8D -> "%r8"
+  | AS.R9D -> "%r9"
+  | AS.R10D -> "%r10"
+  | AS.R11D -> "%r11"
+  | AS.R12D -> "%r12"
+  | AS.R13D -> "%r13"
+  | AS.R14D -> "%r14"
+  | AS.R15D -> "%r15"
+  | AS.RBP -> "%rbp"
+  | AS.RSP -> "%rsp"
+;;
+
+
 (* Mem n means that the varialbe is in -n(%rbp) *)
-let format_operand = function
+let format_operand ?(quad=false)= function
   | Imm n -> "$" ^ Int32.to_string n
-  | X86Reg r -> __format_reg r
+  | X86Reg r -> if not quad then __format_reg r else __format_reg_quad r
   | Mem n -> "-" ^ string_of_int (4 * n) ^ "(%rbp)"
 ;;
 
@@ -83,8 +103,10 @@ let format = function
       (format_operation binop.op)
       (format_operand binop.src)
       (format_operand binop.dest)
-  | UnCommand binop ->
-    sprintf "\t%s\t%s" (format_operation binop.op) (format_operand binop.src)
+  | UnCommand {op=Pushq|Popq as unop; src=s} ->
+    sprintf "\t%s\t%s" (format_operation unop) (format_operand ~quad:true s)
+  | UnCommand unop ->
+    sprintf "\t%s\t%s" (format_operation unop.op) (format_operand unop.src)
   | Zero z -> sprintf "\t%s" (format_operation z.op)
   | Directive dir -> sprintf "\t%s" dir
   | Comment comment -> sprintf "/* %s */" comment
