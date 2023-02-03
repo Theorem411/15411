@@ -62,6 +62,7 @@ type instr =
   | Comment of string
 [@@deriving equal, sexp, compare]
 
+val format_reg : reg -> string
 val format : instr -> string
 val reg_enum : reg -> int
 val equal_operand : operand -> operand -> bool

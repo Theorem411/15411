@@ -11,6 +11,7 @@ module Vertex : sig
    type reg [@@deriving compare, sexp]
    type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp]
    include Comparable.S with type t := t
+   val print : t -> unit
 end
 (*_ the graph type *)
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
@@ -20,3 +21,6 @@ val coloring: t -> (Vertex.t * int) list
 
 (*_ liveness *)
 val mk_interfere_graph : AS.instr list -> t
+
+(*_ debug printing *)
+val print : t -> unit

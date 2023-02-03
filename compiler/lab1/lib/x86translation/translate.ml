@@ -16,7 +16,7 @@ type color = int [@@deriving compare, equal, sexp]
 type random_pair_debug = (color * X86.operand) list [@@deriving sexp]
 type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
 
-let debug_mode_translate = true
+let debug_mode_translate = false
 
 (*_ CREATES A COLORING THAT IS UNIQUE FOR ALL TEMPS *)
 (*_ ONLY FOR DEBUGGING PURPOSES *)
