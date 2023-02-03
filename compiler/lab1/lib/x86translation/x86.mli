@@ -4,6 +4,8 @@ module AS = Assem
 type operation =
   | Add
   | Sub
+  | Subq
+  | Addq
   | Mul
   | IDiv
   | Mod
@@ -41,3 +43,6 @@ val to_opr : AS.operation -> operation
 val format : instr -> string
 val __FREE_REG : operand
 val all_available_regs: AS.reg list
+val callee_saved: operand -> bool
+val caller_saved: operand -> bool
+val is_reg: operand -> bool
