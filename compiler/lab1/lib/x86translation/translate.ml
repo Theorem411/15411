@@ -16,7 +16,7 @@ type color = int [@@deriving compare, equal, sexp]
 type random_pair_debug = (color * X86.operand) list [@@deriving sexp]
 type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
 
-let debug_mode_translate = true
+let debug_mode_translate = false
 
 (*_ CREATES A COLORING THAT IS UNIQUE FOR ALL TEMPS *)
 (*_ ONLY FOR DEBUGGING PURPOSES *)
@@ -161,14 +161,31 @@ let translate_line
     let d_final = get_reg d in
     let lhs_final = get_reg lhs in
     let rhs_final = get_reg rhs in
-    (match d_final with
-    | X86.X86Reg _ ->
+    (match
+       ( d_final
+       , X86.equal_operand d_final lhs_final
+       , X86.equal_operand d_final rhs_final)
+     with
+    | X86.X86Reg _, false, true ->
+      List.rev_append
+        [ 
+          X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final };  
+          X86.BinCommand { op = X86.to_opr AS.Sub; dest = X86.__FREE_REG; src = rhs_final }
+        ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
+        ]
+        prev_lines
+    | X86.X86Reg _, false, false->
       List.rev_append
         [ X86.BinCommand { op = Mov; dest = d_final; src = lhs_final }
         ; X86.BinCommand { op = X86.to_opr op; dest = d_final; src = rhs_final }
         ]
         prev_lines
-    | Mem _ ->
+    | X86.X86Reg _, true, false ->
+      List.rev_append
+        [ X86.BinCommand { op = X86.to_opr op; dest = d_final; src = rhs_final } ]
+        prev_lines
+    | X86.X86Reg _, true, true -> raise (Failure "can not happen")
+    | Mem _, _, _ ->
       List.rev_append
         [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final }
         ; X86.BinCommand { op = X86.to_opr op; dest = X86.__FREE_REG; src = rhs_final }

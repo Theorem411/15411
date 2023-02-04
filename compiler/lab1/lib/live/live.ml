@@ -110,13 +110,16 @@ let cartesian l l' =
   List.concat (List.map ~f:(fun e -> List.map ~f:(fun e' -> e, e') l') l)
 ;;
 
-let get_edges (d : V.Set.t list) (live_out : V.Set.t list) : (V.t * V.t) list =
+let get_edges (d : V.Set.t list) (live_out : V.Set.t list) (live_in : V.Set.t list)
+    : (V.t * V.t) list
+  =
   (* get edges from the single line *)
   let get_edges_aux (d' : V.Set.t) (live_out' : V.Set.t) =
     cartesian (V.Set.to_list d') (V.Set.to_list live_out')
   in
   (* combine all *)
   List.concat (List.map2_exn ~f:get_edges_aux d live_out)
+  @ List.concat (List.map2_exn ~f:get_edges_aux d live_in)
 ;;
 
 (* TODO: add dedup *)
@@ -142,7 +145,15 @@ let create_graph (vertices : V.Set.t) (edges : (V.t * V.t) list) =
       V.Map.add_exn m ~key ~data)
 ;;
 
-
+(* let print_set_list (es : V.Set.t list) =
+  let () =
+    List.iteri es ~f:(fun i a ->
+        print_string (string_of_int (i + 3) ^ ":");
+        print_vset a;
+        print_string "\n")
+  in
+  print_endline ""
+;; *)
 
 (* let print_edges (es : (V.t * V.t) list) =
   let () =
@@ -159,9 +170,12 @@ let create_graph (vertices : V.Set.t) (edges : (V.t * V.t) list) =
 let mk_graph (instrs : AS.instr list) : Graph.t =
   let n = List.length instrs in
   let succ i = if i >= n - 1 then IntSet.empty else IntSet.of_list [ i + 1 ] in
-  let d, _, _, live_out = main instrs succ in
+  let d, _, live_in, live_out = main instrs succ in
+  (* let () = print_set_list live_out in *)
+  (* let () = print_set_list d in
+  let () = print_set_list live_in in *)
   let vertices = get_vertices instrs in
-  let edges = get_edges d live_out in
+  let edges = get_edges d live_out live_in in
   (* let () = print_edges edges in *)
   create_graph vertices edges
 ;;
