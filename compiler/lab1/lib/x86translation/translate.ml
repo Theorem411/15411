@@ -268,14 +268,14 @@ let mem_handle = function
 let translate (program : AS.instr list) : X86.instr list =
   let op2col : (AS.operand * color) list = __regalloc program in
   let col2operand, mem_cell_count = assign_colors op2col in
-  let () =
+  (* let () =
     CustomDebug.print_with_name
       "\nColoring of temps"
       [ sexp_of_another_random_pair_debug op2col ]
-  in
-  let () =
+  in *)
+  (* let () =
     CustomDebug.print_with_name "\nColoring" [ sexp_of_random_pair_debug col2operand ]
-  in
+  in *)
   let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in
   let translated : X86.instr list =
     List.fold program ~init:[] ~f:(translate_line (get_reg_h (op2col, col2operand)))

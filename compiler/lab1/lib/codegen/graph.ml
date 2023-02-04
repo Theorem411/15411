@@ -188,17 +188,17 @@ type debug_2 = (Vertex.t * Vertex.t) list [@@deriving sexp]
 type debug_3 = Vertex.t list [@@deriving sexp]
 
 let coloring (graph : t) : (Vertex.t * int) list =
-  let () = print graph in
+  (* let () = print graph in *)
   let vertex_order = ordering graph in
-  let () =
+  (* let () =
     CustomDebug.print_with_name "\n vertex order" [ sexp_of_debug_3 vertex_order ]
-  in
+  in *)
   let color_palette = precolor graph in
-  let () =
+  (* let () =
     CustomDebug.print_with_name
       "\n color palette"
       [ sexp_of_color_palette_t color_palette ]
-  in
+  in *)
   coloring_aux graph color_palette vertex_order
 ;;
 
@@ -340,18 +340,24 @@ let live_analysis (prog : AS.instr list) =
 (*_ mk interference graph using livenes
     *)
 let all_vertex_in_line (line : AS.instr) =
-  match line with 
-      AS.Binop binop -> List.filter_map ~f:Vertex.op_to_vertex_opt [binop.dest; binop.rhs; binop.rhs] |> Vertex.Set.of_list
-    | AS.Mov mv -> List.filter_map ~f:Vertex.op_to_vertex_opt [mv.dest; mv.src] |> Vertex.Set.of_list
-    | _ -> Vertex.Set.empty
+  match line with
+  | AS.Binop binop ->
+    List.filter_map ~f:Vertex.op_to_vertex_opt [ binop.dest; binop.rhs; binop.rhs ]
+    |> Vertex.Set.of_list
+  | AS.Mov mv ->
+    List.filter_map ~f:Vertex.op_to_vertex_opt [ mv.dest; mv.src ] |> Vertex.Set.of_list
+  | _ -> Vertex.Set.empty
 ;;
-let all_vertex_in_prog (prog : AS.instr list) = 
+
+let all_vertex_in_prog (prog : AS.instr list) =
   let fold_f acc line = Vertex.Set.union acc (all_vertex_in_line line) in
   List.fold_left prog ~init:Vertex.Set.empty ~f:fold_f
 ;;
 
-let graph_empty (vertex_set : Vertex.Set.t) = Vertex.Map.of_key_set vertex_set ~f:(fun _ -> Vertex.Set.empty)
+let graph_empty (vertex_set : Vertex.Set.t) =
+  Vertex.Map.of_key_set vertex_set ~f:(fun _ -> Vertex.Set.empty)
 ;;
+
 let add_edge (graph : t) ((u, v) : Vertex.t * Vertex.t) =
   let graph =
     Vertex.Map.update graph u ~f:(fun o ->
@@ -371,6 +377,7 @@ let add_edge (graph : t) ((u, v) : Vertex.t * Vertex.t) =
 let from_list graph_init (edge_list : (Vertex.t * Vertex.t) list) =
   List.fold edge_list ~init:graph_init ~f:add_edge
 ;;
+
 let mk_interfere_graph (prog : AS.instr list) =
   let live_info = live_analysis prog in
   let map_f liveinfo_line =
@@ -391,5 +398,5 @@ let mk_interfere_graph (prog : AS.instr list) =
   let all_vertex = all_vertex_in_prog prog in
   let graph_init = graph_empty all_vertex in
   (* let () = CustomDebug.print_with_name "\nedge_list" [sexp_of_debug_2 edge_list] in *)
-    from_list graph_init edge_list
+  from_list graph_init edge_list
 ;;
