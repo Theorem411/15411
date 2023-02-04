@@ -9,7 +9,7 @@ module Vertex = struct
   type reg = AS.reg [@@deriving compare, sexp]
   (*_ OH : why could I use Assem.reg ? *)
   module T = struct 
-    type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp]
+    type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp, hash]
   end
   include T
   include Comparable.Make (T)

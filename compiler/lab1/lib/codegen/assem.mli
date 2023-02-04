@@ -27,7 +27,7 @@
  | R15D
  | RBP
  | RSP
-[@@deriving equal, sexp, compare, enum]
+[@@deriving equal, sexp, compare, enum, hash]
 
 type operand =
   | Imm of Int32.t
