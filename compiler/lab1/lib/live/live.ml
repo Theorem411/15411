@@ -46,7 +46,7 @@ let get_init (_ : int) : live_t * live_t =
   empty_1, empty_2
 ;;
 
-let print_vset (es : V.Set.t) =
+(* let print_vset (es : V.Set.t) =
   print_string "[";
   V.Set.iter
     ~f:(fun v ->
@@ -54,7 +54,7 @@ let print_vset (es : V.Set.t) =
       print_string ", ")
     es;
   print_string "]"
-;;
+;; *)
 
 let main (instrs : AS.instr list) _ =
   let n = List.length instrs in
@@ -71,21 +71,11 @@ let main (instrs : AS.instr list) _ =
       match i = n - 1 with
       | true -> V.Set.empty
       | false -> IntTable.find_exn live_in (i + 1)
-      (* let live_out_i =
-      V.Set.of_list
-        (List.concat_map
-           ~f:(fun i -> V.Set.to_list (IntTable.find_exn live_in i))
-           (IntSet.to_list all_succs)) *)
     in
     let live_in_i = V.Set.union u (V.Set.diff live_out_i d) in
     let () =
       match IntTable.add live_in ~key:i ~data:live_in_i with
       | _ -> ()
-    in
-    let () =
-      print_endline (Printf.sprintf "\n adding to line %d:" i);
-      print_vset live_out_i;
-      print_endline ""
     in
     let () =
       match IntTable.add live_out ~key:i ~data:live_out_i with
@@ -94,14 +84,6 @@ let main (instrs : AS.instr list) _ =
     ()
   in
   let () = List.fold_right enum ~f:liveness_aux ~init:() in
-  let () =
-    IntTable.iteri live_out ~f:(fun ~key ~data ->
-        print_endline "----------";
-        print_endline (Printf.sprintf "\n%d:" key);
-        print_vset data;
-        print_endline "");
-    print_endline "**********************************************************************"
-  in
   let indicies = List.range ~start:`inclusive ~stop:`exclusive 0 n in
   let lin_list = List.map ~f:(fun i -> IntTable.find_exn live_in i) indicies in
   let lout_list = List.map ~f:(fun i -> IntTable.find_exn live_out i) indicies in
@@ -148,36 +130,21 @@ let create_graph (vertices : V.Set.t) (edges : (V.t * V.t) list) =
   let () =
     List.iter edges ~f:(fun (a, b) ->
         let a_set = VertexTable.find_exn graph' a in
-        let b_set = VertexTable.find_exn graph' a in
-        let () = VertexTable.set graph' ~key:a ~data:(V.Set.add b_set a) in
-        let () = VertexTable.set graph' ~key:b ~data:(V.Set.add a_set b) in
-        ())
+        let b_set = VertexTable.find_exn graph' b in
+        if not (V.equal a b)
+        then (
+          let () = VertexTable.set graph' ~key:b ~data:(V.Set.add b_set a) in
+          let () = VertexTable.set graph' ~key:a ~data:(V.Set.add a_set b) in
+          ())
+        else ())
   in
   VertexTable.fold graph' ~init:V.Map.empty ~f:(fun ~key ~data m ->
       V.Map.add_exn m ~key ~data)
 ;;
 
-let print_vset (es : V.Set.t) =
-  print_string "[";
-  V.Set.iter
-    ~f:(fun v ->
-      V.print v;
-      print_string ", ")
-    es;
-  print_string "]"
-;;
 
-let print_set_list (es : V.Set.t list) =
-  let () =
-    List.iteri es ~f:(fun i a ->
-        print_string (string_of_int (i + 3) ^ ":");
-        print_vset a;
-        print_string "\n")
-  in
-  print_endline ""
-;;
 
-let print_edges (es : (V.t * V.t) list) =
+(* let print_edges (es : (V.t * V.t) list) =
   let () =
     List.iter es ~f:(fun (a, b) ->
         print_string "(";
@@ -187,16 +154,14 @@ let print_edges (es : (V.t * V.t) list) =
         print_string ";")
   in
   print_endline ".\nDone with edges."
-;;
+;; *)
 
 let mk_graph (instrs : AS.instr list) : Graph.t =
   let n = List.length instrs in
   let succ i = if i >= n - 1 then IntSet.empty else IntSet.of_list [ i + 1 ] in
-  let d, _, live_in, live_out = main instrs succ in
-  let () = print_set_list live_out in
-  let () = print_set_list live_in in
+  let d, _, _, live_out = main instrs succ in
   let vertices = get_vertices instrs in
   let edges = get_edges d live_out in
-  let () = print_edges edges in
+  (* let () = print_edges edges in *)
   create_graph vertices edges
 ;;

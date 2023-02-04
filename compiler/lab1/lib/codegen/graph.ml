@@ -162,11 +162,11 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
  
  
 let coloring (graph : t) : (Vertex.t * int) list = 
-  let () = print graph in
+  (* let () = print graph in *)
   let vertex_order = ordering graph in
-  let () = CustomDebug.print_with_name "\n vertex order" [sexp_of_debug_3 vertex_order] in
+  (* let () = CustomDebug.print_with_name "\n vertex order" [sexp_of_debug_3 vertex_order] in *)
   let color_palette = precolor graph in 
-  let () = CustomDebug.print_with_name "\n color palette" [sexp_of_color_palette_t color_palette] in
+  (* let () = CustomDebug.print_with_name "\n color palette" [sexp_of_color_palette_t color_palette] in *)
   coloring_aux graph color_palette vertex_order
 ;;
 
