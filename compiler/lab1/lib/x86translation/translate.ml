@@ -59,6 +59,7 @@ let __coloring (program : AS.instr list) : (V.t * color) list =
   then __coloring_debug program
   else (
     let graph = Live.mk_graph program in
+    (* let graph = Graph.mk_interfere_graph program in *)
     Graph.coloring graph)
 ;;
 
