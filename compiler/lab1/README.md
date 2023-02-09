@@ -197,3 +197,4 @@ also contain explanations of any parser state conflicts due to ambiguities in
 your grammar. Remove the generated `lib/parse/c0_parser.ml` and `lib/parse/c0_parser.mli`
 files before recompiling, as they will confuse dune.  (Try it and see. It is
 safe.)
+TEST

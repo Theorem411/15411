@@ -10,14 +10,30 @@
  *
  *)
 
-type reg = EAX
-[@@deriving equal]
+ type reg =
+ | EAX
+ | EDX
+ | ECX
+ | ESI
+ | EDI
+ | EBX
+ | R8D
+ | R9D
+ | R10D
+ | R11D
+ | R12D
+ | R13D
+ | R14D
+ | R15D
+ | RBP
+ | RSP
+[@@deriving equal, sexp, compare, enum, hash]
 
 type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
-  [@@deriving equal]
+[@@deriving equal, sexp, compare]
 
 type operation =
   | Add
@@ -25,6 +41,7 @@ type operation =
   | Mul
   | Div
   | Mod
+[@@deriving equal, sexp, compare]
 
 type instr =
   (* dest <- lhs op rhs *)
@@ -43,8 +60,9 @@ type instr =
   | Directive of string
   (* Human-friendly comment. *)
   | Comment of string
+[@@deriving equal, sexp, compare]
 
+val format_reg : reg -> string
 val format : instr -> string
-val reg_name : reg -> string
-
+val reg_enum : reg -> int
 val equal_operand : operand -> operand -> bool

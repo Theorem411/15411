@@ -11,14 +11,30 @@
 
 open Core
 
-type reg = EAX
-[@@deriving equal]
+type reg =
+  | EAX
+  | EDX
+  | ECX
+  | ESI
+  | EDI
+  | EBX
+  | R8D
+  | R9D
+  | R10D
+  | R11D
+  | R12D
+  | R13D
+  | R14D
+  | R15D
+  | RBP
+  | RSP
+[@@deriving equal, sexp, compare, enum, hash]
 
 type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
-  [@@deriving equal]
+[@@deriving equal, sexp, compare]
 
 type operation =
   | Add
@@ -26,6 +42,7 @@ type operation =
   | Mul
   | Div
   | Mod
+[@@deriving equal, sexp, compare]
 
 type instr =
   | Binop of
@@ -40,11 +57,27 @@ type instr =
       }
   | Directive of string
   | Comment of string
+[@@deriving equal, sexp, compare]
 
 (* functions that format assembly output *)
 
 let format_reg = function
   | EAX -> "%eax"
+  | EBX -> "%ebx"
+  | ECX -> "%ecx"
+  | EDX -> "%edx"
+  | ESI -> "%esi"
+  | EDI -> "%edi"
+  | R8D -> "%r8d"
+  | R9D -> "%r9d"
+  | R10D -> "%r10d"
+  | R11D -> "%r11d"
+  | R12D -> "%r12d"
+  | R13D -> "%r13d"
+  | R14D -> "%r14d"
+  | R15D -> "%r15d"
+  | RBP -> "%rbp"
+  | RSP -> "%rsp"
 ;;
 
 let format_binop = function
@@ -74,4 +107,5 @@ let format = function
   | Comment comment -> sprintf "/* %s */" comment
 ;;
 
-let reg_name (r:reg) = "EAX";;
+(* let reg_name = function EAX -> "%eax" | EDX -> "%edx" *)
+let reg_enum = reg_to_enum;;
