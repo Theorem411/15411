@@ -290,8 +290,8 @@ let translate (program : AS.instr list) : X86.instr list =
     CustomDebug.print_with_name
       "\nColoring of temps"
       [ sexp_of_another_random_pair_debug op2col ]
-  in
-  let () =
+  in *)
+  (* let () =
     CustomDebug.print_with_name "\nColoring" [ sexp_of_random_pair_debug col2operand ]
   in *)
   let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in
