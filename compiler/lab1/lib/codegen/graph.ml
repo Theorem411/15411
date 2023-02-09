@@ -10,11 +10,8 @@ module Vertex = struct
   type reg = AS.reg [@@deriving compare, sexp]
 
   (*_ OH : why could I use Assem.reg ? *)
-  module T = struct
-    type t =
-      | R of AS.reg
-      | T of Temp.t
-    [@@deriving compare, sexp]
+  module T = struct 
+    type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp, hash]
   end
 
   include T
@@ -172,33 +169,27 @@ let unused_color_in_nbrs (graph : t) (color_palette : color_palette_t) (v : Vert
 ;;
 
 let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
-  | [] -> []
-  | v :: vs ->
-    (match Vertex.Map.find_exn color_palette v with
-     | Some c_old -> (v, c_old) :: coloring_aux graph color_palette vs
-     | None ->
-       let c_new = unused_color_in_nbrs graph color_palette v in
-       (* let () =  CustomDebug.print_with_name "\n >> color palette" [sexp_of_color_palette_t color_palette] in *)
-       (* let () = print_string ("\nc_new should be 1 but got: " ^ string_of_int (c_new)^"\n") in *)
-       let color_palette' = Vertex.Map.update color_palette v ~f:(fun _ -> Some c_new) in
-       (v, c_new) :: coloring_aux graph color_palette' vs)
-;;
+   [] -> []
+ | v::vs -> (
+    match (Vertex.Map.find_exn color_palette v) with 
+      Some c_old -> (v, c_old) :: coloring_aux graph color_palette vs
+    | None -> 
+      let c_new = unused_color_in_nbrs graph color_palette v in 
+      (* let () =  CustomDebug.print_with_name "\n >> color palette" [sexp_of_color_palette_t color_palette] in *)
+      (* let () = print_string ("\nc_new should be 1 but got: " ^ string_of_int (c_new)^"\n") in *)
+      let color_palette' = Vertex.Map.update color_palette v ~f:(fun _ -> Some c_new) in 
+      (v, c_new) :: coloring_aux graph color_palette' vs
+   ) 
+ ;;
 
-type debug_2 = (Vertex.t * Vertex.t) list [@@deriving sexp]
-type debug_3 = Vertex.t list [@@deriving sexp]
-
-let coloring (graph : t) : (Vertex.t * int) list =
-  (* let () = print graph in *)
+ type debug_2 = (Vertex.t * Vertex.t) list  [@@deriving sexp]
+ 
+ type debug_3 = Vertex.t list  [@@deriving sexp]
+ 
+ 
+let coloring (graph : t) : (Vertex.t * int) list = 
   let vertex_order = ordering graph in
-  (* let () =
-    CustomDebug.print_with_name "\n vertex order" [ sexp_of_debug_3 vertex_order ]
-  in *)
-  let color_palette = precolor graph in
-  (* let () =
-    CustomDebug.print_with_name
-      "\n color palette"
-      [ sexp_of_color_palette_t color_palette ]
-  in *)
+  let color_palette = precolor graph in 
   coloring_aux graph color_palette vertex_order
 ;;
 

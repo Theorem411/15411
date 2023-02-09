@@ -58,7 +58,8 @@ let __coloring (program : AS.instr list) : (V.t * color) list =
   if debug_mode_translate
   then __coloring_debug program
   else (
-    let graph = Graph.mk_interfere_graph program in
+    let graph = Live.mk_graph program in
+    (* let graph = Graph.mk_interfere_graph program in *)
     Graph.coloring graph)
 ;;
 
@@ -161,14 +162,31 @@ let translate_line
     let d_final = get_reg d in
     let lhs_final = get_reg lhs in
     let rhs_final = get_reg rhs in
-    (match d_final with
-    | X86.X86Reg _ ->
+    (match
+       ( d_final
+       , X86.equal_operand d_final lhs_final
+       , X86.equal_operand d_final rhs_final)
+     with
+    | X86.X86Reg _, false, true ->
+      List.rev_append
+        [ 
+          X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final };  
+          X86.BinCommand { op = X86.to_opr AS.Sub; dest = X86.__FREE_REG; src = rhs_final }
+        ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
+        ]
+        prev_lines
+    | X86.X86Reg _, false, false->
       List.rev_append
         [ X86.BinCommand { op = Mov; dest = d_final; src = lhs_final }
         ; X86.BinCommand { op = X86.to_opr op; dest = d_final; src = rhs_final }
         ]
         prev_lines
-    | Mem _ ->
+    | X86.X86Reg _, true, false ->
+      List.rev_append
+        [ X86.BinCommand { op = X86.to_opr op; dest = d_final; src = rhs_final } ]
+        prev_lines
+    | X86.X86Reg _, true, true -> raise (Failure "can not happen")
+    | Mem _, _, _ ->
       List.rev_append
         [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final }
         ; X86.BinCommand { op = X86.to_opr op; dest = X86.__FREE_REG; src = rhs_final }
