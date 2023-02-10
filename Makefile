@@ -6,7 +6,7 @@
 
 .PHONY: lab*
 
-default: lab1
+default: lab2
 lab1: bin
 	$(MAKE) -C compiler/$@
 

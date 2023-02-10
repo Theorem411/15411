@@ -16,11 +16,13 @@ let trans_binop = function
   | A.Times -> T.Mul
   | A.Divided_by -> T.Div
   | A.Modulo -> T.Mod
+  | _ -> raise (Failure "not supported yet")
 ;;
 
 let trans_unop = function
   (* unary to binary!*)
   | A.Negative -> T.Sub
+  | _ -> raise (Failure "not supported yet")
 ;;
 
 let rec trans_exp env = function
@@ -36,6 +38,7 @@ let rec trans_exp env = function
   | A.Unop { op = A.Negative; operand = e } ->
     T.Binop
       { op = trans_unop A.Negative; lhs = T.Const Int32.zero; rhs = trans_mexp env e }
+  | _ -> raise (Failure "not supported yet")
 
 and trans_mexp env mexp = trans_exp env (Mark.data mexp)
 

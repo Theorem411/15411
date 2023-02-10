@@ -16,13 +16,30 @@ type binop =
   | Times
   | Divided_by
   | Modulo
+  | Less
+  | Less_eq
+  | Greater
+  | Greater_eq
+  | Equals
+  | Not_equals
+  | L_and
+  | L_or
+  | B_and
+  | B_xor
+  | B_or
+  | Shift_left
+  | Shift_right
 
-type unop = Negative
+type unop = Negative | L_not | B_not
+
+type _type = Bool | Integer 
 
 (* Expression *)
 type exp =
   | Var of Symbol.t
   | Const of Int32.t
+  | True
+  | False
   | Binop of
       { op : binop
       ; lhs : mexp
@@ -38,19 +55,46 @@ and mexp = exp Mark.t
 
 (* Declaration *)
 type decl =
-  (* int x; *)
-  | New_var of Symbol.t
-  (* int x = e; *)
-  | Init of Symbol.t * mexp
+  (* _type x; *)
+  | New_var of Symbol.t * _type
+  (* _type x = e; *)
+  | Init of Symbol.t * _type * mexp
+
 
 (* Statement *)
 type stm =
   | Declare of decl
   | Assign of Symbol.t * mexp
   | Return of mexp
+  | Exp of mexp
+  | If of
+      { cond : mexp
+      ; tstm : mstm
+      ; fstm : mstm option
+      }
+  | For of
+      { init : mexp
+      ; cond : mexp
+      ; post : mexp
+      ; body : mstm
+      }
+  | ForDef of
+      { init : decl
+      ; cond : mexp
+      ; post : mexp
+      ; body : mstm
+      }
+  | While of
+      { init : decl
+      ; body : mstm
+      }
+  | Block of block
+  | Nop
 
 (* Statement plus src file location *)
 and mstm = stm Mark.t
+(* block *)
+and block = mstm list
 
 type program = mstm list
 

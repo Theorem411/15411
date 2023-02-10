@@ -24,6 +24,7 @@ type src_span =
   ; end_loc : src_loc
   ; file : string
   }
+[@@deriving sexp]
 
 let of_position (pos : Lexing.position) : src_loc =
   Lexing.{ line = pos.pos_lnum; col = pos.pos_cnum - pos.pos_bol + 1 (* 1-indexed *) }

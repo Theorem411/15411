@@ -99,33 +99,59 @@ rule initial = parse
   | "*=" { T.Star_eq }
   | "/=" { T.Slash_eq }
   | "%=" { T.Percent_eq }
+  | "<<=" { T.Shift_left_eq }
+  | ">>=" { T.Shift_right_eq }
+  | "&=" { T.BAnd_eq }
+  | "|=" { T.Bor_eq }
+  | "^=" { T.BXor_eq }
 
   | '+' { T.Plus }
   | '-' { T.Minus }
   | '*' { T.Star }
   | '/' { T.Slash }
   | '%' { T.Percent }
+  | '!' { T.LNot }
+  | '~' { T.BNot}
+  | "<<" { T.Shift_left }
+  | ">>" { T.Shift_right }
 
-  | "--" { T.Minus_minus } (* Illegal *)
+  | '<' { T.Less }
+  | '>' { T.Greater }
+  | "<=" { T.Less_eq }
+  | ">=" { T.Greater_eq }
+  | "==" { T.Eq_eq }
+  | "!=" { T.Neq }
+
+  | '&' { T.BAnd }
+  | '|' { T.BOr }
+  | '^' { T.BXor }
+
+  | "&&" { T.LAnd }
+  | "||" { T.LOr }
+  | ':' {T.Colon}
+  | '?' {T.QuestionMark}
+
+  | "--" { T.Minus_minus }
+  | "++" { T.Plus_plus}
 
   | "assert" { assert false }
   | "main"   { T.Main }
   | "return" { T.Return }
 
-  | "bool"    { assert false }
+  | "bool"    { T.Bool }
   | "char"    { assert false }
   | "int"     { T.Int }
   | "void"    { assert false }
   | "struct"  { assert false }
   | "typedef" { assert false }
 
-  | "if"    { assert false }
-  | "else"  { assert false }
-  | "while" { assert false }
-  | "for"   { assert false }
+  | "if"    { T.If}
+  | "else"  { T.Else }
+  | "while" { T.While }
+  | "for"   { T.For }
 
-  | "true"  { assert false }
-  | "false" { assert false }
+  | "true"  { T.True }
+  | "false" { T.False }
 
   | "NULL"        { assert false }
   | "alloc"       { assert false }

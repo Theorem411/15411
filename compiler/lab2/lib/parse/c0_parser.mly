@@ -44,6 +44,22 @@ let expand_asnop ~lhs ~op ~rhs
       } in
       Ast.Assign (Mark.data id, mark binop start_pos end_pos)
 
+(* expand_postop (id, postop) region = "id = id op exps"
+ * or = "id = exp" if asnop is "="
+ * syntactically expands a compound assignment operator
+ *)
+let expand_postop ~lhs ~op
+  (start_pos : Lexing.position)
+  (end_pos : Lexing.position) =
+    match lhs, op with
+      let binop = Ast.Binop {
+        op;
+        lhs = Mark.map lhs ~f:(fun id -> Ast.Var id);
+        rhs = Ast.Const (1);
+      } in
+      (*_ check this thing :) *)
+      Ast.Assign (Mark.data id, mark binop start_pos end_pos)
+
 %}
 
 %token Eof
@@ -52,14 +68,20 @@ let expand_asnop ~lhs ~op ~rhs
 %token <Int32.t> Hex_const
 %token <Symbol.t> Ident
 %token Return
-%token Int
+%token Int Bool
+%token True False
 %token Main
+%token If Else Whole For
 %token Plus Minus Star Slash Percent
-%token Assign Plus_eq Minus_eq Star_eq Slash_eq Percent_eq
+%token Assign Plus_eq Minus_eq Star_eq Slash_eq Percent_eq 
 %token L_brace R_brace
 %token L_paren R_paren
+%token Shift_left Shift_right
+%token Less Less_eq Greater Greater_eq
+%token Eq_eq Neq
 %token Unary
-%token Minus_minus
+%token LOr LAnd BOr BXor BAnd
+%token Minus_minus Plus_plus
 
 (* Unary is a dummy terminal.
  * We need dummy terminals if we wish to assign a precedence
@@ -72,6 +94,14 @@ let expand_asnop ~lhs ~op ~rhs
  * Minus_minus is a dummy terminal to parse-fail on.
  *)
 
+%left LOr
+%left LAnd
+%left BOr
+%left BXor
+%left BAnd
+%left Eq_eq Neq
+%left Less Less_eq Greater Greater_eq
+%left Shift_left Shift_right
 %left Plus Minus
 %left Star Slash Percent
 %right Unary
@@ -120,6 +150,11 @@ m(x) :
       { mark x $startpos(x) $endpos(x) }
   ;
 
+type :
+  | Int {Ast.Integer}
+  | Bool {Ast.Bool}
+  ;
+
 stms :
   | (* empty *)
       { [] }
@@ -130,8 +165,6 @@ stms :
   ;
 
 stm :
-  | d = decl; Semicolon;
-      { Ast.Declare d }
   | s = simp; Semicolon;
       { s }
   | Return; e = m(exp); Semicolon;
@@ -139,14 +172,14 @@ stm :
   ;
 
 decl :
-  | Int; ident = Ident;
-      { Ast.New_var ident }
-  | Int; ident = Ident; Assign; e = m(exp);
-      { Ast.Init (ident, e) }
+  | tp = type; ident = Ident;
+      { Ast.New_var (ident, tp) }
+  | tp = type; ident = Ident; Assign; e = m(exp);
+      { Ast.Init (ident, tp, e) }
   | Int; Main;
-      { Ast.New_var (Symbol.symbol "main") }
+      { Ast.New_var (Symbol.symbol "main", Ast.Integer) }
   | Int; Main; Assign; e = m(exp);
-      { Ast.Init (Symbol.symbol "main", e) }
+      { Ast.Init (Symbol.symbol "main", Ast.Integer, e) }
   ;
 
 simp :
@@ -154,6 +187,13 @@ simp :
     op = asnop;
     rhs = m(exp);
       { expand_asnop ~lhs ~op ~rhs $startpos(lhs) $endpos(rhs) }
+  | lhs = m(lvalue);
+    op = postop;
+    {expand_postop ~lhs ~op $startpos(lhs) $endpos(op) }
+  | d = decl;
+      { Ast.Declare d }
+  | e = m(exp);
+        { Ast.Exp e }
   ;
 
 lvalue :
@@ -178,9 +218,15 @@ exp :
     op = binop;
     rhs = m(exp);
       { Ast.Binop { op; lhs; rhs; } }
+  ;
+
+unop : 
   | Minus; e = m(exp); %prec Unary
       { Ast.Unop { op = Ast.Negative; operand = e; } }
-  ;
+  | LNot; e = m(exp); %prec Unary
+      { Ast.Unop { op = Ast.L_not ; operand = e; } }
+  | BNot; e = m(exp); %prec Unary
+      { Ast.Unop { op = Ast.B_not; operand = e; } }
 
 int_const :
   | c = Dec_const;
@@ -205,7 +251,36 @@ binop :
       { Ast.Divided_by }
   | Percent;
       { Ast.Modulo }
+  | Less;
+      { Ast.Less}
+  | Less_eq;
+      { Ast.Less_eq}
+  | Greater;
+      { Ast.Greater}
+  | Greater_eq;
+      { Ast.Greater_eq}
+  | Eq_eq;
+      { Ast.Equals}
+  | Neq;
+      { Ast.Not_equals}
+  | Eq_eq;
+      { Ast.Equals}
+  | LAnd;
+      { Ast.L_and}
+  | LOr;
+      { Ast.L_or}
+  | BAnd;
+      { Ast.B_and}
+  | BOr;
+      { Ast.B_or}
+  | BXor;
+      { Ast.B_xor}
+  | Shift_left;
+      { Ast.Shift_left}
+  | Shift_right;
+      { Ast.Shift_right}
   ;
+//  << | >>
 
 asnop :
   | Assign
@@ -220,6 +295,23 @@ asnop :
       { Some Ast.Divided_by }
   | Percent_eq
       { Some Ast.Modulo }
+  | Shift_left_eq
+      { Some Ast.Shift_left }
+  | Shift_right_eq
+      { Some Ast.Shift_right }
+  | BAnd_eq
+      { Some Ast.B_and }
+  | Bor_eq
+      { Some Ast.B_or }
+  | BXor_eq
+      { Some Ast.B_xor }
   ;
 
+
+postop : 
+  | Plus_plus 
+      { Ast.Plus }
+  | Minus_minus 
+      { Ast.Minus }
+  ;
 %%

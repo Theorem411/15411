@@ -17,6 +17,8 @@ module Vertex = struct
   include T
   include Comparable.Make (T)
 
+
+
   let op_to_vertex_opt = function
     | AS.Reg r -> Some (R r)
     | AS.Temp t -> Some (T t)
