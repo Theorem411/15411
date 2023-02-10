@@ -62,6 +62,8 @@ type stmt =
   | Nop
   | Seq of stmt * stmt
   | NakedExpr of exp
+and mstmt = stmt Mark.t
 
+type program = mstmt list
 
 
