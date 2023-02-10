@@ -29,20 +29,21 @@ type binop =
   | B_and
   | B_xor
   | B_or
-  | Shift_left
-  | Shift_right
-  [@@deriving sexp]
+  | ShiftL
+  | ShiftR
+[@@deriving sexp]
 
 type _type =
   | Bool
   | Integer
-  [@@deriving sexp]
+[@@deriving sexp]
 
 type unop =
   | Negative
   | L_not
   | B_not
-  [@@deriving sexp]
+[@@deriving sexp]
+
 (* Notice that the subexpressions of an expression are marked.
  * (That is, the subexpressions are of type exp Mark.t, not just
  * type exp.) This means that source code location (a src_span) is
@@ -76,8 +77,13 @@ type exp =
       { op : unop
       ; operand : mexp
       }
+  | Ternary of
+      { cond : mexp
+      ; first : mexp
+      ; second : mexp
+      }
 
-and mexp = exp Mark.t 
+and mexp = exp Mark.t
 
 type decl =
   | New_var of Symbol.t * _type
@@ -90,11 +96,11 @@ type stm =
   | Exp of mexp
   | If of
       { cond : mexp
-      ; tstm : mstm
-      ; fstm : mstm option
+      ; thenstm : mstm
+      ; elsestm : mstm option
       }
   | For of
-      { init : mexp
+      { init : mstm
       ; cond : mexp
       ; post : mexp
       ; body : mstm
@@ -102,15 +108,17 @@ type stm =
   | ForDef of
       { init : decl
       ; cond : mexp
-      ; post : mexp
+      ; post : mstm
       ; body : mstm
       }
   | While of
-      { init : decl
+      { cond : mexp
       ; body : mstm
       }
   | Block of block
   | Nop
+  | Label of string (*_ I am not sure about this*)
+  | Goto of string (*_ I am not sure about this*)
 
 and mstm = stm Mark.t
 and block = mstm list

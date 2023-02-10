@@ -99,8 +99,8 @@ rule initial = parse
   | "*=" { T.Star_eq }
   | "/=" { T.Slash_eq }
   | "%=" { T.Percent_eq }
-  | "<<=" { T.Shift_left_eq }
-  | ">>=" { T.Shift_right_eq }
+  | "<<=" { T.ShiftL_eq }
+  | ">>=" { T.ShiftR_eq }
   | "&=" { T.BAnd_eq }
   | "|=" { T.Bor_eq }
   | "^=" { T.BXor_eq }
@@ -112,8 +112,8 @@ rule initial = parse
   | '%' { T.Percent }
   | '!' { T.LNot }
   | '~' { T.BNot}
-  | "<<" { T.Shift_left }
-  | ">>" { T.Shift_right }
+  | "<<" { T.ShiftL }
+  | ">>" { T.ShiftR }
 
   | '<' { T.Less }
   | '>' { T.Greater }

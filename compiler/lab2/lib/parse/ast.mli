@@ -27,12 +27,20 @@ type binop =
   | B_and
   | B_xor
   | B_or
-  | Shift_left
-  | Shift_right
+  | ShiftL
+  | ShiftR
+[@@deriving sexp]
 
-type unop = Negative | L_not | B_not
+type _type =
+  | Bool
+  | Integer
+[@@deriving sexp]
 
-type _type = Bool | Integer 
+type unop =
+  | Negative
+  | L_not
+  | B_not
+[@@deriving sexp]
 
 (* Expression *)
 type exp =
@@ -49,6 +57,11 @@ type exp =
       { op : unop
       ; operand : mexp
       }
+  | Ternary of
+      { cond : mexp
+      ; first : mexp
+      ; second : mexp
+      }
 
 (* Expression plus src file location *)
 and mexp = exp Mark.t
@@ -60,7 +73,6 @@ type decl =
   (* _type x = e; *)
   | Init of Symbol.t * _type * mexp
 
-
 (* Statement *)
 type stm =
   | Declare of decl
@@ -69,11 +81,11 @@ type stm =
   | Exp of mexp
   | If of
       { cond : mexp
-      ; tstm : mstm
-      ; fstm : mstm option
+      ; thenstm : mstm
+      ; elsestm : mstm option
       }
   | For of
-      { init : mexp
+      { init : mstm
       ; cond : mexp
       ; post : mexp
       ; body : mstm
@@ -81,18 +93,21 @@ type stm =
   | ForDef of
       { init : decl
       ; cond : mexp
-      ; post : mexp
+      ; post : mstm
       ; body : mstm
       }
   | While of
-      { init : decl
+      { cond : mexp
       ; body : mstm
       }
   | Block of block
   | Nop
+  | Label of string (*_ I am not sure about this*)
+  | Goto of string (*_ I am not sure about this*)
 
 (* Statement plus src file location *)
 and mstm = stm Mark.t
+
 (* block *)
 and block = mstm list
 

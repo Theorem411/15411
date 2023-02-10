@@ -46,7 +46,7 @@ let expand_asnop ~lhs ~op ~rhs
 
 (* expand_postop (id, postop) region = "id = id op exps"
  * or = "id = exp" if asnop is "="
- * syntactically expands a compound assignment operator
+ * syntactically expands a post operator
  *)
 let expand_postop ~lhs ~op
   (start_pos : Lexing.position)
@@ -59,6 +59,18 @@ let expand_postop ~lhs ~op
       } in
       (*_ check this thing :) *)
       Ast.Assign (Mark.data id, mark binop start_pos end_pos)
+
+(* expand_for (init, cond, post, body) region = "for (init; post, cond) body"
+ * syntactically expands the for loop 
+ *)
+let expand_for ~init ~cond ~post ~body
+  (start_pos : Lexing.position)
+  (end_pos : Lexing.position) =
+    let p = match post with | None  -> Ast.Nop | Some (x) -> x in
+    match init with
+    | Some(Ast.decl _ as i) -> Ast.ForDef { init=i; cond = cond; post = p; body = b }
+    | None -> Ast.ForDef { init=Ast.Nop; cond = cond; post = p; body = body }
+    | Some (i) -> Ast.For { init=i; cond = cond; post = p; body = body }
 
 %}
 
@@ -76,7 +88,7 @@ let expand_postop ~lhs ~op
 %token Assign Plus_eq Minus_eq Star_eq Slash_eq Percent_eq 
 %token L_brace R_brace
 %token L_paren R_paren
-%token Shift_left Shift_right
+%token ShiftL ShiftR
 %token Less Less_eq Greater Greater_eq
 %token Eq_eq Neq
 %token Unary
@@ -101,7 +113,7 @@ let expand_postop ~lhs ~op
 %left BAnd
 %left Eq_eq Neq
 %left Less Less_eq Greater Greater_eq
-%left Shift_left Shift_right
+%left ShiftL ShiftR
 %left Plus Minus
 %left Star Slash Percent
 %right Unary
@@ -125,6 +137,7 @@ let expand_postop ~lhs ~op
 %type <Core.Int32.t> int_const
 %type <Ast.binop> binop
 %type <Ast.binop option> asnop
+%type <Ast.mstm option> elseopt
 
 %%
 
@@ -183,7 +196,7 @@ decl :
   ;
 
 simp :
-  | lhs = m(lvalue);
+  | lhs = m(exp);
     op = asnop;
     rhs = m(exp);
       { expand_asnop ~lhs ~op ~rhs $startpos(lhs) $endpos(rhs) }
@@ -195,6 +208,12 @@ simp :
   | e = m(exp);
         { Ast.Exp e }
   ;
+
+simpopt :
+  | (* empty *)
+    { None }
+  | s = simp
+    { Some s }
 
 lvalue :
   | ident = Ident;
@@ -210,15 +229,25 @@ exp :
       { e }
   | c = int_const;
       { Ast.Const c }
+  | True; { Ast.True }
+  | False; { Ast.False }
   | Main;
       { Ast.Var (Symbol.symbol "main") }
   | ident = Ident;
       { Ast.Var ident }
+  | u = unop; { u }
   | lhs = m(exp);
     op = binop;
     rhs = m(exp);
       { Ast.Binop { op; lhs; rhs; } }
+  | cond = m(exp); 
+    QuestionMark; 
+    f = m(exp);
+    Colon; 
+    s = m(exp) 
+      { Ast.Ternary {cond = cond; first=f; second = s} }
   ;
+
 
 unop : 
   | Minus; e = m(exp); %prec Unary
@@ -234,6 +263,43 @@ int_const :
   | c = Hex_const;
       { c }
   ;
+
+elseopt: 
+  | (* empty *)
+    { None }
+  | Else; 
+    body = m(stm)
+    { Some(body) }
+
+control : 
+    | If; 
+      L_paren; 
+      e = m(exp);
+      R_paren;
+      body = m(stm);
+      eopt = elseopt;
+       { Ast.If {cond = e; thenstm = body; elsestm = eopt } }
+    | While;
+      L_paren; 
+      e = m(exp);
+      R_paren;
+      body = m(stm);
+        {Ast.While {cond = e; body = body}}
+    | For ;
+      L_paren;
+      init = simpopt;
+      Semicolon;
+      cond = m(exp);
+      Semicolon;
+      post = simpopt;
+      R_paren;
+      body = m(stm);
+        { expand_for ~init ~cond ~post ~body $startpos(lhs) $endpos(rhs) }
+    | Return; 
+      e = m(exp);
+      Semicolon;
+        {Ast.Return e}
+
 
 (* See the menhir documentation for %inline.
  * This allows us to factor out binary operators while still
@@ -275,12 +341,11 @@ binop :
       { Ast.B_or}
   | BXor;
       { Ast.B_xor}
-  | Shift_left;
-      { Ast.Shift_left}
-  | Shift_right;
-      { Ast.Shift_right}
+  | ShiftL;
+      { Ast.ShiftL}
+  | ShiftR;
+      { Ast.ShiftR}
   ;
-//  << | >>
 
 asnop :
   | Assign
@@ -295,10 +360,10 @@ asnop :
       { Some Ast.Divided_by }
   | Percent_eq
       { Some Ast.Modulo }
-  | Shift_left_eq
-      { Some Ast.Shift_left }
-  | Shift_right_eq
-      { Some Ast.Shift_right }
+  | ShiftL_eq
+      { Some Ast.ShiftL }
+  | ShiftR_eq
+      { Some Ast.ShiftR }
   | BAnd_eq
       { Some Ast.B_and }
   | Bor_eq
