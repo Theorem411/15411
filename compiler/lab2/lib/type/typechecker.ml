@@ -21,10 +21,12 @@
  *)
 
 open Core
-module A = Ast
+(*_ module A = Ast *)
+module A = Aste
 module S = Symbol.Map
+module T = Ctype
 
-type init_status =
+(* type init_status =
   | Decl
   | Init
 
@@ -119,4 +121,11 @@ let typecheck prog =
   then (
     Error_msg.error tc_errors None ~msg:"main does not return";
     raise Error_msg.Error)
+;; *)
+
+
+type ctx = T.t S.t
+
+let typesynth : A.exp -> T.t =
+  fun e -> T.Int
 ;;
