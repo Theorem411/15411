@@ -76,7 +76,7 @@ type decl =
 (* Statement *)
 type stm =
   | Declare of decl
-  | Assign of Symbol.t * mexp
+  | Assign of mexp * mexp
   | Return of mexp
   | Exp of mexp
   | If of
@@ -87,7 +87,7 @@ type stm =
   | For of
       { init : mstm
       ; cond : mexp
-      ; post : mexp
+      ; post : mstm
       ; body : mstm
       }
   | ForDef of

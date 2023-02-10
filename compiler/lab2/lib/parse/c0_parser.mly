@@ -35,14 +35,14 @@ let expand_asnop ~lhs ~op ~rhs
   (start_pos : Lexing.position)
   (end_pos : Lexing.position) =
     match lhs, op, rhs with
-    | id, None, exp -> Ast.Assign (Mark.data id, exp)
+    | id, None, exp -> Ast.Var Ast.Assign (id, exp)
     | id, Some op, exp ->
       let binop = Ast.Binop {
         op;
         lhs = Mark.map lhs ~f:(fun id -> Ast.Var id);
         rhs = exp;
       } in
-      Ast.Assign (Mark.data id, mark binop start_pos end_pos)
+      Ast.Assign (id, mark binop start_pos end_pos)
 
 (* expand_postop (id, postop) region = "id = id op exps"
  * or = "id = exp" if asnop is "="
@@ -51,14 +51,13 @@ let expand_asnop ~lhs ~op ~rhs
 let expand_postop ~lhs ~op
   (start_pos : Lexing.position)
   (end_pos : Lexing.position) =
-    match lhs, op with
       let binop = Ast.Binop {
         op;
         lhs = Mark.map lhs ~f:(fun id -> Ast.Var id);
-        rhs = Ast.Const (1);
+        rhs = mark (Ast.Const (Int32.one)) start_pos end_pos;
       } in
       (*_ check this thing :) *)
-      Ast.Assign (Mark.data id, mark binop start_pos end_pos)
+      Ast.Assign (Mark.data lhs, mark binop start_pos end_pos)
 
 (* expand_for (init, cond, post, body) region = "for (init; post, cond) body"
  * syntactically expands the for loop 
@@ -66,11 +65,11 @@ let expand_postop ~lhs ~op
 let expand_for ~init ~cond ~post ~body
   (start_pos : Lexing.position)
   (end_pos : Lexing.position) =
-    let p = match post with | None  -> Ast.Nop | Some (x) -> x in
+    let p = mark (match post with | None  -> Ast.Nop | Some (x) -> x) start_pos end_pos in
     match init with
-    | Some(Ast.decl _ as i) -> Ast.ForDef { init=i; cond = cond; post = p; body = b }
-    | None -> Ast.ForDef { init=Ast.Nop; cond = cond; post = p; body = body }
-    | Some (i) -> Ast.For { init=i; cond = cond; post = p; body = body }
+    | Some(Ast.Declare d) -> mark (Ast.ForDef { init=d; cond = cond; post=p; body = body }) start_pos end_pos
+    | None -> mark ( Ast.For { init= (mark (Ast.Nop) start_pos end_pos); cond = cond; post = p; body = body } ) start_pos end_pos
+    | Some (i) -> mark ( Ast.For { init= (mark i start_pos end_pos); cond = cond; post = p; body = body } ) start_pos end_pos
 
 %}
 
@@ -83,17 +82,19 @@ let expand_for ~init ~cond ~post ~body
 %token Int Bool
 %token True False
 %token Main
-%token If Else Whole For
+%token If Else While For
 %token Plus Minus Star Slash Percent
 %token Assign Plus_eq Minus_eq Star_eq Slash_eq Percent_eq 
 %token L_brace R_brace
 %token L_paren R_paren
-%token ShiftL ShiftR
+%token ShiftL ShiftR ShiftL_eq ShiftR_eq
 %token Less Less_eq Greater Greater_eq
 %token Eq_eq Neq
 %token Unary
-%token LOr LAnd BOr BXor BAnd
+%token LOr LAnd BOr BXor BAnd BNot LNot 
+%token BAnd_eq Bor_eq BXor_eq
 %token Minus_minus Plus_plus
+%token QuestionMark Colon
 
 (* Unary is a dummy terminal.
  * We need dummy terminals if we wish to assign a precedence
@@ -163,7 +164,7 @@ m(x) :
       { mark x $startpos(x) $endpos(x) }
   ;
 
-type :
+type_ :
   | Int {Ast.Integer}
   | Bool {Ast.Bool}
   ;
@@ -185,9 +186,9 @@ stm :
   ;
 
 decl :
-  | tp = type; ident = Ident;
+  | tp = type_; ident = Ident;
       { Ast.New_var (ident, tp) }
-  | tp = type; ident = Ident; Assign; e = m(exp);
+  | tp = type_; ident = Ident; Assign; e = m(exp);
       { Ast.Init (ident, tp, e) }
   | Int; Main;
       { Ast.New_var (Symbol.symbol "main", Ast.Integer) }
@@ -270,6 +271,7 @@ elseopt:
   | Else; 
     body = m(stm)
     { Some(body) }
+  ;
 
 control : 
     | If; 
@@ -294,7 +296,7 @@ control :
       post = simpopt;
       R_paren;
       body = m(stm);
-        { expand_for ~init ~cond ~post ~body $startpos(lhs) $endpos(rhs) }
+        { expand_for ~init ~cond ~post ~body $startpos(init) $endpos(body) }
     | Return; 
       e = m(exp);
       Semicolon;

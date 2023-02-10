@@ -91,7 +91,7 @@ type decl =
 
 type stm =
   | Declare of decl
-  | Assign of Symbol.t * mexp
+  | Assign of mexp * mexp
   | Return of mexp
   | Exp of mexp
   | If of
@@ -102,7 +102,7 @@ type stm =
   | For of
       { init : mstm
       ; cond : mexp
-      ; post : mexp
+      ; post : mstm
       ; body : mstm
       }
   | ForDef of
@@ -163,7 +163,7 @@ module Print = struct
 
   let rec pp_stm = function
     | Declare d -> pp_decl d
-    | Assign (id, e) -> sprintf "%s = %s;" (Symbol.name id) (pp_mexp e)
+    (* | Assign (id, e) -> sprintf "%s = %s;" (Symbol.name id) (pp_mexp e) *)
     | Return e -> sprintf "return %s;" (pp_mexp e)
     | _ -> raise (Failure "no supported yet")
 

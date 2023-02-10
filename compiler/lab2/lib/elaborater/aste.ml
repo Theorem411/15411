@@ -62,6 +62,7 @@ type stmt =
   | Nop
   | Seq of stmt * stmt
   | NakedExpr of exp
- 
+and mstmt = stmt Mark.t
 
+type program = mstmt list
 (*_ where do I need bool_2_int converter? *)

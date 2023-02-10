@@ -48,8 +48,9 @@ let rec trans_stms (env : Temp.t S.t) (ast : A.stm list) : T.stm list =
   | A.Declare d :: stms ->
     (match d with
     | A.New_var _ -> trans_stms env stms
-    | A.Init (id, e) -> trans_stms env (A.Assign (id, e) :: stms))
-  | A.Assign (id, e) :: stms ->
+    (* | A.Init (id,_, e) -> trans_stms env (A.Assign (Mark.data id, e) :: stms)) *)
+    | _ -> raise (Failure "should not happen"))
+  | A.Assign (A.Var id, e) :: stms ->
     let t = Temp.create () in
     let env' = S.set env ~key:id ~data:t in
     T.Move { dest = t; src = trans_mexp env e } :: trans_stms env' stms
@@ -59,6 +60,7 @@ let rec trans_stms (env : Temp.t S.t) (ast : A.stm list) : T.stm list =
   | [] ->
     (* There must be a return. *)
     assert false
+  | _ -> raise (Failure "not implemented yet")
 ;;
 
 let trans_mstms (env : Temp.t S.t) (ast : A.program) : T.program =
