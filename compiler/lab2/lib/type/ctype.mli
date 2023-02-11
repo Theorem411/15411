@@ -1,4 +1,6 @@
 type t = 
   | Int
   | Bool
-  [@@deriving compare, sexp]
+  [@@deriving equal, compare, sexp]
+
+val _tostring : t -> string
