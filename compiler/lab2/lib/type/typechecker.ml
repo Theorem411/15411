@@ -126,6 +126,39 @@ let typecheck prog =
 
 type ctx = T.t S.t
 
-let typesynth : A.exp -> T.t =
-  fun e -> T.Int
+
+let rec typecheck_expr (gamma : ctx) (e : A.mexp) (typ : T.t) = ()
+and typesynth_var (gamma : ctx) sym = 
+  S.find_exn gamma sym
+and typesynth_int (gamma : ctx) rhs lhs = 
+  let () = typecheck_expr gamma rhs T.Int in 
+  let () = typecheck_expr gamma lhs T.Int in
+    T.Int
+and typesynth_bool (gamma : ctx) rhs lhs = 
+  let () = typecheck_expr gamma rhs T.Bool in 
+  let () = typecheck_expr gamma lhs T.Bool in
+    T.Bool
+and typesynth_intcmp (gamma : ctx) rhs lhs = 
+  let () = typecheck_expr gamma rhs T.Int in 
+  let () = typecheck_expr gamma lhs T.Int in
+    T.Bool
+and typesynth_gencmp (gamma : ctx) rhs lhs = ()
+and typesynth_pbop (gamma : ctx) op rhs lhs = 
+  match op with 
+  | A.Plus-> typesynth_int gamma rhs lhs
+  | A.Minus -> typesynth_int gamma rhs lhs
+  | A.Times -> typesynth_int gamma rhs lhs
+  | A.And -> typesynth_bool gamma rhs lhs
+  | A.Or -> typesynth_bool gamma rhs lhs
+  | A.Leq -> typesynth_intcmp gamma rhs lhs
+  | A.Less -> typesynth_intcmp gamma rhs lhs
+  | A.Geq -> typesynth_intcmp gamma rhs lhs
+  | A.Greater -> typesynth_intcmp gamma rhs lhs
+  | A.Eq -> typesynth_gencmp gamma rhs lhs
+  | A.Neq -> typesynth_gencmp gamma rhs lhs
+and typesynth_expr (gamma : ctx) : A.exp -> T.t = function
+  | A.Var t -> typesynth_var gamma t
+  | A.Const i -> T.Int
+  | A.PureBinop bop -> typesynth_pbop gamma bop.op bop.rhs bop.lhs
+  | A.EfktBinop bop -> typesynth_kbop gamma bop.op bop.rhs bop.lhs
 ;;
