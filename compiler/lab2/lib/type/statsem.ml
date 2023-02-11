@@ -17,6 +17,18 @@ let error ~msg ~ast =
 type gamma = T.t SM.t
 type delta = SS.t
 
+let ctx_find (ctx:gamma) sym ~ast = 
+  match SM.find ctx sym with 
+  | Some typ -> typ 
+  | None -> 
+    error ~msg:(sprintf "variable `%s` is not declared when first used" (Symbol.name sym)) ~ast:ast
+;;
+let ctx_find_and_check ctx sym typ ~ast = 
+  let typ' = ctx_find ctx sym ~ast:ast in
+    if (T.equal typ typ') then ()
+    else 
+      error ~msg:(sprintf "expression does not type check: claim type `%s` but actually has type `%s`" (T._tostring typ) (T._tostring typ')) ~ast:ast
+;;
 (*_ sort the binops into categories for easier typechecking *)
 type intop = Plus | Minus | Times
 type logop = And | Or
@@ -59,24 +71,22 @@ module StatSemanticExpr =
     ; init : delta
     ; exp : A.mexp
     }
+    let hyps_create ~ctx ~init ~exp = {ctx=ctx; init=init; exp=exp}
     let rec typechecker hyps typ = 
       let typ' = typesynther hyps in
         if T.equal typ typ' then ()
-        else error ~msg:(sprintf "expression is does not type check: claim type `%s` but actually has type `%s`" (T._tostring typ) (T._tostring typ')) ~ast:hyps.exp
+        else 
+          error ~msg:(sprintf "expression is does not type check: claim type `%s` but actually has type `%s`" (T._tostring typ) (T._tostring typ')) ~ast:hyps.exp
     and typesynther hyps = 
-      let old_ctx = hyps.ctx in
-      let old_init = hyps.init in
       match Mark.data hyps.exp with 
       | A.Var t -> 
-        (if SS.mem hyps.init t then 
-            match SM.find hyps.ctx t with 
-            | Some typ -> typ 
-            | None -> error ~msg:(sprintf "variable `%s` is not declared when first used" (Symbol.name t)) ~ast:hyps.exp
-        else error ~msg:(sprintf "variable `%s` is not initialized when first used" (Symbol.name t)) ~ast:hyps.exp)
+        (if SS.mem hyps.init t then ctx_find hyps.ctx t ~ast:hyps.exp
+        else 
+          error ~msg:(sprintf "variable `%s` is not initialized when first used" (Symbol.name t)) ~ast:hyps.exp)
       | A.Const _ -> T.Int
       | A.PureBinop bop -> (
-        let hyps_lhs = {ctx=old_ctx; init=old_init; exp=bop.lhs} in
-        let hyps_rhs = {ctx=old_ctx; init=old_init; exp=bop.rhs} in
+        let hyps_lhs = { hyps with exp=bop.lhs}
+        and hyps_rhs = { hyps with exp=bop.rhs} in
         match binop_pure_pbop bop.op with 
         | IntOp _ -> typechecker hyps_lhs T.Int; typechecker hyps_rhs T.Int; T.Int
         | LogOp _ -> typechecker hyps_lhs T.Bool; typechecker hyps_rhs T.Bool; T.Bool
@@ -88,12 +98,12 @@ module StatSemanticExpr =
             typechecker hyps_rhs typ; T.Bool
         )
       | A.EfktBinop eop -> (
-        let hyps_lhs = {ctx=old_ctx; init=old_init; exp=eop.lhs} in
-        let hyps_rhs = {ctx=old_ctx; init=old_init; exp=eop.rhs} in
+        let hyps_lhs = { hyps with exp=eop.lhs} 
+        and hyps_rhs = { hyps with exp=eop.rhs} in
         match binop_efkt_ebop eop.op with 
         | IntOp _ -> typechecker hyps_lhs T.Int; typechecker hyps_rhs T.Int; T.Int)
       | A.Unop uop -> (
-        let hyps' = {ctx=old_ctx; init=old_init; exp=uop.operand} in
+        let hyps' = { hyps with exp=uop.operand} in
           typechecker hyps' T.Bool; T.Bool
       )
     ;;
@@ -105,30 +115,61 @@ struct
     ctx : gamma
   ; init : delta
   ; prog : A.program
+  ; typ : T.t
   }
-  type inferTo = {
-    typ : T.t
-  ; init_new : delta
-  }
-  let hyps_init prog = {ctx=SM.empty; init=SS.empty; prog=prog}
+  let hyps_init ~prog ~typ = {ctx=SM.empty; init=SS.empty; prog=prog; typ=typ}
   ;;
-  let inferTo_init typ = {typ=typ; init_new=SS.empty}
-  ;;
-(*_ no need for typesynther at stmt level because the outmost type is known *)
-  let rec semantic_checker hyps inferTo = 
-    let old_ctx = hyps.ctx in
-    let old_init = hyps.init in
-    let typ = inferTo.typ in
+  let rec semantic_synther hyps = 
     match Mark.data hyps.prog with 
-    | A.Nop -> ()
+    | A.Nop -> hyps.init
+    | A.Seq (prog1, prog2) -> 
+      let hyps' = { hyps with prog=prog1 } in
+      let init' = semantic_synther hyps' in
+      let hyps'' = { hyps with prog=prog2; init=init'} in
+      let init'' = semantic_synther hyps'' in
+        init''
+    | A.Return exp -> 
+      let dom = SM.key_set hyps.ctx in
+      let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:exp in
+        StatSemanticExpr.typechecker hyps_expr hyps.typ
+      ; dom
+    | A.Assign assn -> 
+      let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:assn.exp in
+      let () = ctx_find_and_check hyps.ctx assn.var hyps.typ ~ast:hyps.prog in
+      let init' = SS.add hyps.init assn.var in
+        StatSemanticExpr.typechecker hyps_expr hyps.typ
+      ; init'
+    | A.Declare decl -> 
+      let ctx' = match SM.add hyps.ctx ~key:decl.var ~data:decl.typ with 
+        | `Ok c -> c 
+        | `Duplicate -> 
+          error ~msg:(sprintf "Same variable %s should not be declared twice" (Symbol.name decl.var)) ~ast:hyps.prog
+      in
+      let init' = semantic_synther { hyps with prog=decl.body; ctx=ctx'} in
+        SS.remove init' decl.var
+    | A.If ifs -> 
+      let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:ifs.cond in
+      let init1 = semantic_synther { hyps with prog=ifs.lb } in
+      let init2 = semantic_synther { hyps with prog=ifs.rb } in
+        StatSemanticExpr.typechecker hyps_expr T.Bool
+      ; SS.inter init1 init2
+    | A.While loop -> 
+      let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:loop.cond in
+      let init' = semantic_synther { hyps with prog=loop.body } in
+        StatSemanticExpr.typechecker hyps_expr T.Bool
+      ; hyps.init
+    | A.NakedExpr exp -> 
+      let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:exp in
+        StatSemanticExpr.typechecker hyps_expr hyps.typ
+      ; hyps.init (*_ not defined in lecture notes! Be careful of BUG *)
     | _ -> raise TypeError
-  ;;
 end
 ;;
 
 (*_ the topmost type must be Int because 
    int main () {.. } 
   *)
-let static_semantic (prog : A.program) = 
-    StatSemanticCmd.semantic_checker (StatSemanticCmd.hyps_init prog) (StatSemanticCmd.inferTo_init T.Int)
+let static_semantic (prog : A.program) : unit = 
+  let d = StatSemanticCmd.semantic_synther (StatSemanticCmd.hyps_init ~prog:prog ~typ:T.Int) in
+    ()
 ;;

@@ -46,24 +46,24 @@ type stmt =
   | Declare of 
       { var : Symbol.t
       ; typ : Typ.t
-      ; body : stmt
+      ; body : program
       }
   | Assign of 
       { var : Symbol.t
-      ; exp : exp
+      ; exp : mexp
       }
   | If of 
-      { cond : exp
-      ; lb : stmt
-      ; rb : stmt}
+      { cond : mexp
+      ; lb : program
+      ; rb : program}
   | While of 
-      { cond : exp
-      ; body : stmt
+      { cond : mexp
+      ; body : program
       }
-  | Return of exp
+  | Return of mexp
   | Nop
-  | Seq of stmt * stmt
-  | NakedExpr of exp
+  | Seq of program * program
+  | NakedExpr of mexp
 and program = stmt Mark.t
 
 
