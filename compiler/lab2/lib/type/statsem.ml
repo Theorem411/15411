@@ -79,6 +79,8 @@ module StatSemanticExpr =
           error ~msg:(sprintf "expression is does not type check: claim type `%s` but actually has type `%s`" (T._tostring typ) (T._tostring typ')) ~ast:hyps.exp
     and typesynther hyps = 
       match Mark.data hyps.exp with 
+      | A.True -> T.Bool
+      | A.False -> T.Bool
       | A.Var t -> 
         (if SS.mem hyps.init t then ctx_find hyps.ctx t ~ast:hyps.exp
         else 

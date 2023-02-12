@@ -23,6 +23,8 @@ type unop =
 (* type boolean = T | F *)
 (*_ all subclasses of exp type  *)
 type exp = 
+  | True
+  | False
   | Var of Symbol.t
   | Const of Int32.t
   | PureBinop of  
