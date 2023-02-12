@@ -16,7 +16,9 @@ type binop_pure =
 type binop_efkt = 
   | Divided_by
   | Modulo
-
+  | ShiftL
+  | ShiftR
+  
 type unop = 
   | Not
 
@@ -26,8 +28,12 @@ type exp =
   | True
   | False
   | Var of Symbol.t
-  | IntConst of Int32.t
-  | BoolConst of boolean
+  | Const of Int32.t
+  | Ternary of 
+      { cond : mexp
+      ; lb : mexp
+      ; rb : mexp
+      }
   | PureBinop of  
       { op : binop_pure
       ; lhs : mexp
