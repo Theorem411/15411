@@ -26,24 +26,6 @@ let mark
   (end_pos : Lexing.position) : 'a Mark.t =
   let src_span = Mark.of_positions start_pos end_pos in
   Mark.mark data src_span
-
-(* expand_asnop (id, "op=", exp) region = "id = id op exps"
- * or = "id = exp" if asnop is "="
- * syntactically expands a compound assignment operator
- *)
-let expand_asnop ~lhs ~op ~rhs
-  (start_pos : Lexing.position)
-  (end_pos : Lexing.position) =
-    match lhs, op, rhs with
-    | id, None, exp -> Ast.Assign (Mark.data id, exp)
-    | id, Some op, exp ->
-      let binop = Ast.Binop {
-        op;
-        lhs = Mark.map lhs ~f:(fun id -> Ast.Var id);
-        rhs = exp;
-      } in
-      Ast.Assign (Mark.data id, mark binop start_pos end_pos)
-
 %}
 
 %token Eof
@@ -52,14 +34,22 @@ let expand_asnop ~lhs ~op ~rhs
 %token <Int32.t> Hex_const
 %token <Symbol.t> Ident
 %token Return
-%token Int
+%token Int Bool
+%token True False
 %token Main
+%token If Else While For
 %token Plus Minus Star Slash Percent
-%token Assign Plus_eq Minus_eq Star_eq Slash_eq Percent_eq
+%token Assign Plus_eq Minus_eq Star_eq Slash_eq Percent_eq 
 %token L_brace R_brace
 %token L_paren R_paren
+%token ShiftL ShiftR ShiftL_eq ShiftR_eq
+%token Less Less_eq Greater Greater_eq
+%token Eq_eq Neq
 %token Unary
-%token Minus_minus
+%token LOr LAnd BOr BXor BAnd BNot LNot 
+%token BAnd_eq Bor_eq BXor_eq
+%token Minus_minus Plus_plus
+%token QuestionMark Colon
 
 (* Unary is a dummy terminal.
  * We need dummy terminals if we wish to assign a precedence
@@ -71,10 +61,21 @@ let expand_asnop ~lhs ~op ~rhs
  *
  * Minus_minus is a dummy terminal to parse-fail on.
  *)
-
+%right QuestionMark Colon
+%left LOr
+%left LAnd
+%left BOr
+%left BXor
+%left BAnd
+%left Eq_eq Neq
+%left Less Less_eq Greater Greater_eq
+%left ShiftL ShiftR
 %left Plus Minus
 %left Star Slash Percent
 %right Unary
+
+%nonassoc else_hack_1
+%nonassoc Else
 
 %start program
 
@@ -88,8 +89,6 @@ let expand_asnop ~lhs ~op ~rhs
 %type <Ast.mstm> m(stm)
 %type <Ast.decl> decl
 %type <Ast.stm> simp
-%type <Symbol.t> lvalue
-%type <Symbol.t Mark.t> m(lvalue)
 %type <Ast.exp> exp
 %type <Ast.mexp> m(exp)
 %type <Core.Int32.t> int_const
@@ -102,11 +101,9 @@ program :
   | Int;
     Main;
     L_paren R_paren;
-    L_brace;
-    body = stms;
-    R_brace;
+    b = block;
     Eof;
-      { body }
+      { match b with Ast.Block p -> p | _ -> raise (Failure "block must be Block") }
   ;
 
 (* This higher-order rule produces a marked result of whatever the
@@ -120,67 +117,93 @@ m(x) :
       { mark x $startpos(x) $endpos(x) }
   ;
 
+type_ :
+  | Int {Ast.T.Int}
+  | Bool {Ast.T.Bool}
+  ;
+
 stms :
   | (* empty *)
       { [] }
   | hd = m(stm); tl = stms;
       { hd :: tl }
-  | L_brace; body = stms; R_brace;
-      { body }
   ;
 
 stm :
-  | d = decl; Semicolon;
-      { Ast.Declare d }
   | s = simp; Semicolon;
       { s }
-  | Return; e = m(exp); Semicolon;
-      { Ast.Return e }
-  ;
+  | c = control;
+      { c }
+  | b = block;
+      { b }
+
+block : 
+  | L_brace; body = stms; R_brace;
+  {Ast.Block body }
 
 decl :
-  | Int; ident = Ident;
-      { Ast.New_var ident }
-  | Int; ident = Ident; Assign; e = m(exp);
-      { Ast.Init (ident, e) }
-  | Int; Main;
-      { Ast.New_var (Symbol.symbol "main") }
-  | Int; Main; Assign; e = m(exp);
-      { Ast.Init (Symbol.symbol "main", e) }
+  | tp = type_; ident = Ident;
+      { Ast.New_var (ident, tp) }
+  | tp = type_; ident = Ident; Assign; e = m(exp);
+      { Ast.Init (ident, tp, e) }
+  | tp = type_; Main;
+      { Ast.New_var (Symbol.symbol "main", tp) }
+  | tp = type_; Main; Assign; e = m(exp);
+      { Ast.Init (Symbol.symbol "main", tp, e) }
   ;
 
 simp :
-  | lhs = m(lvalue);
+  | lhs = m(exp);
     op = asnop;
     rhs = m(exp);
-      { expand_asnop ~lhs ~op ~rhs $startpos(lhs) $endpos(rhs) }
+      { Ast.Assign {left=lhs; right=rhs; asgnop=op} }
+  | lhs = m(exp);
+    op = postop;
+    { Ast.PostOp {left=lhs; op=op}  }
+  | d = decl;
+      { Ast.Declare d }
+  | e = m(exp);
+        { Ast.Exp e }
   ;
 
-lvalue :
-  | ident = Ident;
-      { ident }
-  | Main;
-      { Symbol.symbol "main" }
-  | L_paren; lhs = lvalue; R_paren;
-      { lhs }
-  ;
+simpopt :
+  | (* empty *)
+    { None }
+  | s = m(simp)
+    { Some s }
 
 exp :
   | L_paren; e = exp; R_paren;
       { e }
   | c = int_const;
       { Ast.Const c }
+  | True; { Ast.True }
+  | False; { Ast.False }
   | Main;
       { Ast.Var (Symbol.symbol "main") }
   | ident = Ident;
       { Ast.Var ident }
+  | u = unop; { u }
   | lhs = m(exp);
     op = binop;
     rhs = m(exp);
       { Ast.Binop { op; lhs; rhs; } }
+  | cond = m(exp); 
+    QuestionMark; 
+    f = m(exp);
+    Colon; 
+    s = m(exp); 
+      { Ast.Ternary {cond = cond; first=f; second = s} }
+  ;
+
+
+unop : 
   | Minus; e = m(exp); %prec Unary
       { Ast.Unop { op = Ast.Negative; operand = e; } }
-  ;
+  | LNot; e = m(exp); %prec Unary
+      { Ast.Unop { op = Ast.L_not ; operand = e; } }
+  | BNot; e = m(exp); %prec Unary
+      { Ast.Unop { op = Ast.B_not; operand = e; } }
 
 int_const :
   | c = Dec_const;
@@ -188,6 +211,49 @@ int_const :
   | c = Hex_const;
       { c }
   ;
+
+
+ifstm : 
+    | If; 
+    L_paren; 
+    e = m(exp);
+    R_paren;
+    t = m(stm);
+    Else; 
+    f = m(stm);
+      { Ast.If {cond = e; thenstm = t; elsestm = Some f } }
+  | If; 
+    L_paren; 
+    e = m(exp);
+    R_paren;
+    t = m(stm);
+    %prec else_hack_1
+      { Ast.If {cond = e; thenstm = t; elsestm = None } }
+
+control : 
+    | i = ifstm;
+      { i }
+    | While;
+      L_paren; 
+      e = m(exp);
+      R_paren;
+      body = m(stm);
+        {Ast.While {cond = e; body = body}}
+    | For ;
+      L_paren;
+      init = simpopt;
+      Semicolon;
+      cond = m(exp);
+      Semicolon;
+      post = simpopt;
+      R_paren;
+      body = m(stm);
+        { Ast.For { init = init; cond = cond; post = post; body = body}  }
+    | Return; 
+      e = m(exp);
+      Semicolon;
+        {Ast.Return e}
+
 
 (* See the menhir documentation for %inline.
  * This allows us to factor out binary operators while still
@@ -205,6 +271,32 @@ binop :
       { Ast.Divided_by }
   | Percent;
       { Ast.Modulo }
+  | Less;
+      { Ast.Less}
+  | Less_eq;
+      { Ast.Less_eq}
+  | Greater;
+      { Ast.Greater}
+  | Greater_eq;
+      { Ast.Greater_eq}
+  | Eq_eq;
+      { Ast.Equals}
+  | Neq;
+      { Ast.Not_equals}
+  | LAnd;
+      { Ast.L_and}
+  | LOr;
+      { Ast.L_or}
+  | BAnd;
+      { Ast.B_and}
+  | BOr;
+      { Ast.B_or}
+  | BXor;
+      { Ast.B_xor}
+  | ShiftL;
+      { Ast.ShiftL}
+  | ShiftR;
+      { Ast.ShiftR}
   ;
 
 asnop :
@@ -220,6 +312,23 @@ asnop :
       { Some Ast.Divided_by }
   | Percent_eq
       { Some Ast.Modulo }
+  | ShiftL_eq
+      { Some Ast.ShiftL }
+  | ShiftR_eq
+      { Some Ast.ShiftR }
+  | BAnd_eq
+      { Some Ast.B_and }
+  | Bor_eq
+      { Some Ast.B_or }
+  | BXor_eq
+      { Some Ast.B_xor }
   ;
 
+
+postop : 
+  | Plus_plus 
+      { Ast.Plus }
+  | Minus_minus 
+      { Ast.Minus }
+  ;
 %%
