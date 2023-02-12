@@ -61,7 +61,7 @@ let mark
  *
  * Minus_minus is a dummy terminal to parse-fail on.
  *)
-
+%right QuestionMark Colon
 %left LOr
 %left LAnd
 %left BOr
@@ -89,8 +89,6 @@ let mark
 %type <Ast.mstm> m(stm)
 %type <Ast.decl> decl
 %type <Ast.stm> simp
-// %type <Symbol.t> lvalue
-// %type <Symbol.t Mark.t> m(lvalue)
 %type <Ast.exp> exp
 %type <Ast.mexp> m(exp)
 %type <Core.Int32.t> int_const
@@ -159,7 +157,7 @@ simp :
     op = asnop;
     rhs = m(exp);
       { Ast.Assign (lhs, rhs, op) }
-  | lhs = m(lvalue);
+  | lhs = m(exp);
     op = postop;
     { Ast.PostOp (lhs, op) }
   | d = decl;
@@ -173,15 +171,6 @@ simpopt :
     { None }
   | s = m(simp)
     { Some s }
-
-lvalue :
-  | ident = Ident;
-      { Ast.Var ident }
-  | Main;
-      { Ast.Var (Symbol.symbol "main") }
-  | L_paren; lhs = lvalue; R_paren;
-      { lhs }
-  ;
 
 exp :
   | L_paren; e = exp; R_paren;
