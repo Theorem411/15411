@@ -4,7 +4,6 @@ type binop_pure =
   | Plus
   | Minus
   | Times
-  | Cmp
   | And
   | Or
   | Leq 
@@ -21,9 +20,12 @@ type binop_efkt =
 type unop = 
   | Not
 
+type boolean = T | F
+(*_ all subclasses of exp type  *)
 type exp = 
   | Var of Symbol.t
-  | Const of Int32.t
+  | IntConst of Int32.t
+  | BoolConst of boolean
   | PureBinop of  
       { op : binop_pure
       ; lhs : mexp
@@ -62,7 +64,7 @@ type stmt =
   | Nop
   | Seq of stmt * stmt
   | NakedExpr of exp
-and mstmt = stmt Mark.t
+and program = stmt Mark.t
 
-type program = mstmt list
-(*_ where do I need bool_2_int converter? *)
+
+

@@ -4,7 +4,6 @@ type binop_pure =
   | Plus
   | Minus
   | Times
-  | Cmp
   | And
   | Or
   | Leq 
@@ -21,6 +20,8 @@ type binop_efkt =
 type unop = 
   | Not
 
+(* type boolean = T | F *)
+(*_ all subclasses of exp type  *)
 type exp = 
   | Var of Symbol.t
   | Const of Int32.t
@@ -40,30 +41,30 @@ type exp =
       }
 and mexp = exp Mark.t
 
+(*_ all subclasses of stmt type and the program type *)
 type stmt = 
   | Declare of 
       { var : Symbol.t
       ; typ : Typ.t
-      ; body : stmt
+      ; body : program
       }
   | Assign of 
       { var : Symbol.t
-      ; exp : exp
+      ; exp : mexp
       }
   | If of 
-      { cond : exp
-      ; lb : stmt
-      ; rb : stmt}
+      { cond : mexp
+      ; lb : program
+      ; rb : program}
   | While of 
-      { cond : exp
-      ; body : stmt
+      { cond : mexp
+      ; body : program
       }
-  | Return of exp
+  | Return of mexp
   | Nop
-  | Seq of stmt * stmt
-  | NakedExpr of exp
-and mstmt = stmt Mark.t
+  | Seq of program * program
+  | NakedExpr of mexp
+and program = stmt Mark.t
 
-type program = mstmt list
 
 
