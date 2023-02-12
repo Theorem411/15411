@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module A = Aste
 let global_err = Error_msg.create ()
 ;;
@@ -21,4 +21,4 @@ let rec ret_checker_bool (prog : A.program) =
 
 let ret_checker (prog : A.program) = 
   if ret_checker_bool prog then ()
-  else error ~msg:(sprintf "program does not have explicit return") ~ast:prog
+  else error ~msg:(sprintf "program does not have explicit return") ~ast:prog *)
