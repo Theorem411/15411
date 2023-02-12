@@ -26,51 +26,6 @@ let mark
   (end_pos : Lexing.position) : 'a Mark.t =
   let src_span = Mark.of_positions start_pos end_pos in
   Mark.mark data src_span
-
-(* expand_asnop (id, "op=", exp) region = "id = id op exps"
- * or = "id = exp" if asnop is "="
- * syntactically expands a compound assignment operator
- *)
-let expand_asnop ~lhs ~op ~rhs
-  (start_pos : Lexing.position)
-  (end_pos : Lexing.position) =
-    match lhs, op, rhs with
-    | id, None, exp -> Ast.Var Ast.Assign (id, exp)
-    | id, Some op, exp ->
-      let binop = Ast.Binop {
-        op;
-        lhs = Mark.map lhs ~f:(fun id -> Ast.Var id);
-        rhs = exp;
-      } in
-      Ast.Assign (id, mark binop start_pos end_pos)
-
-(* expand_postop (id, postop) region = "id = id op exps"
- * or = "id = exp" if asnop is "="
- * syntactically expands a post operator
- *)
-let expand_postop ~lhs ~op
-  (start_pos : Lexing.position)
-  (end_pos : Lexing.position) =
-      let binop = Ast.Binop {
-        op;
-        lhs = Mark.map lhs ~f:(fun id -> Ast.Var id);
-        rhs = mark (Ast.Const (Int32.one)) start_pos end_pos;
-      } in
-      (*_ check this thing :) *)
-      Ast.Assign (Mark.data lhs, mark binop start_pos end_pos)
-
-(* expand_for (init, cond, post, body) region = "for (init; post, cond) body"
- * syntactically expands the for loop 
- *)
-let expand_for ~init ~cond ~post ~body
-  (start_pos : Lexing.position)
-  (end_pos : Lexing.position) =
-    let p = mark (match post with | None  -> Ast.Nop | Some (x) -> x) start_pos end_pos in
-    match init with
-    | Some(Ast.Declare d) -> mark (Ast.ForDef { init=d; cond = cond; post=p; body = body }) start_pos end_pos
-    | None -> mark ( Ast.For { init= (mark (Ast.Nop) start_pos end_pos); cond = cond; post = p; body = body } ) start_pos end_pos
-    | Some (i) -> mark ( Ast.For { init= (mark i start_pos end_pos); cond = cond; post = p; body = body } ) start_pos end_pos
-
 %}
 
 %token Eof
@@ -119,6 +74,9 @@ let expand_for ~init ~cond ~post ~body
 %left Star Slash Percent
 %right Unary
 
+%nonassoc else_hack_1
+%nonassoc Else
+
 %start program
 
 (* It's only necessary to provide the type of the start rule,
@@ -131,14 +89,13 @@ let expand_for ~init ~cond ~post ~body
 %type <Ast.mstm> m(stm)
 %type <Ast.decl> decl
 %type <Ast.stm> simp
-%type <Symbol.t> lvalue
-%type <Symbol.t Mark.t> m(lvalue)
+// %type <Symbol.t> lvalue
+// %type <Symbol.t Mark.t> m(lvalue)
 %type <Ast.exp> exp
 %type <Ast.mexp> m(exp)
 %type <Core.Int32.t> int_const
 %type <Ast.binop> binop
 %type <Ast.binop option> asnop
-%type <Ast.mstm option> elseopt
 
 %%
 
@@ -146,11 +103,9 @@ program :
   | Int;
     Main;
     L_paren R_paren;
-    L_brace;
-    body = stms;
-    R_brace;
+    b = block;
     Eof;
-      { body }
+      { match b with Ast.Block p -> p | _ -> raise (Failure "block must be Block") }
   ;
 
 (* This higher-order rule produces a marked result of whatever the
@@ -174,36 +129,39 @@ stms :
       { [] }
   | hd = m(stm); tl = stms;
       { hd :: tl }
-  | L_brace; body = stms; R_brace;
-      { body }
   ;
 
 stm :
   | s = simp; Semicolon;
       { s }
-  | Return; e = m(exp); Semicolon;
-      { Ast.Return e }
-  ;
+  | c = control;
+      { c }
+  | b = block;
+      { b }
+
+block : 
+  | L_brace; body = stms; R_brace;
+  {Ast.Block body }
 
 decl :
   | tp = type_; ident = Ident;
       { Ast.New_var (ident, tp) }
   | tp = type_; ident = Ident; Assign; e = m(exp);
       { Ast.Init (ident, tp, e) }
-  | Int; Main;
-      { Ast.New_var (Symbol.symbol "main", Ast.Integer) }
-  | Int; Main; Assign; e = m(exp);
-      { Ast.Init (Symbol.symbol "main", Ast.Integer, e) }
+  | tp = type_; Main;
+      { Ast.New_var (Symbol.symbol "main", tp) }
+  | tp = type_; Main; Assign; e = m(exp);
+      { Ast.Init (Symbol.symbol "main", tp, e) }
   ;
 
 simp :
   | lhs = m(exp);
     op = asnop;
     rhs = m(exp);
-      { expand_asnop ~lhs ~op ~rhs $startpos(lhs) $endpos(rhs) }
+      { Ast.Assign (lhs, rhs, op) }
   | lhs = m(lvalue);
     op = postop;
-    {expand_postop ~lhs ~op $startpos(lhs) $endpos(op) }
+    { Ast.PostOp (lhs, op) }
   | d = decl;
       { Ast.Declare d }
   | e = m(exp);
@@ -213,14 +171,14 @@ simp :
 simpopt :
   | (* empty *)
     { None }
-  | s = simp
+  | s = m(simp)
     { Some s }
 
 lvalue :
   | ident = Ident;
-      { ident }
+      { Ast.Var ident }
   | Main;
-      { Symbol.symbol "main" }
+      { Ast.Var (Symbol.symbol "main") }
   | L_paren; lhs = lvalue; R_paren;
       { lhs }
   ;
@@ -245,7 +203,7 @@ exp :
     QuestionMark; 
     f = m(exp);
     Colon; 
-    s = m(exp) 
+    s = m(exp); 
       { Ast.Ternary {cond = cond; first=f; second = s} }
   ;
 
@@ -265,22 +223,27 @@ int_const :
       { c }
   ;
 
-elseopt: 
-  | (* empty *)
-    { None }
-  | Else; 
-    body = m(stm)
-    { Some(body) }
-  ;
+
+ifstm : 
+    | If; 
+    L_paren; 
+    e = m(exp);
+    R_paren;
+    t = m(stm);
+    Else; 
+    f = m(stm);
+      { Ast.If {cond = e; thenstm = t; elsestm = Some f } }
+  | If; 
+    L_paren; 
+    e = m(exp);
+    R_paren;
+    t = m(stm);
+    %prec else_hack_1
+      { Ast.If {cond = e; thenstm = t; elsestm = None } }
 
 control : 
-    | If; 
-      L_paren; 
-      e = m(exp);
-      R_paren;
-      body = m(stm);
-      eopt = elseopt;
-       { Ast.If {cond = e; thenstm = body; elsestm = eopt } }
+    | i = ifstm;
+      { i }
     | While;
       L_paren; 
       e = m(exp);
@@ -296,7 +259,7 @@ control :
       post = simpopt;
       R_paren;
       body = m(stm);
-        { expand_for ~init ~cond ~post ~body $startpos(init) $endpos(body) }
+        { Ast.For { init = init; cond = cond; post = post; body = body}  }
     | Return; 
       e = m(exp);
       Semicolon;
@@ -331,8 +294,6 @@ binop :
       { Ast.Equals}
   | Neq;
       { Ast.Not_equals}
-  | Eq_eq;
-      { Ast.Equals}
   | LAnd;
       { Ast.L_and}
   | LOr;

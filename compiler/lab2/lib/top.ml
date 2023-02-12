@@ -169,6 +169,7 @@ let compile (cmd : cmd_line_args) : unit =
   (* Parse *)
   let ast = Parse.parse cmd.filename in
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
+  if cmd.dump_ast then ignore ((exit 0): unit);
   (* Typecheck *)
   say_if cmd.verbose (fun () -> "ignoring type Checking...");
   (* Typechecker.typecheck ast; *)

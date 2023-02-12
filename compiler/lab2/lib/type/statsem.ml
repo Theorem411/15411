@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module T = Ctype
 module SM = Symbol.Map
 module SS = Symbol.Set
@@ -172,4 +172,4 @@ end
 let static_semantic (prog : A.program) : unit = 
   let d = StatSemanticCmd.semantic_synther (StatSemanticCmd.hyps_init ~prog:prog ~typ:T.Int) in
     ()
-;;
+;; *)

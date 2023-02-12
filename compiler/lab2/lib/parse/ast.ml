@@ -91,7 +91,8 @@ type decl =
 
 type stm =
   | Declare of decl
-  | Assign of mexp * mexp
+  | Assign of mexp * mexp * binop option
+  | PostOp of mexp * binop
   | Return of mexp
   | Exp of mexp
   | If of
@@ -100,28 +101,21 @@ type stm =
       ; elsestm : mstm option
       }
   | For of
-      { init : mstm
+      { init : mstm option
       ; cond : mexp
-      ; post : mstm
-      ; body : mstm
-      }
-  | ForDef of
-      { init : decl
-      ; cond : mexp
-      ; post : mstm
+      ; post : mstm option
       ; body : mstm
       }
   | While of
       { cond : mexp
       ; body : mstm
       }
-  | Block of block
+  | Block of mstm list
   | Nop
   | Label of string (*_ I am not sure about this*)
   | Goto of string (*_ I am not sure about this*)
 
 and mstm = stm Mark.t
-and block = mstm list
 
 type program = mstm list
 
@@ -132,12 +126,25 @@ module Print = struct
     | Times -> "*"
     | Divided_by -> "/"
     | Modulo -> "%"
-    | _ -> raise (Failure "not supported yet")
+    | Less -> "<"
+    | Less_eq -> "=<"
+    | Greater -> ">"
+    | Greater_eq -> ">="
+    | Equals -> "=="
+    | Not_equals -> "!="
+    | L_and -> "&&"
+    | L_or -> "||"
+    | B_and -> "&"
+    | B_xor -> "^"
+    | B_or -> "|"
+    | ShiftL -> "<<"
+    | ShiftR -> ">>"
   ;;
 
   let pp_unop = function
     | Negative -> "-"
-    | _ -> raise (Failure "not supported yet")
+    | L_not -> "!"
+    | B_not -> "~"
   ;;
 
   let rec pp_exp = function
@@ -146,7 +153,10 @@ module Print = struct
     | Unop unop -> sprintf "%s(%s)" (pp_unop unop.op) (pp_mexp unop.operand)
     | Binop binop ->
       sprintf "(%s %s %s)" (pp_mexp binop.lhs) (pp_binop binop.op) (pp_mexp binop.rhs)
-    | _ -> raise (Failure "not supported yet")
+    | True -> "true"
+    | False -> "false"
+    | Ternary t ->
+      sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.first) (pp_mexp t.second)
 
   and pp_mexp e = pp_exp (Mark.data e)
 
@@ -165,10 +175,35 @@ module Print = struct
     | Declare d -> pp_decl d
     (* | Assign (id, e) -> sprintf "%s = %s;" (Symbol.name id) (pp_mexp e) *)
     | Return e -> sprintf "return %s;" (pp_mexp e)
-    | _ -> raise (Failure "no supported yet")
+    | Nop -> "nop;"
+    | Assign (lhs, rhs, None) -> sprintf "%s = %s;" (pp_mexp lhs) (pp_mexp rhs)
+    | Assign (lhs, rhs, Some op) ->
+      sprintf "%s %s= %s;" (pp_mexp lhs) (pp_binop op) (pp_mexp rhs)
+    | PostOp (e, op) -> sprintf "%s%s%s" (pp_mexp e) (pp_binop op) (pp_binop op)
+    | Exp e -> sprintf "%s" (pp_mexp e)
+    | If { elsestm = None; thenstm = t; cond = e } ->
+      sprintf "if (%s) [\n%s;]" (pp_mexp e) (pp_mstm t)
+    | If { elsestm = Some s; thenstm = t; cond = e } ->
+      sprintf "if (%s) \nthen [\n%s]\nELSE[\n%s]" (pp_mexp e) (pp_mstm t) (pp_mstm s)
+    | Label l -> "." ^ l
+    | Goto l -> "GOTO " ^ l
+    | Block stms -> sprintf "{ %s }" (pp_stms stms)
+    | While { cond = c; body = b } -> sprintf "WHILE (%s) %s" (pp_mexp c) (pp_mstm b)
+    | For f ->
+      sprintf
+        "For(%s , %s , %s) %s"
+        (pp_mstm_opt f.init)
+        (pp_mexp f.cond)
+        (pp_mstm_opt f.post)
+        (pp_mstm f.body)
 
   and pp_mstm stm = pp_stm (Mark.data stm)
   and pp_stms stms = String.concat (List.map ~f:(fun stm -> pp_mstm stm ^ "\n") stms)
+
+  and pp_mstm_opt = function
+    | None -> ""
+    | Some m -> pp_mstm m
+  ;;
 
   let pp_program stms = "{\n" ^ pp_stms stms ^ "}"
 end
