@@ -11,6 +11,7 @@
  *)
 
 open Core
+module T = Ctype
 
 type binop =
   | Plus
@@ -33,10 +34,6 @@ type binop =
   | ShiftR
 [@@deriving sexp]
 
-type _type =
-  | Bool
-  | Integer
-[@@deriving sexp]
 
 type unop =
   | Negative
@@ -86,13 +83,20 @@ type exp =
 and mexp = exp Mark.t
 
 type decl =
-  | New_var of Symbol.t * _type
-  | Init of Symbol.t * _type * mexp
+  | New_var of Symbol.t * T.t
+  | Init of Symbol.t * T.t * mexp
 
 type stm =
   | Declare of decl
-  | Assign of mexp * mexp * binop option
-  | PostOp of mexp * binop
+  | Assign of
+      { left : mexp
+      ; right : mexp
+      ; asgnop : binop option
+      }
+  | PostOp of
+      { left : mexp
+      ; op : binop
+      }
   | Return of mexp
   | Exp of mexp
   | If of

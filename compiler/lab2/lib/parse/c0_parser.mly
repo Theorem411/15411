@@ -118,8 +118,8 @@ m(x) :
   ;
 
 type_ :
-  | Int {Ast.Integer}
-  | Bool {Ast.Bool}
+  | Int {Ast.T.Int}
+  | Bool {Ast.T.Bool}
   ;
 
 stms :
@@ -156,10 +156,10 @@ simp :
   | lhs = m(exp);
     op = asnop;
     rhs = m(exp);
-      { Ast.Assign (lhs, rhs, op) }
+      { Ast.Assign {left=lhs; right=rhs; asgnop=op} }
   | lhs = m(exp);
     op = postop;
-    { Ast.PostOp (lhs, op) }
+    { Ast.PostOp {left=lhs; op=op}  }
   | d = decl;
       { Ast.Declare d }
   | e = m(exp);

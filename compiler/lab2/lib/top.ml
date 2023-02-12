@@ -169,11 +169,11 @@ let compile (cmd : cmd_line_args) : unit =
   (* Parse *)
   let ast = Parse.parse cmd.filename in
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
-  if cmd.dump_ast then ignore ((exit 0): unit);
   (* Typecheck *)
   say_if cmd.verbose (fun () -> "ignoring type Checking...");
   (* Elaborate *)
-  (* let aste = Elaborater.elaborate ast in *)
+  let _:Aste.program  = Elaborater.elaborate ast in
+  if cmd.dump_ast then ignore ((exit 0): unit);
   (* say_if cmd.verbose (fun () -> "ignoring type Checking..."); *)
   (* Statsem.static_semantic aste; *)
   (* (* Typechecker.typecheck ast; *) *)

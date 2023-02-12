@@ -12,6 +12,8 @@
 
 open Core
 
+module T = Ctype
+
 type binop =
   | Plus
   | Minus
@@ -31,11 +33,6 @@ type binop =
   | B_or
   | ShiftL
   | ShiftR
-[@@deriving sexp]
-
-type _type =
-  | Bool
-  | Integer
 [@@deriving sexp]
 
 type unop =
@@ -86,13 +83,20 @@ type exp =
 and mexp = exp Mark.t
 
 type decl =
-  | New_var of Symbol.t * _type
-  | Init of Symbol.t * _type * mexp
+  | New_var of Symbol.t * T.t
+  | Init of Symbol.t * T.t * mexp
 
 type stm =
   | Declare of decl
-  | Assign of mexp * mexp * binop option
-  | PostOp of mexp * binop
+  | Assign of
+      { left : mexp
+      ; right : mexp
+      ; asgnop : binop option
+      }
+  | PostOp of
+      { left : mexp
+      ; op : binop
+      }
   | Return of mexp
   | Exp of mexp
   | If of
@@ -160,15 +164,10 @@ module Print = struct
 
   and pp_mexp e = pp_exp (Mark.data e)
 
-  let str_of__type = function
-    | Integer -> "int"
-    | Bool -> "bool"
-  ;;
-
   let pp_decl = function
-    | New_var (id, tp) -> sprintf "%s %s;" (str_of__type tp) (Symbol.name id)
+    | New_var (id, tp) -> sprintf "%s %s;" (T._tostring tp) (Symbol.name id)
     | Init (id, tp, e) ->
-      sprintf "%s %s = %s;" (str_of__type tp) (Symbol.name id) (pp_mexp e)
+      sprintf "%s %s = %s;" (T._tostring tp) (Symbol.name id) (pp_mexp e)
   ;;
 
   let rec pp_stm = function
@@ -176,10 +175,10 @@ module Print = struct
     (* | Assign (id, e) -> sprintf "%s = %s;" (Symbol.name id) (pp_mexp e) *)
     | Return e -> sprintf "return %s;" (pp_mexp e)
     | Nop -> "nop;"
-    | Assign (lhs, rhs, None) -> sprintf "%s = %s;" (pp_mexp lhs) (pp_mexp rhs)
-    | Assign (lhs, rhs, Some op) ->
+    | Assign {left=lhs; right=rhs; asgnop=None} -> sprintf "%s = %s;" (pp_mexp lhs) (pp_mexp rhs)
+    | Assign {left=lhs; right=rhs; asgnop=Some op}  ->
       sprintf "%s %s= %s;" (pp_mexp lhs) (pp_binop op) (pp_mexp rhs)
-    | PostOp (e, op) -> sprintf "%s%s%s" (pp_mexp e) (pp_binop op) (pp_binop op)
+    | PostOp {left=e; op=op} -> sprintf "%s%s%s" (pp_mexp e) (pp_binop op) (pp_binop op)
     | Exp e -> sprintf "%s" (pp_mexp e)
     | If { elsestm = None; thenstm = t; cond = e } ->
       sprintf "if (%s) [\n%s;]" (pp_mexp e) (pp_mstm t)
@@ -187,7 +186,7 @@ module Print = struct
       sprintf "if (%s) \nthen [\n%s]\nELSE[\n%s]" (pp_mexp e) (pp_mstm t) (pp_mstm s)
     | Label l -> "." ^ l
     | Goto l -> "GOTO " ^ l
-    | Block stms -> sprintf "{ %s }" (pp_stms stms)
+    | Block stms -> sprintf "`Block{\n %s }`\n" (pp_stms stms)
     | While { cond = c; body = b } -> sprintf "WHILE (%s) %s" (pp_mexp c) (pp_mstm b)
     | For f ->
       sprintf
@@ -205,5 +204,5 @@ module Print = struct
     | Some m -> pp_mstm m
   ;;
 
-  let pp_program stms = "{\n" ^ pp_stms stms ^ "}"
+  let pp_program stms = "int main() {\n" ^ pp_stms stms ^ "}"
 end
