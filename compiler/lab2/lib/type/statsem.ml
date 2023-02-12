@@ -58,11 +58,15 @@ let binop_pure_pbop = function
 type eintop = 
   | Div
   | Mod
+  | SftL
+  | SftR
 type ebop = 
   | IntOp of eintop
 let binop_efkt_ebop = function 
   | A.Divided_by -> IntOp Div
   | A.Modulo -> IntOp Mod
+  | A.ShiftL -> IntOp SftL
+  | A.ShiftR -> IntOp SftR
 
 module StatSemanticExpr = 
   struct
@@ -86,6 +90,11 @@ module StatSemanticExpr =
         else 
           error ~msg:(sprintf "variable `%s` is not initialized when first used" (Symbol.name t)) ~ast:hyps.exp)
       | A.Const _ -> T.Int
+      | A.Ternary tern -> 
+        let hyps_l = { hyps with exp=tern.lb } in
+        let hyps_r = { hyps with exp=tern.rb } in
+        let typ_l = typesynther hyps_l in
+          typechecker hyps_r typ_l; T.Bool
       | A.PureBinop bop -> (
         let hyps_lhs = { hyps with exp=bop.lhs}
         and hyps_rhs = { hyps with exp=bop.rhs} in
@@ -157,14 +166,13 @@ struct
       ; SS.inter init1 init2
     | A.While loop -> 
       let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:loop.cond in
-      let init' = semantic_synther { hyps with prog=loop.body } in
+      let _ : delta = semantic_synther { hyps with prog=loop.body } in
         StatSemanticExpr.typechecker hyps_expr T.Bool
       ; hyps.init
     | A.NakedExpr exp -> 
       let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:exp in
         StatSemanticExpr.typechecker hyps_expr hyps.typ
       ; hyps.init (*_ not defined in lecture notes! Be careful of BUG *)
-    | _ -> raise TypeError
 end
 ;;
 
@@ -172,6 +180,6 @@ end
    int main () {.. } 
   *)
 let static_semantic (prog : A.program) : unit = 
-  let d = StatSemanticCmd.semantic_synther (StatSemanticCmd.hyps_init ~prog:prog ~typ:T.Int) in
+  let _:delta = StatSemanticCmd.semantic_synther (StatSemanticCmd.hyps_init ~prog:prog ~typ:T.Int) in
     ()
 ;;
