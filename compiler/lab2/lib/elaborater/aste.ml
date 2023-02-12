@@ -23,6 +23,8 @@ type unop =
 type boolean = T | F
 (*_ all subclasses of exp type  *)
 type exp = 
+  | True 
+  | False
   | Var of Symbol.t
   | IntConst of Int32.t
   | BoolConst of boolean
@@ -65,6 +67,3 @@ type stmt =
   | Seq of stmt * stmt
   | NakedExpr of exp
 and program = stmt Mark.t
-
-
-

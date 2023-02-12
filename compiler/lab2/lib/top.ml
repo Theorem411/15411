@@ -172,6 +172,13 @@ let compile (cmd : cmd_line_args) : unit =
   if cmd.dump_ast then ignore ((exit 0): unit);
   (* Typecheck *)
   say_if cmd.verbose (fun () -> "ignoring type Checking...");
+  (* Elaborate *)
+  let aste = Elaborater.elaborate ast in
+  say_if cmd.verbose (fun () -> "ignoring type Checking...");
+  Statsem.static_semantic aste;
+  (* (* Typechecker.typecheck ast; *) *)
+  (* Typecheck *)
+  say_if cmd.verbose (fun () -> "ignoring type Checking...");
   (* Typechecker.typecheck ast; *)
   if cmd.typecheck_only then exit 0;
   (* Translate *)
