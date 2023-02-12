@@ -22,7 +22,7 @@ type binop_efkt =
 type unop = 
   | Not
 
-(* type boolean = T | F *)
+type boolean = T | F
 (*_ all subclasses of exp type  *)
 type exp = 
   | True
@@ -50,7 +50,6 @@ type exp =
       }
 and mexp = exp Mark.t
 
-(*_ all subclasses of stmt type and the program type *)
 type stmt = 
   | Declare of 
       { var : Symbol.t
@@ -74,6 +73,7 @@ type stmt =
   | Seq of program * program
   | NakedExpr of mexp
 and program = stmt Mark.t
+
 
 
 

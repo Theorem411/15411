@@ -16,6 +16,7 @@ type src_loc =
   { line : int
   ; col : int
   }
+[@@deriving sexp]
 
 (* Span of locations in the source file. *)
 type src_span =
@@ -23,6 +24,7 @@ type src_span =
   ; end_loc : src_loc
   ; file : string
   }
+[@@deriving sexp]
 
 val of_position : Lexing.position -> src_loc
 val of_positions : Lexing.position -> Lexing.position -> src_span
