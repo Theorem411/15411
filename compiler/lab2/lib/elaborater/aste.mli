@@ -6,6 +6,9 @@ type binop_pure =
   | Times
   | And
   | Or
+  | BitAnd
+  | BitOr
+  | BitXor
   | Leq 
   | Less
   | Geq
