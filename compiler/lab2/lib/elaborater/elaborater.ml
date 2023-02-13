@@ -31,9 +31,17 @@ let give_out (l : 'a Mark.t) =
   | Some src -> Mark.show src
 ;;
 
-let check_rec_declaration (_ : Symbol.t) (_ : Ast.mexp) : unit =
-  (* failwith "not implemented yet!" *)
-  ()
+let rec check_rec_dcl (v : Symbol.t) (e : Ast.exp) : unit =
+  match e with
+  | Ast.Var v2 ->
+    if Symbol.equal v v2
+    then failwith ("recursive defintion was found for " ^ Symbol.name v)
+  | Ast.Binop { lhs; rhs; _ } ->
+    List.iter ~f:(check_rec_dcl v) (List.map ~f:Mark.data [ lhs; rhs ])
+  | Ast.Ternary { cond; first; second } ->
+    List.iter ~f:(check_rec_dcl v) (List.map ~f:Mark.data [ cond; first; second ])
+  | Ast.Unop { operand; _ } -> check_rec_dcl v (Mark.data operand)
+  | _ -> ()
 ;;
 
 let vldt_assign m =
@@ -48,8 +56,11 @@ let vldt_assign m =
 let update_body (body : Ast.mstm) (post : Ast.mstm option) =
   match post with
   | None -> body
-  (* TODO fix *)
-  | Some p -> Mark.naked (Ast.Block [ p; body ])
+  (* TODO fix marks *)
+  | Some p ->
+    (match Mark.data p with
+    | Ast.Declare _ -> failwith "post of for loop can not be a decl"
+    | _ -> copy_mark p (Ast.Block [ p; body ]))
 ;;
 
 (* Turn Ast.For to Ast.While and then use other elab functions:) *)
@@ -58,6 +69,7 @@ let for_to_while m_s : Ast.stm Mark.t =
     ~f:(fun s ->
       match s with
       | Ast.For { init; cond; body; post } ->
+        (* also checks that third statement is not declaration *)
         let while_loop = Ast.While { cond; body = update_body body post } in
         (match init with
         | None -> while_loop
@@ -233,7 +245,7 @@ and elaborate_stmts (p : Ast.mstm list) : Aste.program =
       | Ast.Declare (Ast.New_var (var, typ)) ->
         Aste.Declare { var; typ; body = elaborate_stmts mstsms }
       | Ast.Declare (Ast.Init (var, typ, m_e)) ->
-        let () = check_rec_declaration var m_e in
+        let () = check_rec_dcl var (Mark.data m_e) in
         (*_ checking if int x = x + 1;*)
         Aste.Declare
           { var

@@ -1,15 +1,5 @@
 //test return 100
 
 int main() {
-	int a;
-	{
-		int b;
-		b = 5;
-		a = b;
-	}
-	
-		int b;
-		b = a;
-		return b;
-	
+	int x = x + 1;
 }
