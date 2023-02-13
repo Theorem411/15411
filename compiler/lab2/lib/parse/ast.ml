@@ -116,8 +116,6 @@ type stm =
       }
   | Block of mstm list
   | Nop
-  | Label of string (*_ I am not sure about this*)
-  | Goto of string (*_ I am not sure about this*)
 
 and mstm = stm Mark.t
 
@@ -184,8 +182,6 @@ module Print = struct
       sprintf "if (%s) [\n%s;]" (pp_mexp e) (pp_mstm t)
     | If { elsestm = Some s; thenstm = t; cond = e } ->
       sprintf "if (%s) \nthen [\n%s]\nELSE[\n%s]" (pp_mexp e) (pp_mstm t) (pp_mstm s)
-    | Label l -> "." ^ l
-    | Goto l -> "GOTO " ^ l
     | Block stms -> sprintf "`Block{\n %s }`\n" (pp_stms stms)
     | While { cond = c; body = b } -> sprintf "WHILE (%s) %s" (pp_mexp c) (pp_mstm b)
     | For f ->

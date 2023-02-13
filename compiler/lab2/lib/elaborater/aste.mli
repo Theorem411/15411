@@ -6,6 +6,7 @@ type binop_pure =
   | Times
   | And
   | Or
+  | Xor
   | Leq 
   | Less
   | Geq
@@ -16,9 +17,12 @@ type binop_pure =
 type binop_efkt = 
   | Divided_by
   | Modulo
+  | ShiftL
+  | ShiftR
 
 type unop = 
-  | Not
+  | B_not (*bitwise not*)
+  | L_not (*!*)
 
 type boolean = T | F
 (*_ all subclasses of exp type  *)
@@ -27,7 +31,11 @@ type exp =
   | False
   | Var of Symbol.t
   | IntConst of Int32.t
-  | BoolConst of boolean
+  | Ternary of 
+      { cond : mexp
+      ; lb : mexp
+      ; rb : mexp
+      }
   | PureBinop of  
       { op : binop_pure
       ; lhs : mexp
