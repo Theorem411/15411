@@ -30,7 +30,7 @@ let ctx_find_and_check ctx sym typ ~ast =
       error ~msg:(sprintf "expression does not type check: claim type `%s` but actually has type `%s`" (T._tostring typ) (T._tostring typ')) ~ast:ast
 ;;
 (*_ sort the binops into categories for easier typechecking *)
-type intop = Plus | Minus | Times
+type intop = Plus | Minus | Times | BitAnd | BitOr | BitXor
 type logop = And | Or
 type cpop = Less | Leq | Greater | Geq
 type polyop = Eq | Neq
@@ -44,6 +44,9 @@ type pbop =
 let binop_pure_pbop = function 
   | A.And -> LogOp And
   | A.Or -> LogOp Or
+  | A.BitAnd -> IntOp BitAnd
+  | A.BitOr -> IntOp BitOr
+  | A.BitXor -> IntOp BitXor
   | A.Plus -> IntOp Plus
   | A.Minus -> IntOp Minus
   | A.Times -> IntOp Times
@@ -58,15 +61,15 @@ let binop_pure_pbop = function
 type eintop = 
   | Div
   | Mod
-  | SftL
-  | SftR
+  | ShftL
+  | ShftR
 type ebop = 
   | IntOp of eintop
 let binop_efkt_ebop = function 
   | A.Divided_by -> IntOp Div
   | A.Modulo -> IntOp Mod
-  | A.ShiftL -> IntOp SftL
-  | A.ShiftR -> IntOp SftR
+  | A.ShiftL -> IntOp ShftL
+  | A.ShiftR -> IntOp ShftR
 
 module StatSemanticExpr = 
   struct
@@ -92,9 +95,9 @@ module StatSemanticExpr =
       | A.Const _ -> T.Int
       | A.Ternary tern -> 
         let hyps_l = { hyps with exp=tern.lb } in
+        let typ = typesynther hyps_l in
         let hyps_r = { hyps with exp=tern.rb } in
-        let typ_l = typesynther hyps_l in
-          typechecker hyps_r typ_l; T.Bool
+          typechecker hyps_r typ; T.Bool
       | A.PureBinop bop -> (
         let hyps_lhs = { hyps with exp=bop.lhs}
         and hyps_rhs = { hyps with exp=bop.rhs} in
