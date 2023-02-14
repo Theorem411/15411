@@ -116,8 +116,6 @@ type stm =
       }
   | Block of mstm list
   | Nop
-  | Label of string (*_ I am not sure about this*)
-  | Goto of string (*_ I am not sure about this*)
 
 and mstm = stm Mark.t
 

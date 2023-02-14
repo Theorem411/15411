@@ -1,15 +1,10 @@
-//test return 100
-
+//test return 10
 int main() {
-	int a;
-	{
-		int b;
-		b = 5;
-		a = b;
-	}
-	
-		int b;
-		b = a;
-		return b;
-	
+  if (!true == false) {
+	int x = 3;
+	int y = 2;
+	int z = 3;
+    return 10;
+  }
+  return 32;
 }
