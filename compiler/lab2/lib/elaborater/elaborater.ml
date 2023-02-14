@@ -9,9 +9,9 @@ let to_pure = function
   | Ast.Plus -> Aste.Plus
   | Ast.Minus -> Aste.Minus
   | Ast.Times -> Aste.Times
-  | Ast.B_and -> Aste.And
-  | Ast.B_or -> Aste.Or
-  | Ast.B_xor -> Aste.Xor
+  | Ast.B_and -> Aste.BitAnd
+  | Ast.B_or -> Aste.BitOr
+  | Ast.B_xor -> Aste.BitXor
   | Ast.Greater -> Aste.Greater
   | Ast.Greater_eq -> Aste.Geq
   | Ast.Less -> Aste.Less
@@ -88,7 +88,7 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
   let e = Mark.data m_e in
   match e with
   | Var s -> copy_mark m_e (Aste.Var s)
-  | Const n -> copy_mark m_e (Aste.IntConst n)
+  | Const n -> copy_mark m_e (Aste.Const n)
   | True -> copy_mark m_e Aste.True
   | False -> copy_mark m_e Aste.False
   | Unop { op; operand } ->
@@ -99,7 +99,7 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
         m_e
         (Aste.PureBinop
            { op = Aste.Plus
-           ; lhs = copy_mark m_e (Aste.IntConst Int32.zero)
+           ; lhs = copy_mark m_e (Aste.Const Int32.zero)
            ; rhs = elab_mexp operand
            })
     | Ast.L_not ->
@@ -193,7 +193,7 @@ let elab_postop m_s =
                 (Aste.PureBinop
                    { op = to_pure op
                    ; lhs = elab_mexp m_l
-                   ; rhs = copy_mark m_l (Aste.IntConst Int32.one)
+                   ; rhs = copy_mark m_l (Aste.Const Int32.one)
                    })
           }
       | _ -> failwith "post op is not + or -")
