@@ -48,7 +48,8 @@ and cp_rev (env : Temp.t S.t) (exp : A.mexp) (l : Label.t) (l' : Label.t) =
   | A.EfktBinop bop -> raise UnImplemented
   | A.Unop uop -> (
       match uop.op with 
-      | A.Not -> []
+      (* | A.Not -> [] *)
+      | _ -> failwith "Check this out."
   )
   | _ -> raise UnImplemented
 and cp (env : Temp.t S.t) (exp : A.mexp) (l : Label.t) (l' : Label.t) =
