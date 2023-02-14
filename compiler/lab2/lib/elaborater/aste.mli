@@ -1,8 +1,8 @@
+open Core
 module Typ = Ctype
-
 type binop_pure = 
-  | Plus
-  | Minus
+| Plus
+| Minus
   | Times
   | And
   | Or
@@ -76,6 +76,10 @@ type stmt =
   | NakedExpr of mexp
 and program = stmt Mark.t
 
-
-
+module Print : sig
+  val pp_exp : exp -> string
+  val pp_stm : ?n:int -> stmt -> string
+  val pp_program : ?n:int -> program -> string
+  val print_all : program -> string
+end
 

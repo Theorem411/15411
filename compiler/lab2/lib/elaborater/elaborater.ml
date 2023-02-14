@@ -12,6 +12,12 @@ let to_pure = function
   | Ast.B_and -> Aste.And
   | Ast.B_or -> Aste.Or
   | Ast.B_xor -> Aste.Xor
+  | Ast.Greater -> Aste.Greater
+  | Ast.Greater_eq -> Aste.Geq
+  | Ast.Less -> Aste.Less
+  | Ast.Less_eq -> Aste.Leq
+  | Ast.Equals -> Aste.Eq
+  | Ast.Not_equals -> Aste.Neq
   | _ -> failwith "Not a pure binop"
 ;;
 
@@ -112,7 +118,19 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
          (Ast.Ternary { cond = lhs; first = rhs; second = copy_mark m_e Ast.False }))
   (* pure *)
   | Binop
-      { op = (Ast.Plus | Ast.Minus | Ast.Times | Ast.B_and | Ast.B_or | Ast.B_xor) as op
+      { op =
+          ( Ast.Plus
+          | Ast.Minus
+          | Ast.Times
+          | Ast.B_and
+          | Ast.B_or
+          | Ast.B_xor
+          | Ast.Equals
+          | Ast.Greater
+          | Ast.Greater_eq
+          | Ast.Less
+          | Ast.Less_eq
+          | Ast.Not_equals ) as op
       ; lhs
       ; rhs
       } ->

@@ -172,7 +172,8 @@ let compile (cmd : cmd_line_args) : unit =
   (* Typecheck *)
   say_if cmd.verbose (fun () -> "ignoring type Checking...");
   (* Elaborate *)
-  let _:Aste.program  = Elaborater.elaborate ast in
+  let elab:Aste.program  = Elaborater.elaborate ast in
+  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab);
   if cmd.dump_ast then ignore ((exit 0): unit);
   (* say_if cmd.verbose (fun () -> "ignoring type Checking..."); *)
   (* Statsem.static_semantic aste; *)
