@@ -1,4 +1,4 @@
-(* open Core *)
+(* open Core
 module T = Tree_new
 module A = Aste
 module S = Symbol.Map
@@ -54,4 +54,4 @@ and cp_rev (env : Temp.t S.t) (exp : A.mexp) (l : Label.t) (l' : Label.t) =
   | _ -> raise UnImplemented
 and cp (env : Temp.t S.t) (exp : A.mexp) (l : Label.t) (l' : Label.t) =
   List.rev (cp_rev env exp l l')
-;;
+;; *)
