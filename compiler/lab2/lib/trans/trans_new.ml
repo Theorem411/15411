@@ -1,4 +1,4 @@
-(* open Core
+open Core
 module T = Tree_new
 module A = Aste
 module S = Symbol.Map
@@ -39,25 +39,18 @@ and cp_rev (env : Temp.t S.t) (exp : A.mexp) (l : Label.t) (l' : Label.t) =
   | A.True -> [T.Goto l']
   | A.False -> [T.Goto l]
   | A.PureBinop bop -> (
-    let (e1, e2) = (bop.lhs, bop.rhs) in 
-    let (e1d, e1u) = translate_expr env e1 in
-    match T.aste_pure_binop_to_pbop bop with
-    | T.LogOp op -> (
-      match op with 
-      | T.And -> 
-        let lnew = Label.create () in
-          (cp_rev env e2 l l') @ ((T.Label lnew) :: (cp_rev env e1 lnew l'))
-      | T.Or -> 
-        let lnew = Label.create () in 
-          (cp_rev env e2 l l') @ ((T.Label lnew) :: (cp_rev env e1 l lnew))
-      | T.Leq -> 
-        let (cmd1, exp1) = translate_expr env e1 in
-        let (cmd2, exp2) = translate_expr env e2 in
-
+      match bop.op with 
+      | A.And -> []
+      | A.Or -> []
+      | A.Eq | A.Neq | A.Leq | A.Less | A.Geq | A.Greater -> []
       | _ -> raise UnImplemented
-    )
-    | _ -> error ~msg:(sprintf "type check did not catch this type error! type `%s` is expected but got type `%s`" (Ctype._tostring Ctype.Bool) (Ctype._tostring Ctype.Int)) ~ast:exp
   )
-and cp (exp : A.mexp) (l : Label.t) (l' : Label.t) =
-  List.rev (cp_rev exp l l')
-;; *)
+  | A.EfktBinop bop -> raise UnImplemented
+  | A.Unop uop -> (
+      match uop.op with 
+      | A.Not -> []
+  )
+  | _ -> raise UnImplemented
+and cp (env : Temp.t S.t) (exp : A.mexp) (l : Label.t) (l' : Label.t) =
+  List.rev (cp_rev env exp l l')
+;;

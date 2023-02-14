@@ -1,4 +1,4 @@
-(* open Core
+open Core
 module T = Ctype
 module SM = Symbol.Map
 module SS = Symbol.Set
@@ -30,7 +30,7 @@ let ctx_find_and_check ctx sym typ ~ast =
       error ~msg:(sprintf "expression does not type check: claim type `%s` but actually has type `%s`" (T._tostring typ) (T._tostring typ')) ~ast:ast
 ;;
 (*_ sort the binops into categories for easier typechecking *)
-type intop = Plus | Minus | Times
+type intop = Plus | Minus | Times | BitAnd | BitOr | BitXor
 type logop = And | Or
 type cpop = Less | Leq | Greater | Geq
 type polyop = Eq | Neq
@@ -44,6 +44,9 @@ type pbop =
 let binop_pure_pbop = function 
   | A.And -> LogOp And
   | A.Or -> LogOp Or
+  | A.BitAnd -> IntOp BitAnd
+  | A.BitOr -> IntOp BitOr
+  | A.BitXor -> IntOp BitXor
   | A.Plus -> IntOp Plus
   | A.Minus -> IntOp Minus
   | A.Times -> IntOp Times
@@ -58,11 +61,15 @@ let binop_pure_pbop = function
 type eintop = 
   | Div
   | Mod
+  | ShftL
+  | ShftR
 type ebop = 
   | IntOp of eintop
 let binop_efkt_ebop = function 
   | A.Divided_by -> IntOp Div
   | A.Modulo -> IntOp Mod
+  | A.ShiftL -> IntOp ShftL
+  | A.ShiftR -> IntOp ShftR
 
 module StatSemanticExpr = 
   struct
@@ -86,6 +93,11 @@ module StatSemanticExpr =
         else 
           error ~msg:(sprintf "variable `%s` is not initialized when first used" (Symbol.name t)) ~ast:hyps.exp)
       | A.Const _ -> T.Int
+      | A.Ternary tern -> 
+        let hyps_l = { hyps with exp=tern.lb } in
+        let typ = typesynther hyps_l in
+        let hyps_r = { hyps with exp=tern.rb } in
+          typechecker hyps_r typ; T.Bool
       | A.PureBinop bop -> (
         let hyps_lhs = { hyps with exp=bop.lhs}
         and hyps_rhs = { hyps with exp=bop.rhs} in
@@ -157,14 +169,13 @@ struct
       ; SS.inter init1 init2
     | A.While loop -> 
       let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:loop.cond in
-      let init' = semantic_synther { hyps with prog=loop.body } in
+      let _ : delta = semantic_synther { hyps with prog=loop.body } in
         StatSemanticExpr.typechecker hyps_expr T.Bool
       ; hyps.init
     | A.NakedExpr exp -> 
       let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:exp in
         StatSemanticExpr.typechecker hyps_expr hyps.typ
       ; hyps.init (*_ not defined in lecture notes! Be careful of BUG *)
-    | _ -> raise TypeError
 end
 ;;
 
@@ -172,6 +183,6 @@ end
    int main () {.. } 
   *)
 let static_semantic (prog : A.program) : unit = 
-  let d = StatSemanticCmd.semantic_synther (StatSemanticCmd.hyps_init ~prog:prog ~typ:T.Int) in
+  let _:delta = StatSemanticCmd.semantic_synther (StatSemanticCmd.hyps_init ~prog:prog ~typ:T.Int) in
     ()
-;; *)
+;;

@@ -6,7 +6,9 @@ type binop_pure =
   | Times
   | And
   | Or
-  | Xor
+  | BitAnd
+  | BitOr
+  | BitXor
   | Leq 
   | Less
   | Geq
@@ -19,7 +21,7 @@ type binop_efkt =
   | Modulo
   | ShiftL
   | ShiftR
-
+  
 type unop = 
   | B_not (*bitwise not*)
   | L_not (*!*)
@@ -30,7 +32,7 @@ type exp =
   | True
   | False
   | Var of Symbol.t
-  | IntConst of Int32.t
+  | Const of Int32.t
   | Ternary of 
       { cond : mexp
       ; lb : mexp

@@ -7,7 +7,9 @@ type binop_pure =
   | Times
   | And
   | Or
-  | Xor
+  | BitAnd
+  | BitOr
+  | BitXor
   | Leq 
   | Less
   | Geq
@@ -25,13 +27,12 @@ type unop =
   | B_not (*bitwise not*)
   | L_not (*!*)
 
-type boolean = T | F
 (*_ all subclasses of exp type  *)
 type exp = 
   | True 
   | False
   | Var of Symbol.t
-  | IntConst of Int32.t
+  | Const of Int32.t
   | Ternary of 
       { cond : mexp
       ; lb : mexp
