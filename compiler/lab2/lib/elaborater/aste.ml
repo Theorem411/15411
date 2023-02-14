@@ -95,13 +95,15 @@ module Print = struct
     | Times -> "*"
     | Less -> "<"
     | Greater -> ">"
-    | And -> "&"
-    | Or -> "|"
-    | Xor -> "^"
+    | BitAnd -> "&"
+    | BitOr -> "|"
+    | BitXor -> "^"
     | Leq -> "<="
     | Geq -> ">="
     | Eq -> "=="
     | Neq -> "!="
+    | And -> failwith "Logical And must be eliminated"
+    | Or -> failwith "Logical Or must be eliminated"
   ;;
 
   let pp_binop_efkt = function
@@ -118,7 +120,7 @@ module Print = struct
 
   let rec pp_exp = function
     | Var id -> Symbol.name id
-    | IntConst c -> Int32.to_string c
+    | Const c -> Int32.to_string c
     | Unop unop -> sprintf "%s(%s)" (pp_unop unop.op) (pp_mexp unop.operand)
     | True -> "true"
     | False -> "false"

@@ -26,7 +26,6 @@ type unop =
   | B_not (*bitwise not*)
   | L_not (*!*)
 
-type boolean = T | F
 (*_ all subclasses of exp type  *)
 type exp = 
   | True

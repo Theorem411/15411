@@ -1,4 +1,4 @@
-open Core
+(* open Core *)
 module T = Tree_new
 module A = Aste
 module S = Symbol.Map
