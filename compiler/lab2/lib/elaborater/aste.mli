@@ -1,8 +1,8 @@
 open Core
 module Typ = Ctype
 type binop_pure = 
-| Plus
-| Minus
+  | Plus
+  | Minus
   | Times
   | And
   | Or

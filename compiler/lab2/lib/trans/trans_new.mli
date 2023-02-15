@@ -1,4 +1,4 @@
-open Core
-module Tree = Tree_new
+module A = Aste
+module T = Tree_new
 
-val translate : Aste.program -> Tree.stm list
+val translate : A.program -> T.stm list
