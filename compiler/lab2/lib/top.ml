@@ -14,6 +14,11 @@
  *)
 
 open Core
+module TranslationM = Trans_new
+module AssemM = Assem_new
+module Cogen = Cogen_new
+module TreeM = Tree_new
+module Statsem = Statsem
 
 (* Command line arguments *)
 
@@ -174,33 +179,35 @@ let compile (cmd : cmd_line_args) : unit =
   (* Elaborate *)
   let elab:Aste.program  = Elaborater.elaborate ast in
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab);
-  if cmd.dump_ast then ignore ((exit 0): unit);
+  (* if cmd.dump_ast then ignore ((exit 0): unit); *)
   (* say_if cmd.verbose (fun () -> "ignoring type Checking..."); *)
-  (* Statsem.static_semantic aste; *)
-  (* (* Typechecker.typecheck ast; *) *)
+  let ():unit = Statsem.static_semantic elab in 
+  say_if cmd.verbose (fun () -> "doing type Checking...");
+  let ():unit = Return.ret_checker elab in
   (* Typecheck *)
-  say_if cmd.verbose (fun () -> "ignoring type Checking...");
   (* Typechecker.typecheck ast; *)
   if cmd.typecheck_only then exit 0;
   (* Translate *)
   say_if cmd.verbose (fun () -> "Translating...");
-  let ir = Trans.translate ast in
-  say_if cmd.dump_ir (fun () -> Tree.Print.pp_program ir);
+  let ir = TranslationM.translate elab in
+  say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
-  let assem = Codegen.codegen ir in
-  say_if cmd.dump_assem (fun () -> List.to_string ~f:Assem.format assem);
-  match cmd.emit with
+  let assem = Cogen.cogen ir in
+  (* say_if cmd.dump_assem (fun () -> List.to_string ~f:AssemM.format assem); *)
+  (match cmd.emit with
   (* Output: abstract 3-address assem *)
   | Abstract_assem ->
     let file = cmd.filename ^ ".abs" in
     say_if cmd.verbose (fun () -> sprintf "Writing abstract assem to %s..." file);
-    Out_channel.with_file file ~f:(fun out ->
-        let output_instr instr = Out_channel.fprintf out "\t%s\n" (Assem.format instr) in
-        output_instr (Assem.Directive (".file\t\"" ^ cmd.filename ^ "\""));
-        output_instr (Assem.Directive ".function\tmain()");
+    Out_channel.with_file file ~f:(fun _ -> 
+      (* fun out -> *)
+        (* let output_instr instr = Out_channel.fprintf out "\t%s\n" (AssemM.format instr) in
+        output_instr (AssemM.Directive (".file\t\"" ^ cmd.filename ^ "\""));
+        output_instr (AssemM.Directive ".function\tmain()");
         List.iter ~f:output_instr assem;
-        output_instr (Assem.Directive ".ident\t\"15-411 L1 reference compiler\""))
+        output_instr (AssemM.Directive ".ident\t\"15-411 L1 reference compiler\"")) *)
+    failwith "skipped")
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
@@ -214,8 +221,9 @@ let compile (cmd : cmd_line_args) : unit =
         output_x86_instr (X86.FunName "_c0_main:");
         List.iter ~f:output_x86_instr translated;
         output_x86_instr (X86.Ret);
-        output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\""));
-;;
+        output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\""));)
+    ;;
+
 
 let run (cmd : cmd_line_args) : unit =
   try if cmd.regalloc_only then regalloc cmd else compile cmd with

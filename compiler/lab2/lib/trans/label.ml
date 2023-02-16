@@ -13,4 +13,4 @@ let create () =
   t
 ;;
 
-let name t = "%l" ^ string_of_int t ^ "."
+let name t = ".L" ^ string_of_int t
