@@ -1,4 +1,4 @@
-module A = Aste
+(* module A = Aste
 
 (*_ this function aims to do some further elaborating that aims to 
    - replace all && with & 
@@ -7,4 +7,4 @@ module A = Aste
    - replace all False with Const 0
    - replace all ~ exp with exp ^ Const -1
    *)
-val booster_elaborate : A.program -> A.program
+val booster_elaborate : A.program -> A.program *)

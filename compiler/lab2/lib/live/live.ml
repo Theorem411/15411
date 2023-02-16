@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module AS = Assem
 
 (* type line = int * AS.instr *)
@@ -178,4 +178,4 @@ let mk_graph (instrs : AS.instr list) : Graph.t =
   let edges = get_edges d live_out live_in in
   (* let () = print_edges edges in *)
   create_graph vertices edges
-;;
+;; *)

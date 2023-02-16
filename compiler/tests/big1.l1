@@ -4,7 +4,7 @@ int main() {
 	int x = 3;
 	int y = 2;
 	int z = 3;
-    return 10;
+  return 10;
   }
   return 32;
 }

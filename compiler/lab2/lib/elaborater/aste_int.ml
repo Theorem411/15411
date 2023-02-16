@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module A = Aste
 module S = Symbol
 
@@ -59,4 +59,4 @@ let rec booster_elaborate (prog : A.program) : A.program =
     )
   in
     mark stm
-;;
+;; *)
