@@ -70,7 +70,7 @@ let update_body (body : Ast.mstm) (post : Ast.mstm option) =
   | Some p ->
     (match Mark.data p with
     | Ast.Declare _ -> failwith "post of for loop can not be a decl"
-    | _ -> copy_mark p (Ast.Block [ p; body ]))
+    | _ -> copy_mark p (Ast.Block [ body; p ]))
 ;;
 
 (* Turn Ast.For to Ast.While and then use other elab functions:) *)
