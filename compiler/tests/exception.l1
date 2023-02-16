@@ -1,0 +1,9 @@
+int main()
+{
+  int TMIN;
+  int overflow;
+
+  TMIN = -2147483648;
+  overflow = TMIN / -1;
+  return overflow;
+}

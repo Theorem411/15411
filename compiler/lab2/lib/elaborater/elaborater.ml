@@ -102,7 +102,7 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
       copy_mark
         m_e
         (Aste.PureBinop
-           { op = Aste.Plus
+           { op = Aste.Minus
            ; lhs = copy_mark m_e (Aste.Const Int32.zero)
            ; rhs = elab_mexp operand
            })
