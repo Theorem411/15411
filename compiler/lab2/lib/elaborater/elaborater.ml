@@ -12,13 +12,17 @@ let to_pure = function
   | Ast.B_and -> Aste.BitAnd
   | Ast.B_or -> Aste.BitOr
   | Ast.B_xor -> Aste.BitXor
+  | _ -> failwith "Not a pure binop"
+;;
+
+let to_cmp = function
   | Ast.Greater -> Aste.Greater
   | Ast.Greater_eq -> Aste.Geq
   | Ast.Less -> Aste.Less
   | Ast.Less_eq -> Aste.Leq
   | Ast.Equals -> Aste.Eq
   | Ast.Not_equals -> Aste.Neq
-  | _ -> failwith "Not a pure binop"
+  | _ -> failwith "Not a cmp binp"
 ;;
 
 let to_efkt = function
@@ -103,9 +107,9 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
            ; rhs = elab_mexp operand
            })
     | Ast.L_not ->
-      copy_mark m_e (Aste.Unop { op = Aste.L_not; operand = elab_mexp operand })
+      copy_mark m_e (Aste.Unop { op = Aste.LogNot; operand = elab_mexp operand })
     | Ast.B_not ->
-      copy_mark m_e (Aste.Unop { op = Aste.B_not; operand = elab_mexp operand }))
+      copy_mark m_e (Aste.Unop { op = Aste.BitNot; operand = elab_mexp operand }))
   | Ternary { cond; first; second } ->
     copy_mark
       m_e
@@ -118,14 +122,17 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
          (Ast.Ternary { cond = lhs; first = rhs; second = copy_mark m_e Ast.False }))
   (* pure *)
   | Binop
+      { op = (Ast.Plus | Ast.Minus | Ast.Times | Ast.B_and | Ast.B_or | Ast.B_xor) as op
+      ; lhs
+      ; rhs
+      } ->
+    copy_mark
+      m_e
+      (Aste.PureBinop { op = to_pure op; lhs = elab_mexp lhs; rhs = elab_mexp rhs })
+  (* cmp *)
+  | Binop
       { op =
-          ( Ast.Plus
-          | Ast.Minus
-          | Ast.Times
-          | Ast.B_and
-          | Ast.B_or
-          | Ast.B_xor
-          | Ast.Equals
+          ( Ast.Equals
           | Ast.Greater
           | Ast.Greater_eq
           | Ast.Less
@@ -136,7 +143,7 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
       } ->
     copy_mark
       m_e
-      (Aste.PureBinop { op = to_pure op; lhs = elab_mexp lhs; rhs = elab_mexp rhs })
+      (Aste.CmpBinop { op = to_cmp op; lhs = elab_mexp lhs; rhs = elab_mexp rhs })
   (* efkt *)
   | Binop { op; lhs; rhs } ->
     copy_mark
@@ -157,6 +164,8 @@ let elab_assign_with_op
       Aste.PureBinop { op = to_pure op; lhs = elab_mexp m_l; rhs = elab_mexp m_r }
     | Divided_by | Modulo | ShiftL | ShiftR ->
       Aste.EfktBinop { op = to_efkt op; lhs = elab_mexp m_l; rhs = elab_mexp m_r }
+    | Greater | Greater_eq | Less_eq | Less | Equals | Not_equals ->
+      Aste.CmpBinop { op = to_cmp op; lhs = elab_mexp m_l; rhs = elab_mexp m_r }
     | _ -> failwith "Not asign with op"
   in
   Aste.Assign { var = v; exp = copy_mark m_s expr_new }
