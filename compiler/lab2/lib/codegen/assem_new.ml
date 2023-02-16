@@ -33,12 +33,18 @@ type pure_operation =
   | BitOr
   | BitXor
   [@@deriving equal, sexp, compare]
+
 type efkt_operation = 
   | Div
   | Mod
   | ShiftL
   | ShiftR
   [@@deriving equal, sexp, compare]
+
+type unary_operation = 
+  | BitNot
+[@@deriving equal, sexp, compare]
+
 type jump_t = 
   | Je (*_ jump if p1 == p2 *)
   (* | Jz  _ jump if p1 == 0 *)
@@ -67,6 +73,9 @@ type instr =
     ; lhs : operand
     ; rhs : operand
     }
+  | Unop of 
+    { op : unary_operation
+    ; dest : operand }
   (* dest <- src *)
   | Mov of
       { dest : operand

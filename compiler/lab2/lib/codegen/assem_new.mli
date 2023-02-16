@@ -31,6 +31,10 @@ type pure_operation =
   | BitOr
   | BitXor
   [@@deriving equal, sexp, compare]
+
+type unary_operation = 
+  | BitNot
+  [@@deriving equal, sexp, compare]
   
 type efkt_operation = 
   | Div
@@ -76,6 +80,9 @@ type instr =
     ; lhs : operand
     ; rhs : operand
     }
+  | Unop of 
+    { op : unary_operation
+    ; dest : operand }
   (* dest <- src *)
   | Mov of
       { dest : operand
