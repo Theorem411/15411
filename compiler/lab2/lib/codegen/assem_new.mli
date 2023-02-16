@@ -49,13 +49,13 @@ type jump_t =
   | Jne (*_ jump if p1 != p2 *)
   (* | Jnz _ jump if p1 != 0 *)
   | Jl (*_ jump if p1 < p2 *)
-  | Jnge (*_ jump if NOT p1 >= p2 *)
+  (* | Jnge _ jump if NOT p1 >= p2 *)
   | Jge (*_ jump if p1 >= p2 *)
-  | Jnl (*_ jump if NOT p1 < p2 *)
+  (* | Jnl _ jump if NOT p1 < p2 *)
   | Jle (*_ jump if p1 <= p2 *)
-  | Jng (*_ jump if NOT p1 > p2 *)
+  (* | Jng _ jump if NOT p1 > p2 *)
   | Jg (*_ jump if p1 > p2 *)
-  | Jnle (*_ jump if NOT p1 <= p2 *)
+  (* | Jnle _ jump if NOT p1 <= p2 *)
 [@@deriving equal, sexp, compare]
 (*_ what is potentially missing? 
   - Any parity flag related jumps: e.g., jp, jpe
@@ -65,6 +65,14 @@ type jump_t =
   btw disabled jz and jnz because I think they need to be used with test (an
   alternative to cmp in x86)
    *)
+type set_t = 
+  | Sete
+  | Setne
+  | Setg
+  | Setge
+  | Setl
+  | Setle
+[@@deriving equal, sexp, compare]
 
 type instr =
   (* dest <- lhs op rhs *)
@@ -82,7 +90,8 @@ type instr =
     }
   | Unop of 
     { op : unary_operation
-    ; dest : operand }
+    ; dest : operand 
+    }
   (* dest <- src *)
   | Mov of
       { dest : operand
@@ -94,6 +103,10 @@ type instr =
   | Cjmp of 
     { typ : jump_t
     ; l : Label.t
+    }
+  | Set of 
+    { typ : set_t
+    ; src : operand 
     }
   | Lab of Label.t
   | Cmp of operand * operand

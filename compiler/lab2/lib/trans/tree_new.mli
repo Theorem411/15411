@@ -29,14 +29,25 @@ type cbop =
   | Eq
   | Neq
   
+type unop = 
+  | BitNot
 (*_ pure expression: binary operator can only be pure operator *)
 type pexp =
   | Const of Int32.t
   | Temp of Temp.t
-  | Pbop of
+  | Binop of
       { op : pbop
       ; lhs : pexp
       ; rhs : pexp
+      }
+  | Cmpop of 
+      { op : cbop
+      ; lhs : pexp
+      ; rhs : pexp
+      }
+  | Unop of 
+      { op : unop
+      ; p : pexp
       }
 and cond = 
   { cmp : cbop

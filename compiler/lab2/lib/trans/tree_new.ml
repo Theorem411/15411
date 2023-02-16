@@ -22,14 +22,25 @@ type cbop =
   | Eq
   | Neq
   
+type unop = 
+  | BitNot
 (*_ pure expression: binary operator can only be pure operator *)
 type pexp =
   | Const of Int32.t
   | Temp of Temp.t
-  | Pbop of
+  | Binop of
       { op : pbop
       ; lhs : pexp
       ; rhs : pexp
+      }
+  | Cmpop of 
+      { op : cbop
+      ; lhs : pexp
+      ; rhs : pexp
+      }
+  | Unop of 
+      { op : unop
+      ; p : pexp
       }
 and cond = 
 { cmp : cbop
@@ -90,15 +101,23 @@ module Print : PRINT = struct
     | ShftR -> ">>"
   ;;
 
+  let pp_unop = function 
+    | BitNot -> "~"
+
   let rec pp_pexp = function
     | Const x -> Int32.to_string x
     | Temp t -> Temp.name t
-    | Pbop pbop ->
+    | Binop pbop ->
       Printf.sprintf
         "(%s %s %s)"
         (pp_pexp pbop.lhs)
         (pp_pbop pbop.op)
         (pp_pexp pbop.rhs)
+    | Unop uop -> 
+      Printf.sprintf
+        "%s%s"
+        (pp_unop uop.op)
+        (pp_pexp uop.p)
   ;;
 
 
