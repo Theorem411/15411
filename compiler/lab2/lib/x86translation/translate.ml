@@ -235,6 +235,19 @@ let translate_set get_reg = function
   | _ -> failwith "Not a set operation on translate_set"
 ;;
 
+let translate_cmp get_reg = function
+  | AS.Cmp (r, l) ->
+    let lf = get_reg l in
+    let rf = get_reg r in
+    (match lf, rf with
+    | X86.Mem _, _ ->
+      [ X86.BinCommand { op = Mov; src = lf; dest = X86.__FREE_REG }
+      ; X86.Cmp { lhs = X86.__FREE_REG; rhs = rf }
+      ]
+    | _, _ -> [ X86.Cmp { lhs = lf; rhs = rf } ])
+  | _ -> failwith "Not a cmp operation on translate_cmp"
+;;
+
 let translate_line
     (get_reg : AS.operand -> X86.operand)
     (prev_lines : X86.instr list)
@@ -246,7 +259,14 @@ let translate_line
   | Mov { dest = d; src = s } ->
     let d_final = get_reg d in
     let src_final = get_reg s in
-    X86.BinCommand { op = Mov; dest = d_final; src = src_final } :: prev_lines
+    (match d_final, src_final with
+    | Mem _, Mem _ ->
+      (* mov mem, mem *)
+      [ X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
+      ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = src_final }
+      ]
+      @ prev_lines
+    | _ -> X86.BinCommand { op = Mov; dest = d_final; src = src_final } :: prev_lines)
   (* Translating pure operations *)
   | AS.PureBinop e -> List.rev_append (translate_pure get_reg (AS.PureBinop e)) prev_lines
   (* Translating effectful operations *)
@@ -256,7 +276,7 @@ let translate_line
   | Jmp l -> X86.Jump { op = None; label = l } :: prev_lines
   | Cjmp { typ; l } -> X86.Jump { op = Some typ; label = l } :: prev_lines
   | Lab l -> X86.Lbl l :: prev_lines
-  | Cmp (r, l) -> X86.Cmp { rhs = get_reg r; lhs = get_reg l } :: prev_lines
+  | Cmp (r, l) -> List.rev_append (translate_cmp get_reg (AS.Cmp (r, l))) prev_lines
   (* Translating comments / directive operations *)
   | AS.Comment d -> Comment d :: prev_lines
   | AS.Directive d -> Directive d :: prev_lines
