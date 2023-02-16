@@ -117,3 +117,4 @@ type instr =
 [@@deriving equal, sexp, compare]
 
 val format_reg: reg -> string;;
+val format: instr ->  string;;

@@ -198,16 +198,16 @@ let compile (cmd : cmd_line_args) : unit =
   (match cmd.emit with
   (* Output: abstract 3-address assem *)
   | Abstract_assem ->
-    let file = cmd.filename ^ ".abs" in
+    (let file = cmd.filename ^ ".abs" in
     say_if cmd.verbose (fun () -> sprintf "Writing abstract assem to %s..." file);
-    Out_channel.with_file file ~f:(fun _ -> 
-      (* fun out -> *)
-        (* let output_instr instr = Out_channel.fprintf out "\t%s\n" (AssemM.format instr) in
+    Out_channel.with_file file ~f:(
+      fun out -> 
+        let output_instr instr = Out_channel.fprintf out "\t%s\n" (AssemM.format instr) in
         output_instr (AssemM.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_instr (AssemM.Directive ".function\tmain()");
         List.iter ~f:output_instr assem;
-        output_instr (AssemM.Directive ".ident\t\"15-411 L1 reference compiler\"")) *)
-    failwith "skipped")
+        output_instr (AssemM.Directive ".ident\t\"15-411 L1 reference compiler\""))
+    )
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
