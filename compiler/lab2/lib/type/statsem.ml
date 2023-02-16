@@ -187,9 +187,9 @@ module StatSemanticCmd = struct
       let hyps_expr =
         StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp:assn.exp
       in
-      let () = ctx_find_and_check hyps.ctx assn.var hyps.typ ~ast:hyps.prog in
+      let typ' = StatSemanticExpr.typesynther hyps_expr in
+      let () = ctx_find_and_check hyps.ctx assn.var typ' ~ast:hyps.prog in
       let init' = SS.add hyps.init assn.var in
-      StatSemanticExpr.typechecker hyps_expr hyps.typ;
       init'
     | A.Declare decl ->
       let ctx' =
