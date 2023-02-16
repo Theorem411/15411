@@ -1,74 +1,81 @@
 open Core
 module Typ = Ctype
 
-type binop_pure = 
+type binop_pure =
   | Plus
   | Minus
   | Times
-  | And
-  | Or
   | BitAnd
   | BitOr
   | BitXor
-  | Leq 
+
+type binop_cmp =
+  | Leq
   | Less
   | Geq
   | Greater
   | Eq
   | Neq
 
-type binop_efkt = 
+type binop_efkt =
   | Divided_by
   | Modulo
   | ShiftL
   | ShiftR
 
-type unop = 
-  | B_not (*bitwise not*)
-  | L_not (*!*)
+type unop =
+  | BitNot (*bitwise not*)
+  | LogNot (*!*)
 
 (*_ all subclasses of exp type  *)
-type exp = 
-  | True 
+type exp =
+  | True
   | False
   | Var of Symbol.t
   | Const of Int32.t
-  | Ternary of 
+  | Ternary of
       { cond : mexp
       ; lb : mexp
       ; rb : mexp
       }
-  | PureBinop of  
+  | PureBinop of
       { op : binop_pure
       ; lhs : mexp
       ; rhs : mexp
       }
-  | EfktBinop of 
+  | EfktBinop of
       { op : binop_efkt
       ; lhs : mexp
       ; rhs : mexp
       }
-  | Unop of 
-      { op : unop
-      ; operand : mexp;
+  | CmpBinop of
+      { op : binop_cmp
+      ; lhs : mexp
+      ; rhs : mexp
       }
+  | Unop of
+      { op : unop
+      ; operand : mexp
+      }
+
 and mexp = exp Mark.t
 
-type stmt = 
-  | Declare of 
+type stmt =
+  | Declare of
       { var : Symbol.t
       ; typ : Typ.t
       ; body : program
       }
-  | Assign of 
+  | Assign of
       { var : Symbol.t
       ; exp : mexp
       }
-  | If of 
+  | If of
       { cond : mexp
       ; lb : program
-      ; rb : program}
-  | While of 
+      ; rb : program
+      }
+  | While of
       { cond : mexp
       ; body : program
       }
@@ -76,6 +83,7 @@ type stmt =
   | Nop
   | Seq of program * program
   | NakedExpr of mexp
+
 and program = stmt Mark.t
 
 
@@ -89,22 +97,22 @@ module Print = struct
   
   let tabs = repeat "  ";;
 
-  let pp_binop_pure = function
+   let pp_binop_pure = failwith "Not updated";;
+  (*  function
     | Plus -> "+"
     | Minus -> "-"
     | Times -> "*"
-    | Less -> "<"
-    | Greater -> ">"
     | BitAnd -> "&"
     | BitOr -> "|"
     | BitXor -> "^"
+    | Less -> "<"
+    | Greater -> ">"
     | Leq -> "<="
     | Geq -> ">="
     | Eq -> "=="
     | Neq -> "!="
-    | And -> failwith "Logical And must be eliminated"
     | Or -> failwith "Logical Or must be eliminated"
-  ;;
+  ;; *)
 
   let pp_binop_efkt = function
   | Divided_by -> "/"
@@ -113,12 +121,12 @@ module Print = struct
   | ShiftR -> ">>"
   ;;
 
-  let pp_unop = function
+  (* let pp_unop = function
     | L_not -> "!"
     | B_not -> "~"
-  ;;
-
-  let rec pp_exp = function
+  ;; *)
+    let pp_unop = failwith "Not updated";;
+  (* let rec pp_exp = function
     | Var id -> Symbol.name id
     | Const c -> Int32.to_string c
     | Unop unop -> sprintf "%s(%s)" (pp_unop unop.op) (pp_mexp unop.operand)
@@ -127,9 +135,10 @@ module Print = struct
     | PureBinop binop -> sprintf "(%s %s %s)" (pp_mexp binop.lhs) (pp_binop_pure binop.op) (pp_mexp binop.rhs)
     | EfktBinop binop -> sprintf "(%s %s %s)" (pp_mexp binop.lhs) (pp_binop_efkt binop.op) (pp_mexp binop.rhs)
     | Ternary t ->
-      sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.lb) (pp_mexp t.rb)
+      sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.lb) (pp_mexp t.rb) *)
 
-  and pp_mexp e = pp_exp (Mark.data e)
+      let rec pp_exp = failwith "Not updated"
+   and pp_mexp e = pp_exp (Mark.data e)
 
   let rec pp_stm ?(n = 0) stm = 
     let f ~n = 

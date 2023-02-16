@@ -1,73 +1,81 @@
 open Core
 module Typ = Ctype
-type binop_pure = 
+
+type binop_pure =
   | Plus
   | Minus
   | Times
-  | And
-  | Or
   | BitAnd
   | BitOr
   | BitXor
-  | Leq 
+
+type binop_cmp =
+  | Leq
   | Less
   | Geq
   | Greater
   | Eq
   | Neq
 
-type binop_efkt = 
+type binop_efkt =
   | Divided_by
   | Modulo
   | ShiftL
   | ShiftR
-  
-type unop = 
-  | B_not (*bitwise not*)
-  | L_not (*!*)
+
+type unop =
+  | BitNot (*bitwise not*)
+  | LogNot (*!*)
 
 (*_ all subclasses of exp type  *)
-type exp = 
+type exp =
   | True
   | False
   | Var of Symbol.t
   | Const of Int32.t
-  | Ternary of 
+  | Ternary of
       { cond : mexp
       ; lb : mexp
       ; rb : mexp
       }
-  | PureBinop of  
+  | PureBinop of
       { op : binop_pure
       ; lhs : mexp
       ; rhs : mexp
       }
-  | EfktBinop of 
+  | EfktBinop of
       { op : binop_efkt
       ; lhs : mexp
       ; rhs : mexp
       }
-  | Unop of 
-      { op : unop
-      ; operand : mexp;
+  | CmpBinop of
+      { op : binop_cmp
+      ; lhs : mexp
+      ; rhs : mexp
       }
+  | Unop of
+      { op : unop
+      ; operand : mexp
+      }
+
 and mexp = exp Mark.t
 
-type stmt = 
-  | Declare of 
+type stmt =
+  | Declare of
       { var : Symbol.t
       ; typ : Typ.t
       ; body : program
       }
-  | Assign of 
+  | Assign of
       { var : Symbol.t
       ; exp : mexp
       }
-  | If of 
+  | If of
       { cond : mexp
       ; lb : program
-      ; rb : program}
-  | While of 
+      ; rb : program
+      }
+  | While of
       { cond : mexp
       ; body : program
       }
@@ -75,6 +83,7 @@ type stmt =
   | Nop
   | Seq of program * program
   | NakedExpr of mexp
+
 and program = stmt Mark.t
 
 module Print : sig
@@ -83,4 +92,3 @@ module Print : sig
   val pp_program : ?n:int -> program -> string
   val print_all : program -> string
 end
-
