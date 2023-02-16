@@ -113,6 +113,12 @@ module Print : PRINT = struct
         (pp_pexp pbop.lhs)
         (pp_pbop pbop.op)
         (pp_pexp pbop.rhs)
+    | Cmpop cop -> 
+      Printf.sprintf
+        "(%s %s %s)"
+        (pp_pexp cop.lhs)
+        (pp_cbop cop.op)
+        (pp_pexp cop.rhs)
     | Unop uop -> 
       Printf.sprintf
         "%s%s"
