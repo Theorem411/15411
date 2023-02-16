@@ -52,22 +52,21 @@ let format_operand ?(quad=false)= function
   | X86Reg r -> if not quad then __format_reg r else __format_reg_quad r
   | Mem n -> string_of_int (4 * n) ^ "(%rsp)"
 ;;
-
 type operation =
   | Add
+  | Addq
   | Sub
   | Subq
-  | Addq
   | Mul
   | IDiv
   | Mod
   | Mov
-  | Pushq
   | Movq
+  | Pushq
   | Popq
   | CLTD
-[@@deriving equal, compare, sexp]
-
+  | Cmp
+  [@@deriving equal, compare, sexp]
 let format_operation = function
   | Add -> "addl"
   | Sub -> "subl"
@@ -97,8 +96,9 @@ type instr =
   | Directive of string
   | Comment of string
   | FunName of string
+  (* | Label of string *)
   | Ret
-[@@deriving equal, compare, sexp]
+  [@@deriving equal, compare, sexp]
 
 let format = function
 | BinCommand {op=Addq|Subq as bop; src=s; dest=d} ->

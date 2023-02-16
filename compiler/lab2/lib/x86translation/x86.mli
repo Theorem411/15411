@@ -3,17 +3,18 @@ module AS = Assem
 
 type operation =
   | Add
+  | Addq
   | Sub
   | Subq
-  | Addq
   | Mul
   | IDiv
   | Mod
   | Mov
-  | Pushq
   | Movq
+  | Pushq
   | Popq
   | CLTD
+  | Cmp
   [@@deriving equal, compare, sexp]
 
 type operand =
@@ -36,6 +37,7 @@ type instr =
   | Directive of string
   | Comment of string
   | FunName of string
+  (* | Label of string *)
   | Ret
   [@@deriving equal, compare, sexp]
 
