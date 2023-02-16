@@ -45,10 +45,21 @@ let __format_reg_quad = function
   | AS.RSP -> "%rsp"
 ;;
 
+let __format_reg_word = function
+  | AS.EAX -> "%al"
+  | AS.ECX -> "%cl"
+  | r -> failwith ("word not supported yet for " ^ __format_reg r)
+;;
+
 (* Mem n means that the varialbe is in -n(%rbp) *)
-let format_operand ?(quad = false) = function
+let format_operand ?(quad = false) ?(word = false) = function
   | Imm n -> "$" ^ Int32.to_string n
-  | X86Reg r -> if not quad then __format_reg r else __format_reg_quad r
+  | X86Reg r ->
+    (match quad, word with
+    | true, false -> __format_reg_quad r
+    | false, true -> __format_reg_word r
+    | false, false -> __format_reg r
+    | _, _ -> failwith "can not have both quad and word true")
   | Mem n -> string_of_int (4 * n) ^ "(%rsp)"
 ;;
 
@@ -65,6 +76,7 @@ type operation =
   | Mov
   | Movl
   | Movq
+  | Movzx
   | Pushq
   | Popq
   | And
@@ -91,6 +103,7 @@ let format_operation = function
   | Movq -> "movq"
   | IMul -> "lol"
   | Movl -> "movl"
+  | Movzx -> "movzx"
   | And -> "and"
   | Or -> "or"
   | Xor -> "xor"
@@ -121,13 +134,18 @@ let format_jump j =
     | AS.Jne -> "jne" (*_ jump if p1 != p2 *)
     (*AS. | Jnz _ jump if p1 != 0 *)
     | AS.Jl -> "jl" (*_ jump if p1 < p2 *)
-    | AS.Jnge -> "jnge" (*_ jump if NOT p1 >= p2 *)
     | AS.Jge -> "jge" (*_ jump if p1 >= p2 *)
-    | AS.Jnl -> "jnl" (*_ jump if NOT p1 < p2 *)
     | AS.Jle -> "jle" (*_ jump if p1 <= p2 *)
-    | AS.Jng -> "jng" (*_ jump if NOT p1 > p2 *)
-    | AS.Jg -> "jg" (*_ jump if p1 > p2 *)
-    | AS.Jnle -> "jnle" (*_ jump if NOT p1 <= p2 *))
+    | AS.Jg -> "jg" (*_ jump if p1 > p2 *))
+;;
+
+let format_set = function
+  | AS.Sete -> "sete"
+  | AS.Setne -> "setne"
+  | AS.Setg -> "setg"
+  | AS.Setge -> "setge"
+  | AS.Setl -> "setl"
+  | AS.Setle -> "setle"
 ;;
 
 type instr =
@@ -151,6 +169,10 @@ type instr =
       { op : AS.jump_t option
       ; label : Label.t
       }
+  | Set of
+      { op : AS.set_t
+      ; src : operand
+      }
   | Comment of string
   | FunName of string
   (* | Label of string *)
@@ -164,6 +186,12 @@ let format = function
       (format_operation bop)
       (format_operand ~quad:true s)
       (format_operand ~quad:true d)
+  | BinCommand { op = (Sal | Sar | Movzx) as bop; src = s; dest = d } ->
+    sprintf
+      "\t%s\t%s, %s"
+      (format_operation bop)
+      (format_operand ~word:true s)
+      (format_operand d)
   | BinCommand binop ->
     sprintf
       "\t%s\t%s, %s"
@@ -182,6 +210,7 @@ let format = function
   | Cmp { rhs; lhs } -> sprintf "\tcmp\t%s, %s" (format_operand lhs) (format_operand rhs)
   | Lbl l -> Label.name l ^ ":"
   | Jump { op; label } -> sprintf "\t%s\t%s" (format_jump op) (Label.name label)
+  | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand ~word:true src)
 ;;
 
 let pure_to_opr = function

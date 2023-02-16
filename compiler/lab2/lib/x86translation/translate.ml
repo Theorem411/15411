@@ -28,6 +28,7 @@ let get_all_addressable_line instr =
     | Unop u -> [ u.dest ]
     | Jmp _ | Cjmp _ | Lab _ | AS.Directive _ | AS.Comment _ -> []
     | Cmp (l, r) -> [ l; r ]
+    | Set { src; _ } -> [ src; AS.Reg EAX ]
   in
   List.filter (all_ops instr) ~f:(fun i ->
       match i with
@@ -65,7 +66,7 @@ let __coloring (program : AS.instr list) : (V.t * color) list =
     let graph = Live.mk_graph program in
     (* let graph = Graph.mk_interfere_graph program in *)
     Graph.coloring graph) *)
-  __coloring_debug program
+  if debug_mode_translate then __coloring_debug program else __coloring_debug program
 ;;
 
 let coloring_adapter : V.t * color -> AS.operand * color = function
@@ -208,45 +209,30 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) = function
         ]
     in
     right_commands
-  (* SHIFTS *)
+  (* SHIFTS using ECX*)
   | AS.EfktBinop { op = (ShiftL | ShiftR) as op; dest = d; lhs; rhs } ->
     let d_final = get_reg d in
     let lhs_final = get_reg lhs in
     let rhs_final = get_reg rhs in
     let right_commands =
-      match rhs_final with
-      | X86.Imm n ->
-        [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
-        ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = X86.Imm n }
-        ; X86.ZeroCommand { op = X86.Cltd }
-        ; X86.UnCommand { op = IDiv; src = X86.__FREE_REG }
-        ; X86.BinCommand
-            { op = Mov
-            ; dest = d_final
-            ; src =
-                (match op with
-                | Div -> X86Reg EAX
-                | Mod -> X86Reg EDX
-                | _ -> raise (Failure "it is only Div/Mod case"))
-            }
-        ]
-      | _ ->
-        [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
-        ; X86.ZeroCommand { op = X86.Cltd }
-        ; X86.UnCommand { op = IDiv; src = rhs_final }
-        ; X86.BinCommand
-            { op = Mov
-            ; dest = d_final
-            ; src =
-                (match op with
-                | Div -> X86Reg EAX
-                | Mod -> X86Reg EDX
-                | _ -> raise (Failure "it is only Div/Mod case"))
-            }
-        ]
+      [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final }
+      ; X86.BinCommand { op = Mov; dest = X86Reg AS.ECX; src = rhs_final }
+      ; X86.BinCommand
+          { op = X86.efkt_to_opr op; dest = X86.__FREE_REG; src = X86Reg AS.ECX }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
+      ]
     in
     right_commands
   | _ -> failwith "translate_efkt not implemented yet"
+;;
+
+let translate_set get_reg = function
+  | AS.Set { typ; src } ->
+    [ X86.Set { op = typ; src = X86.X86Reg AS.EAX }
+    ; X86.BinCommand { op = Movzx; src = X86.X86Reg AS.EAX; dest = X86.X86Reg AS.EAX }
+    ; X86.BinCommand { op = Mov; src = X86.X86Reg AS.EAX; dest = get_reg src }
+    ]
+  | _ -> failwith "Not a set operation on translate_set"
 ;;
 
 let translate_line
@@ -274,6 +260,7 @@ let translate_line
   (* Translating comments / directive operations *)
   | AS.Comment d -> Comment d :: prev_lines
   | AS.Directive d -> Directive d :: prev_lines
+  | AS.Set s -> List.rev_append (translate_set get_reg (AS.Set s)) prev_lines
 ;;
 
 let get_reg_h (op2col, col2operand) o =

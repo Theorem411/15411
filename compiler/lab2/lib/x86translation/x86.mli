@@ -20,6 +20,7 @@ type operation =
   | Mov
   | Movl
   | Movq
+  | Movzx
   | Pushq
   | Popq
   | And
@@ -52,6 +53,10 @@ type instr =
   | Jump of
       { op : AS.jump_t option
       ; label : Label.t
+      }
+  | Set of
+      { op : AS.set_t
+      ; src : operand
       }
   | Comment of string
   | FunName of string
