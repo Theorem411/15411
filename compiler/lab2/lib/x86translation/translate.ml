@@ -26,7 +26,7 @@ let get_all_addressable_line instr =
     | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
     | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
     | Unop u -> [ u.dest ]
-    | Jmp _ | Cjmp _ | Lab _ | AS.Directive _ | AS.Comment _ -> []
+    | Jmp _ | Cjmp _ | Lab _ | AS.Directive _ | AS.Comment _ | Ret _ -> []
     | Cmp (l, r) -> [ l; r ]
     | Set { src; _ } -> [ src; AS.Reg EAX ]
   in
@@ -249,6 +249,7 @@ let translate_cmp get_reg = function
 ;;
 
 let translate_line
+    (retLabel : Label.t)
     (get_reg : AS.operand -> X86.operand)
     (prev_lines : X86.instr list)
     (line : AS.instr)
@@ -281,6 +282,7 @@ let translate_line
   | AS.Comment d -> Comment d :: prev_lines
   | AS.Directive d -> Directive d :: prev_lines
   | AS.Set s -> List.rev_append (translate_set get_reg (AS.Set s)) prev_lines
+  | AS.Ret _ -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
 ;;
 
 let get_reg_h (op2col, col2operand) o =
@@ -330,21 +332,27 @@ let mem_handle = function
 ;;
 
 let translate (program : AS.instr list) : X86.instr list =
+  let retLabel = Label.create () in
   let op2col : (AS.operand * color) list = __regalloc program in
   let col2operand, mem_cell_count = assign_colors op2col in
   let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in
   let translated : X86.instr list =
-    List.fold program ~init:[] ~f:(translate_line (get_reg_h (op2col, col2operand)))
+    List.fold
+      program
+      ~init:[]
+      ~f:(translate_line retLabel (get_reg_h (op2col, col2operand)))
   in
   (* TODO: optimize appends *)
   match mem_cell_count with
-  | 0 -> callee_start @ rsp_to_rbp @ List.rev translated @ callee_finish
+  | 0 ->
+    callee_start @ rsp_to_rbp @ List.rev translated @ [ X86.Lbl retLabel ] @ callee_finish
   | _ ->
     let mem_init, mem_finish = mem_handle mem_cell_count in
     callee_start
     @ mem_init
     @ rsp_to_rbp
     @ List.rev translated
+    @ [ X86.Lbl retLabel ]
     @ mem_finish
     @ callee_finish
 ;;

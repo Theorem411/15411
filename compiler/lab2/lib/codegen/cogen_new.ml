@@ -98,7 +98,7 @@ let munch_stm = function
   | T.Label l -> [ A.Lab l ]
   | T.Return e ->
     (* return e is implemented as %eax <- e *)
-    munch_exp (A.Reg A.EAX) e
+    (munch_exp (A.Reg A.EAX) e) @ [A.Ret (A.Reg A.EAX)]
 ;;
 
 let cogen inp = List.concat_map ~f:munch_stm inp
