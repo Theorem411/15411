@@ -102,3 +102,5 @@ type instr =
   (* Human-friendly comment. *)
   | Comment of string
 [@@deriving equal, sexp, compare]
+
+val format_reg: reg -> string;;

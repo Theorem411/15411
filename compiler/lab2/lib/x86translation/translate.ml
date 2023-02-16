@@ -1,5 +1,5 @@
 open Core
-module AS = Assem
+module AS = Assem_new
 module V = Graph.Vertex
 
 (* TODO: ADD SUPPORT FOR CALLEE SAVED REGISTERS: 	%esp, %ebx, %ebp, %r12d, %r13d, %r14d, %r15d *)
@@ -16,15 +16,18 @@ type color = int [@@deriving compare, equal, sexp]
 type random_pair_debug = (color * X86.operand) list [@@deriving sexp]
 type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
 
-let debug_mode_translate = false
+let debug_mode_translate = true
 
 (*_ CREATES A COLORING THAT IS UNIQUE FOR ALL TEMPS *)
 (*_ ONLY FOR DEBUGGING PURPOSES *)
 let get_all_addressable_line instr =
   let all_ops : AS.instr -> AS.operand list = function
-    | AS.Directive _ | AS.Comment _ -> []
-    | AS.Binop b -> [ b.dest; b.lhs; b.rhs ]
     | AS.Mov m -> [ m.dest; m.src ]
+    | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
+    | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
+    | Unop u -> [ u.dest ]
+    | Jmp _ | Cjmp _ | Lab _ | AS.Directive _ | AS.Comment _ -> []
+    | Cmp (l, r) -> [ l; r ]
   in
   List.filter (all_ops instr) ~f:(fun i ->
       match i with
@@ -42,6 +45,7 @@ let back_coloring_adapter : AS.operand * color -> V.t * color = function
   | AS.Temp t, color -> V.T t, color
   | AS.Reg AS.EAX, color -> V.R AS.EAX, color
   | AS.Reg AS.EDX, color -> V.R AS.EDX, color
+  | AS.Reg AS.ECX, color -> V.R AS.ECX, color
   | _ -> raise (Failure "Can not happen")
 ;;
 
@@ -55,12 +59,13 @@ let __coloring_debug (program : AS.instr list) : (V.t * color) list =
 
 (*_ COLORING USING REG ALLOCATOR *)
 let __coloring (program : AS.instr list) : (V.t * color) list =
-  if debug_mode_translate
+  (* if debug_mode_translate
   then __coloring_debug program
   else (
     let graph = Live.mk_graph program in
     (* let graph = Graph.mk_interfere_graph program in *)
-    Graph.coloring graph)
+    Graph.coloring graph) *)
+  __coloring_debug program
 ;;
 
 let coloring_adapter : V.t * color -> AS.operand * color = function
@@ -78,7 +83,7 @@ let __compare_color = compare_color
 let __equal_color = equal_color
 
 let get_free_regs (used_regs : AS.reg list) =
-  List.filter X86.all_available_regs ~f:(fun x ->
+  List.filter X86.all_available_regs ~f:(fun (x : AS.reg) ->
       not (List.mem used_regs x ~equal:AS.equal_reg))
 ;;
 
@@ -145,57 +150,28 @@ let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) l
   List.append used rest, mem_cell_count
 ;;
 
-let translate_line
-    (get_reg : AS.operand -> X86.operand)
-    (prev_lines : X86.instr list)
-    (line : AS.instr)
-    : X86.instr list
-  =
-  match line with
-  (* Translating move operations *)
-  | Mov { dest = d; src = s } ->
-    let d_final = get_reg d in
-    let src_final = get_reg s in
-    X86.BinCommand { op = Mov; dest = d_final; src = src_final } :: prev_lines
-  (* Translating simple operations *)
-  | Binop { op = (Add | Sub | Mul) as op; dest = d; lhs; rhs } ->
+let translate_pure get_reg = function
+  | AS.PureBinop { op; dest = d; lhs; rhs } ->
     let d_final = get_reg d in
     let lhs_final = get_reg lhs in
     let rhs_final = get_reg rhs in
-    (match
-       ( d_final
-       , X86.equal_operand d_final lhs_final
-       , X86.equal_operand d_final rhs_final)
-     with
-    | X86.X86Reg _, false, true ->
-      List.rev_append
-        [ 
-          X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final };  
-          X86.BinCommand { op = X86.to_opr AS.Sub; dest = X86.__FREE_REG; src = rhs_final }
-        ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
-        ]
-        prev_lines
-    | X86.X86Reg _, false, false->
-      List.rev_append
-        [ X86.BinCommand { op = Mov; dest = d_final; src = lhs_final }
-        ; X86.BinCommand { op = X86.to_opr op; dest = d_final; src = rhs_final }
-        ]
-        prev_lines
-    | X86.X86Reg _, true, false ->
-      List.rev_append
-        [ X86.BinCommand { op = X86.to_opr op; dest = d_final; src = rhs_final } ]
-        prev_lines
-    | X86.X86Reg _, true, true -> raise (Failure "can not happen")
-    | Mem _, _, _ ->
-      List.rev_append
-        [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final }
-        ; X86.BinCommand { op = X86.to_opr op; dest = X86.__FREE_REG; src = rhs_final }
-        ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
-        ]
-        prev_lines
-    | _ -> raise (Failure "X86.Imm can not be a dest"))
-  (* Translating div / mod operations *)
-  | Binop { op = (Div | Mod) as op; dest = d; lhs; rhs } ->
+    (match d_final with
+    | X86.X86Reg _ ->
+      [ X86.BinCommand { op = Mov; dest = d_final; src = lhs_final }
+      ; X86.BinCommand { op = X86.pure_to_opr op; dest = d_final; src = rhs_final }
+      ]
+    | Mem _ ->
+      [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final }
+      ; X86.BinCommand { op = X86.pure_to_opr op; dest = X86.__FREE_REG; src = rhs_final }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
+      ]
+    | _ -> failwith "X86.Imm can not be a dest")
+  | _ -> failwith "not a pure operation"
+;;
+
+let translate_efkt (get_reg : AS.operand -> X86.operand) = function
+  (* DIV / MOD *)
+  | AS.EfktBinop { op = (Div | Mod) as op; dest = d; lhs; rhs } ->
     let d_final = get_reg d in
     let lhs_final = get_reg lhs in
     let rhs_final = get_reg rhs in
@@ -204,7 +180,7 @@ let translate_line
       | X86.Imm n ->
         [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
         ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = X86.Imm n }
-        ; X86.Zero { op = CLTD }
+        ; X86.ZeroCommand { op = X86.Cltd }
         ; X86.UnCommand { op = IDiv; src = X86.__FREE_REG }
         ; X86.BinCommand
             { op = Mov
@@ -218,7 +194,7 @@ let translate_line
         ]
       | _ ->
         [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
-        ; X86.Zero { op = CLTD }
+        ; X86.ZeroCommand { op = X86.Cltd }
         ; X86.UnCommand { op = IDiv; src = rhs_final }
         ; X86.BinCommand
             { op = Mov
@@ -231,10 +207,73 @@ let translate_line
             }
         ]
     in
-    List.rev_append right_commands prev_lines
+    right_commands
+  (* SHIFTS *)
+  | AS.EfktBinop { op = (ShiftL | ShiftR) as op; dest = d; lhs; rhs } ->
+    let d_final = get_reg d in
+    let lhs_final = get_reg lhs in
+    let rhs_final = get_reg rhs in
+    let right_commands =
+      match rhs_final with
+      | X86.Imm n ->
+        [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
+        ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = X86.Imm n }
+        ; X86.ZeroCommand { op = X86.Cltd }
+        ; X86.UnCommand { op = IDiv; src = X86.__FREE_REG }
+        ; X86.BinCommand
+            { op = Mov
+            ; dest = d_final
+            ; src =
+                (match op with
+                | Div -> X86Reg EAX
+                | Mod -> X86Reg EDX
+                | _ -> raise (Failure "it is only Div/Mod case"))
+            }
+        ]
+      | _ ->
+        [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
+        ; X86.ZeroCommand { op = X86.Cltd }
+        ; X86.UnCommand { op = IDiv; src = rhs_final }
+        ; X86.BinCommand
+            { op = Mov
+            ; dest = d_final
+            ; src =
+                (match op with
+                | Div -> X86Reg EAX
+                | Mod -> X86Reg EDX
+                | _ -> raise (Failure "it is only Div/Mod case"))
+            }
+        ]
+    in
+    right_commands
+  | _ -> failwith "translate_efkt not implemented yet"
+;;
+
+let translate_line
+    (get_reg : AS.operand -> X86.operand)
+    (prev_lines : X86.instr list)
+    (line : AS.instr)
+    : X86.instr list
+  =
+  match line with
+  (* Translating move operations *)
+  | Mov { dest = d; src = s } ->
+    let d_final = get_reg d in
+    let src_final = get_reg s in
+    X86.BinCommand { op = Mov; dest = d_final; src = src_final } :: prev_lines
+  (* Translating pure operations *)
+  | AS.PureBinop e -> List.rev_append (translate_pure get_reg (AS.PureBinop e)) prev_lines
+  (* Translating effectful operations *)
+  | AS.EfktBinop e -> List.rev_append (translate_efkt get_reg (AS.EfktBinop e)) prev_lines
+  | Unop { op; dest } ->
+    X86.UnCommand { op = X86.unary_to_opr op; src = get_reg dest } :: prev_lines
+  | Jmp l -> X86.Jump { op = None; label = l } :: prev_lines
+  | Cjmp { typ; l } -> X86.Jump { op = Some typ; label = l } :: prev_lines
+  | Lab l -> X86.Lbl l :: prev_lines
+  | Cmp (r, l) -> X86.Cmp { rhs = get_reg r; lhs = get_reg l } :: prev_lines
   (* Translating comments / directive operations *)
-  | AS.Directive d -> Directive d :: prev_lines
   | AS.Comment d -> Comment d :: prev_lines
+  | AS.Directive d -> Directive d :: prev_lines
 ;;
 
 let get_reg_h (op2col, col2operand) o =
@@ -286,14 +325,6 @@ let mem_handle = function
 let translate (program : AS.instr list) : X86.instr list =
   let op2col : (AS.operand * color) list = __regalloc program in
   let col2operand, mem_cell_count = assign_colors op2col in
-  (* let () =
-    CustomDebug.print_with_name
-      "\nColoring of temps"
-      [ sexp_of_another_random_pair_debug op2col ]
-  in *)
-  (* let () =
-    CustomDebug.print_with_name "\nColoring" [ sexp_of_random_pair_debug col2operand ]
-  in *)
   let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in
   let translated : X86.instr list =
     List.fold program ~init:[] ~f:(translate_line (get_reg_h (op2col, col2operand)))

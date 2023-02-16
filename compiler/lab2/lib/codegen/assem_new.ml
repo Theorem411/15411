@@ -19,6 +19,9 @@ type reg =
  | RSP
 [@@deriving equal, sexp, compare, enum, hash]
 
+let format_reg r = (sexp_of_reg r |> string_of_sexp)
+
+
 type operand =
   | Imm of Int32.t
   | Reg of reg

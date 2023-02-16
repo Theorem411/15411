@@ -1,4 +1,4 @@
-module AS = Assem
+module AS = Assem_new
 
 type __operand =
   | Temp of Temp.t
