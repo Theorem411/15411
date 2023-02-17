@@ -1,5 +1,0 @@
-int main() {
-    bool am_i_zero = true;
-    int x = 1/(am_i_zero ? 0 : 1);
-    return x;
-}

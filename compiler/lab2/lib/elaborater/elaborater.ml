@@ -115,11 +115,16 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
       m_e
       (Aste.Ternary { cond = elab_mexp cond; lb = elab_mexp first; rb = elab_mexp second })
   (* turning logical ops to ternary*)
-  | Binop { op = Ast.L_and | Ast.L_or; lhs; rhs } ->
+  | Binop { op = Ast.L_and ; lhs; rhs } ->
     elab_mexp
       (copy_mark
          m_e
          (Ast.Ternary { cond = lhs; first = rhs; second = copy_mark m_e Ast.False }))
+  | Binop { op = Ast.L_or; lhs; rhs } -> 
+    elab_mexp
+      (copy_mark
+         m_e
+         (Ast.Ternary { cond = lhs; first = copy_mark m_e Ast.True; second = rhs }))
   (* pure *)
   | Binop
       { op = (Ast.Plus | Ast.Minus | Ast.Times | Ast.B_and | Ast.B_or | Ast.B_xor) as op
@@ -212,7 +217,8 @@ let elab_postop m_s =
 
 let elab_return m_s =
   match Mark.data m_s with
-  | Ast.Return m_r -> Aste.Return (elab_mexp m_r)
+  | Ast.Return m_r -> 
+      Aste.Return (elab_mexp m_r)
   | _ -> failwith "elab_return recieved not a return"
 ;;
 

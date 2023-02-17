@@ -1,0 +1,47 @@
+%t1  <--  0
+%t2  <--  0
+.L1
+if (%t2 < 10).L2 else .L3
+.L2
+%t1  <--  (%t1 + 1)
+%t2  <--  (%t2 + 1)
+goto .L1
+.L3
+%t1  <--  (%t1 + 1)
+%t3  <--  (%t1 << 2)
+%t1  <--  %t3
+%t4  <--  1
+if (%t4 != 0).L4 else .L5
+.L4
+%t1  <--  (%t1 + 1)
+goto .L6
+.L5
+goto .L6
+.L6
+if (%t4 != 0).L10 else .L11
+.L10
+%t6  <--  0
+goto .L12
+.L11
+%t6  <--  0
+goto .L12
+.L12
+if (%t6 != 0).L7 else .L8
+.L7
+%t5  <--  1
+goto .L9
+.L8
+%t5  <--  0
+goto .L9
+.L9
+return %t5
+
+
+
+BUG found : 
+y is always true at this point. 
+the return line in src code
+"return y || false ? 1 : 0;"
+is parsed as 
+"return ((y || false) ? 1 : 0);"
+which should still "return 1"
