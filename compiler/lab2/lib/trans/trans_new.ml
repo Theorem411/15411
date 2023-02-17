@@ -79,17 +79,21 @@ let rec tr_exp_rev (env : Temp.t S.t) (exp : A.mexp) : tr_exp_t =
 
 and tr_exp_ternary env e1 e2 e3 =
   let t = Temp.create () in
-  let lt = Label.create () in
-  let lf = Label.create () in
+  let l1 = Label.create () in
+  let l2 = Label.create () in
+  let l3 = Label.create () in
   let cmd1, exp1 = tr_exp_rev env e1 in
   let cmd2, exp2 = tr_exp_rev env e2 in
   let cmd3, exp3 = tr_exp_rev env e3 in
   let cond : T.cond = { cmp = T.Neq; p1 = exp1; p2 = T.Const (Int32.of_int_exn 0) } in
   let newcode =
     (*_ view in reverse order *)
-    [ T.MovPureExp { dest = t; src = exp3 } :: cmd3
-    ; T.Label lf :: T.MovPureExp { dest = t; src = exp2 } :: cmd2
-    ; [ T.Label lt; T.If { cond; lt; lf } ]
+    [ [T.Label l3]
+    ; T.Goto l3 :: T.MovPureExp { dest = t; src = exp3 } :: cmd3
+    ; [T.Label l2]
+    ; T.Goto l3 :: T.MovPureExp { dest = t; src = exp2 } :: cmd2
+    ; [T.Label l1]
+    ; [T.If { cond; lt=l1; lf=l2 }]
     ; cmd1
     ]
     |> List.concat
