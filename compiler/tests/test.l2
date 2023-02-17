@@ -1,11 +1,5 @@
-int main () {
-    bool b = false; 
-    int x = 3;
-    int z = 0;
-
-    if (!b && x > z) {
-        return 1;
-    } else {
-        return 0;
-    }
+int main() {
+    bool am_i_zero = true;
+    int x = 1/(am_i_zero ? 0 : 1);
+    return x;
 }

@@ -122,7 +122,7 @@ module StatSemanticExpr = struct
       let hyps_r = { hyps with exp = tern.rb } in
         typechecker hyps_cond T.Bool;
         typechecker hyps_r typ;
-        T.Bool
+        typ
     | A.PureBinop bop ->
       let hyps_lhs = { hyps with exp = bop.lhs }
       and hyps_rhs = { hyps with exp = bop.rhs } in
