@@ -1,8 +1,7 @@
 // Online C compiler to run C program online
 
-int main ()
-{
-  int n = 56;
-  int x = 1 << n;
+int main() {
+  int x = 32;
+  x = x >> (-1);
   return x;
 }

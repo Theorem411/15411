@@ -220,6 +220,9 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
         (* check for the shift >= 32 *)
       ; X86.Cmp { rhs = X86Reg AS.ECX; lhs = Imm (Int32.of_int_exn 32) }
       ; X86.Jump { op = Some AS.Jge; label = errLabel } (* pre check end *)
+        (* check for the shift < 32 *)
+      ; X86.Cmp { rhs = X86Reg AS.ECX; lhs = Imm (Int32.of_int_exn 0) }
+      ; X86.Jump { op = Some AS.Jl; label = errLabel } 
       ; X86.BinCommand
           { op = X86.efkt_to_opr op; dest = X86.__FREE_REG; src = X86Reg AS.ECX }
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
