@@ -203,10 +203,13 @@ and tr_stm_if env (cond : A.mexp) (s1 : A.program) (s2 : A.program) =
   | _ -> normal_case env cond s1 s2
 
 and tr_stm_while env (cond : A.mexp) (body : A.program) =
+  let l1 = Label.create () in
+  let l2 = Label.create () in
+  let l3 = Label.create () in
   let rec cp e lt lf =
     match Mark.data e with
-    | A.True -> [ T.Goto lt ]
-    | A.False -> [ T.Goto lf ]
+    | A.True -> [ T.Goto lt ], lt, lf
+    | A.False -> [ T.Goto lf ], lt, lf
     | A.Unop { op=A.LogNot; operand } ->
         cp operand lf lt
     | A.Unop { op=A.BitNot; _ } ->
@@ -216,19 +219,18 @@ and tr_stm_while env (cond : A.mexp) (body : A.program) =
         let cmd1, p1 = tr_exp_rev env cop.lhs in
         let cmd2, p2 = tr_exp_rev env cop.rhs in
         let tcond : T.cond = { cmp; p1; p2 } in
-          T.If { cond = tcond; lt; lf } :: (cmd2 @ cmd1)
+          T.If { cond = tcond; lt; lf } :: (cmd2 @ cmd1), lt, lf
     | _ -> cp_normal_case e lt lf
   and cp_normal_case e lt lf = 
     let ccmd, cexp = tr_exp_rev env e in
     let tcond : T.cond = { cmp = T.Neq; p1 = cexp; p2 = T.Const (Int32.of_int_exn 0) } in
-      T.If { cond = tcond; lt; lf } :: ccmd 
+      T.If { cond = tcond; lt; lf } :: ccmd, lt, lf
   in
-  let l1 = Label.create () in
-  let l2 = Label.create () in
-  let l3 = Label.create () in
-  [ [ T.Label l3 ]
-  ; T.Goto l1 :: tr_stm_rev env body
-  ; T.Label l2 :: cp cond l2 l3
+  let loop_guard_code, lt, lf = cp cond l2 l3 in
+  let loop_body_code = tr_stm_rev env body in
+  [ [ T.Label lf ]
+  ; T.Goto l1 :: loop_body_code
+  ; T.Label lt :: loop_guard_code
   ; [ T.Label l1 ]
   ]
   |> List.concat
