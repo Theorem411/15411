@@ -1,0 +1,88 @@
+original apollo-return-multiple-loops src code
+//test return 150
+// loopy loops
+
+int main () {
+  int fifteen = 0;
+  bool b = false;
+  int res = 0;
+
+  while (!b) {
+    fifteen++;
+    b = fifteen == 15;
+  }
+
+  b = false;
+  int counter = 0;
+
+  while (!b) {
+    res += fifteen;
+    counter++;
+    if (counter == 10) { b = true; }
+  }
+
+  return res;
+}
+
+------------------------
+doing elaborating...
+
+int fifteen;
+fifteen = 0;
+bool b;
+b = false;
+int res;
+res = 0;
+while(!(b)) {
+    fifteen = (fifteen + 1);
+    b = (fifteen == 15);
+    nop;
+}
+b = false;
+int counter;
+counter = 0;
+while(!(b)) {
+    res = (res + fifteen);
+    counter = (counter + 1);
+    if ((counter == 10)) {
+        b = true;
+        nop;
+    } else {
+        nop;
+    }
+    nop;
+}
+return res;
+nop;
+
+------------------------------------
+
+This is what translate gives me:
+
+[fifteen] %t1  <--  0
+[b] %t2  <--  0
+[res] %t3  <--  0
+.L1
+if (%t2 != 0).L3 else .L2
+.L2
+%t1  <--  (%t1 + 1)
+%t2  <--  (%t1 == 15)
+goto .L1
+.L3
+%t2  <--  0
+%t4  <--  0
+.L4
+if (%t2 != 0).L6 else .L5
+.L5
+%t3  <--  (%t3 + %t1)
+%t4  <--  (%t4 + 1)
+if (%t4 == 10).L7 else .L8
+.L7
+%t2  <--  1
+goto .L9
+.L8
+goto .L9
+.L9
+goto .L4
+.L6
+return %t3
