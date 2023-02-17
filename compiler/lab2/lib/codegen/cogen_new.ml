@@ -85,15 +85,15 @@ let munch_stm = function
     munch_exp t1 mv.lhs
     @ munch_exp t2 mv.rhs
     @ [ A.EfktBinop { op; dest = A.Temp mv.dest; lhs = t1; rhs = t2 } ]
-  | T.If ifs ->
-    let jmptyp = if_cond_to_rev_jump_t ifs.cond in
-    let e1 = ifs.cond.p1 in
-    let e2 = ifs.cond.p2 in
+  | T.If { cond; lf; _ } ->
+    let jmptyp = if_cond_to_rev_jump_t cond in
+    let e1 = cond.p1 in
+    let e2 = cond.p2 in
     let t1 = A.Temp (Temp.create ()) in
     let t2 = A.Temp (Temp.create ()) in
     munch_exp t1 e1
     @ munch_exp t2 e2
-    @ [ A.Cmp (t1, t2); A.Cjmp { typ = jmptyp; l = ifs.lf } ]
+    @ [ A.Cmp (t1, t2); A.Cjmp { typ = jmptyp; l = lf } ]
   | T.Goto l -> [ A.Jmp l ]
   | T.Label l -> [ A.Lab l ]
   | T.Return e ->

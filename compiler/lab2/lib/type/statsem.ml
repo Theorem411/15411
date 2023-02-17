@@ -122,7 +122,7 @@ module StatSemanticExpr = struct
       let hyps_r = { hyps with exp = tern.rb } in
         typechecker hyps_cond T.Bool;
         typechecker hyps_r typ;
-        T.Bool
+        typ
     | A.PureBinop bop ->
       let hyps_lhs = { hyps with exp = bop.lhs }
       and hyps_rhs = { hyps with exp = bop.rhs } in
@@ -222,7 +222,8 @@ module StatSemanticCmd = struct
       hyps.init
     | A.NakedExpr exp ->
       let hyps_expr = StatSemanticExpr.hyps_create ~ctx:hyps.ctx ~init:hyps.init ~exp in
-      StatSemanticExpr.typechecker hyps_expr hyps.typ;
+      let _ : T.t = StatSemanticExpr.typesynther hyps_expr in 
+      (*_ bug fix: exp's type not necessary the claimed return type*)
       hyps.init (*_ not defined in lecture notes! Be careful of BUG *)
   ;;
 end

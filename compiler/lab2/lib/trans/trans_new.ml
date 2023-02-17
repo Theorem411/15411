@@ -79,17 +79,21 @@ let rec tr_exp_rev (env : Temp.t S.t) (exp : A.mexp) : tr_exp_t =
 
 and tr_exp_ternary env e1 e2 e3 =
   let t = Temp.create () in
-  let lt = Label.create () in
-  let lf = Label.create () in
+  let l1 = Label.create () in
+  let l2 = Label.create () in
+  let l3 = Label.create () in
   let cmd1, exp1 = tr_exp_rev env e1 in
   let cmd2, exp2 = tr_exp_rev env e2 in
   let cmd3, exp3 = tr_exp_rev env e3 in
   let cond : T.cond = { cmp = T.Neq; p1 = exp1; p2 = T.Const (Int32.of_int_exn 0) } in
   let newcode =
     (*_ view in reverse order *)
-    [ T.MovPureExp { dest = t; src = exp3 } :: cmd3
-    ; T.Label lf :: T.MovPureExp { dest = t; src = exp2 } :: cmd2
-    ; [ T.Label lt; T.If { cond; lt; lf } ]
+    [ [T.Label l3]
+    ; T.Goto l3 :: T.MovPureExp { dest = t; src = exp3 } :: cmd3
+    ; [T.Label l2]
+    ; T.Goto l3 :: T.MovPureExp { dest = t; src = exp2 } :: cmd2
+    ; [T.Label l1]
+    ; [T.If { cond; lt=l1; lf=l2 }]
     ; cmd1
     ]
     |> List.concat
@@ -97,26 +101,30 @@ and tr_exp_ternary env e1 e2 e3 =
   newcode, T.Temp t
 
 and tr_exp_logNot env e =
-  let cmd, exp = tr_exp_rev env e in
-  let normal =
-    cmd, T.Binop { op = T.BitXor; lhs = exp; rhs = T.Const (Int32.of_int_exn 1) }
-  in
+
   match Mark.data e with
   | A.Unop uop ->
     (match uop.op with
      | A.LogNot -> tr_exp_rev env uop.operand
-     | _ -> normal)
-  | _ -> normal
+     | _ -> 
+        let cmd, exp = tr_exp_rev env e in
+          cmd, T.Binop { op = T.BitXor; lhs = exp; rhs = T.Const (Int32.of_int_exn 1) })
+  | _ -> 
+        let cmd, exp = tr_exp_rev env e in
+          cmd, T.Binop { op = T.BitXor; lhs = exp; rhs = T.Const (Int32.of_int_exn 1) }
+  
 
 and tr_exp_bitNot env e =
-  let cmd, exp = tr_exp_rev env e in
-  let normal = cmd, T.Unop { op = T.BitNot; p = exp } in
+  let normal_case env e = 
+    let cmd, exp = tr_exp_rev env e in
+      cmd, T.Unop { op = T.BitNot; p = exp }
+  in
   match Mark.data e with
   | A.Unop uop ->
     (match uop.op with
      | A.BitNot -> tr_exp_rev env uop.operand
-     | _ -> normal)
-  | _ -> normal
+     | _ -> normal_case env e)
+  | _ -> normal_case env e
 ;;
 (* 
 let tr_exp (env : Temp.t S.t) (exp : A.mexp) : tr_exp_t =
@@ -151,68 +159,73 @@ let rec tr_stm_rev (env : Temp.t S.t) (stm : A.program) =
   | A.While loop -> tr_stm_while env loop.cond loop.body
 
 and tr_stm_if env (cond : A.mexp) (s1 : A.program) (s2 : A.program) =
-  let res1 = tr_stm_rev env s1 in
-  let res2 = tr_stm_rev env s2 in
-  let ccmd, cexp = tr_exp_rev env cond in
-  let l1 = Label.create () in
-  let l2 = Label.create () in
-  let l3 = Label.create () in
-  let tcond : T.cond = { cmp = T.Neq; p1 = cexp; p2 = T.Const (Int32.of_int_exn 0) } in
-  let normal =
-    (*_ view in reverse order! *)
-    [ [ T.Label l3; T.Goto l3 ]
-    ; res2
-    ; [ T.Label l2; T.Goto l3 ]
-    ; res1
-    ; [ T.Label l1; T.If { cond = tcond; lt = l1; lf = l2 } ]
-    ; ccmd
-    ]
-    |> List.concat
+  let normal_case env cond s1 s2 = 
+    let res1 = tr_stm_rev env s1 in
+    let res2 = tr_stm_rev env s2 in
+    let ccmd, cexp = tr_exp_rev env cond in
+    let l1 = Label.create () in
+    let l2 = Label.create () in
+    let l3 = Label.create () in
+    let tcond : T.cond = { cmp = T.Neq; p1 = cexp; p2 = T.Const (Int32.of_int_exn 0) } in
+      (*_ view in reverse order! *)
+      [ [ T.Label l3; T.Goto l3 ]
+      ; res2
+      ; [ T.Label l2; T.Goto l3 ]
+      ; res1
+      ; [ T.Label l1; T.If { cond = tcond; lt = l1; lf = l2 } ]
+      ; ccmd
+      ]
+      |> List.concat
   in
+  
   match Mark.data cond with
   | A.True -> tr_stm_rev env s1
   | A.False -> tr_stm_rev env s2
   | A.Unop uop ->
     (match uop.op with
      | A.LogNot -> tr_stm_if env uop.operand s2 s1
-     | _ -> normal)
+     | _ -> normal_case env cond s1 s2)
   | A.CmpBinop cop ->
     let op' = aste_binop_to_tree_cbop cop.op in
     let cmd1, exp1 = tr_exp_rev env cop.lhs in
     let cmd2, exp2 = tr_exp_rev env cop.rhs in
+    let l1 = Label.create () in
+    let l2 = Label.create () in
+    let l3 = Label.create () in
     let tcond : T.cond = { cmp = op'; p1 = exp1; p2 = exp2 } in
     (*_ view in reverse order *)
-    [ T.Label l3 :: T.Goto l3 :: res2
-    ; T.Label l2 :: T.Goto l3 :: res1
+    [ T.Label l3 :: T.Goto l3 :: tr_stm_rev env s2
+    ; T.Label l2 :: T.Goto l3 :: tr_stm_rev env s1
     ; T.Label l1 :: T.If { cond = tcond; lt = l1; lf = l2 } :: cmd2
     ; cmd1
     ]
     |> List.concat
-  | _ -> normal
+  | _ -> normal_case env cond s1 s2
 
 and tr_stm_while env (cond : A.mexp) (body : A.program) =
-  let l1 = Label.create () in
-  let l2 = Label.create () in
-  let l3 = Label.create () in
   let rec cp e lt lf =
-    let ccmd, cexp = tr_exp_rev env e in
-    let tcond : T.cond = { cmp = T.Neq; p1 = cexp; p2 = T.Const (Int32.of_int_exn 0) } in
-    let normal = T.If { cond = tcond; lt = l2; lf = l3 } :: ccmd in
     match Mark.data e with
     | A.True -> [ T.Goto lt ]
     | A.False -> [ T.Goto lf ]
-    | A.Unop uop ->
-      (match uop.op with
-       | A.LogNot -> cp uop.operand lf lt
-       | _ -> normal)
+    | A.Unop { op=A.LogNot; operand } ->
+        cp operand lf lt
+    | A.Unop { op=A.BitNot; _ } ->
+        cp_normal_case e lt lf
     | A.CmpBinop cop ->
-      let cmp = aste_binop_to_tree_cbop cop.op in
-      let cmd1, p1 = tr_exp_rev env cop.lhs in
-      let cmd2, p2 = tr_exp_rev env cop.rhs in
-      let tcond : T.cond = { cmp; p1; p2 } in
-      T.If { cond = tcond; lt = l2; lf = l3 } :: (cmd2 @ cmd1)
-    | _ -> normal
+        let cmp = aste_binop_to_tree_cbop cop.op in
+        let cmd1, p1 = tr_exp_rev env cop.lhs in
+        let cmd2, p2 = tr_exp_rev env cop.rhs in
+        let tcond : T.cond = { cmp; p1; p2 } in
+          T.If { cond = tcond; lt; lf } :: (cmd2 @ cmd1)
+    | _ -> cp_normal_case e lt lf
+  and cp_normal_case e lt lf = 
+    let ccmd, cexp = tr_exp_rev env e in
+    let tcond : T.cond = { cmp = T.Neq; p1 = cexp; p2 = T.Const (Int32.of_int_exn 0) } in
+      T.If { cond = tcond; lt; lf } :: ccmd 
   in
+  let l1 = Label.create () in
+  let l2 = Label.create () in
+  let l3 = Label.create () in
   [ [ T.Label l3 ]
   ; T.Goto l1 :: tr_stm_rev env body
   ; T.Label l2 :: cp cond l2 l3
