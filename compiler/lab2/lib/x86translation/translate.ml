@@ -170,7 +170,7 @@ let translate_pure get_reg = function
   | _ -> failwith "not a pure operation"
 ;;
 
-let translate_efkt (get_reg : AS.operand -> X86.operand) = function
+let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = function
   (* DIV / MOD *)
   | AS.EfktBinop { op = (Div | Mod) as op; dest = d; lhs; rhs } ->
     let d_final = get_reg d in
@@ -217,6 +217,9 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) = function
     let right_commands =
       [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final }
       ; X86.BinCommand { op = Mov; dest = X86Reg AS.ECX; src = rhs_final }
+        (* check for the shift > 32 *)
+      ; X86.Cmp { rhs = X86Reg AS.ECX; lhs = Imm (Int32.of_int_exn 32) }
+      ; X86.Jump { op = Some AS.Jg; label = errLabel } (* pre check end *)
       ; X86.BinCommand
           { op = X86.efkt_to_opr op; dest = X86.__FREE_REG; src = X86Reg AS.ECX }
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
@@ -250,6 +253,7 @@ let translate_cmp get_reg = function
 
 let translate_line
     (retLabel : Label.t)
+    (errLabel : Label.t)
     (get_reg : AS.operand -> X86.operand)
     (prev_lines : X86.instr list)
     (line : AS.instr)
@@ -271,7 +275,8 @@ let translate_line
   (* Translating pure operations *)
   | AS.PureBinop e -> List.rev_append (translate_pure get_reg (AS.PureBinop e)) prev_lines
   (* Translating effectful operations *)
-  | AS.EfktBinop e -> List.rev_append (translate_efkt get_reg (AS.EfktBinop e)) prev_lines
+  | AS.EfktBinop e ->
+    List.rev_append (translate_efkt get_reg errLabel (AS.EfktBinop e)) prev_lines
   | Unop { op; dest } ->
     X86.UnCommand { op = X86.unary_to_opr op; src = get_reg dest } :: prev_lines
   | Jmp l -> X86.Jump { op = None; label = l } :: prev_lines
@@ -331,28 +336,47 @@ let mem_handle = function
     , [ X86.BinCommand { op = X86.Addq; dest = X86.X86Reg RSP; src = X86.Imm n } ] )
 ;;
 
+let get_error_block errLabel =
+  [ X86.Lbl errLabel
+  ; X86.BinCommand { op = X86.Mov; dest = X86.X86Reg AS.EAX; src = X86.Imm Int32.one }
+  ; X86.BinCommand { op = X86.Mov; dest = X86.X86Reg AS.ECX; src = X86.Imm Int32.zero }
+  ; X86.ZeroCommand { op = X86.Cltd }
+  ; X86.UnCommand { op = X86.IDiv; src = X86.X86Reg AS.ECX }
+  ]
+;;
+
 let translate (program : AS.instr list) : X86.instr list =
+  let errLabel = Label.create () in
   let retLabel = Label.create () in
   let op2col : (AS.operand * color) list = __regalloc program in
   let col2operand, mem_cell_count = assign_colors op2col in
   let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in
+  let ret_block_lbl, ret_stm = [ X86.Lbl retLabel ], [ X86.Ret ] in
   let translated : X86.instr list =
     List.fold
       program
       ~init:[]
-      ~f:(translate_line retLabel (get_reg_h (op2col, col2operand)))
+      ~f:(translate_line retLabel errLabel (get_reg_h (op2col, col2operand)))
   in
   (* TODO: optimize appends *)
   match mem_cell_count with
   | 0 ->
-    callee_start @ rsp_to_rbp @ List.rev translated @ [ X86.Lbl retLabel ] @ callee_finish
+    callee_start
+    @ rsp_to_rbp
+    @ List.rev translated
+    @ ret_block_lbl
+    @ callee_finish
+    @ ret_stm
+    @ get_error_block errLabel
   | _ ->
     let mem_init, mem_finish = mem_handle mem_cell_count in
     callee_start
     @ mem_init
     @ rsp_to_rbp
     @ List.rev translated
-    @ [ X86.Lbl retLabel ]
+    @ ret_block_lbl
     @ mem_finish
     @ callee_finish
+    @ ret_stm
+    @ get_error_block errLabel
 ;;

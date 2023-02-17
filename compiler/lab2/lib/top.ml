@@ -219,7 +219,6 @@ let compile (cmd : cmd_line_args) : unit =
         output_x86_instr (X86.Directive ".type\t_c0_main, @function");
         output_x86_instr (X86.FunName "_c0_main:");
         List.iter ~f:output_x86_instr translated;
-        output_x86_instr (X86.Ret);
         output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\""));)
     ;;
 
