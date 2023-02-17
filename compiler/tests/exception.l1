@@ -1,9 +1,10 @@
 int main()
 {
-  int TMIN;
-  int overflow;
-
-  TMIN = -2147483648;
-  overflow = TMIN / -1;
-  return overflow;
+    int x = 0;
+    int z = 3;
+    bool y = false;
+    if (!y && (x < z)){
+        return 1;
+    }
+    return 0;
 }
