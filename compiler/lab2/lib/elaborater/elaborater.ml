@@ -241,7 +241,7 @@ and elab_while m_s =
   match s with
   | Ast.While { cond; body } ->
     let c = elab_mexp cond in
-    let b : Aste.stmt Mark.t = elab body in
+    let b : Aste.stmt Mark.t = elaborate_stmts [body] in
     Aste.While { cond = c; body = b }
   | _ -> failwith "elab_while recieved not a while"
 
@@ -251,7 +251,7 @@ and elab m_s : Aste.stmt Mark.t =
   match Mark.data m_s with
   (* special cases *)
   | Ast.Block mstms -> elaborate_stmts mstms
-  | Ast.Declare _ -> failwith "declare should be handled in elaborate"
+  | Ast.Declare _ -> failwith "declare should be handled in elaborate_stmts function"
   | Ast.For _ -> elab_for m_s
   (* Nice way to still have copy_mark m_s wrapper around cases who need them *)
   | _ ->
