@@ -1,0 +1,11 @@
+//test return -2
+
+int main () {
+  bool x = true;
+  int b = 15;
+  for(bool i = false; !!!i; i = !i) {
+    b -= 17;
+  }
+
+  return b;
+}
