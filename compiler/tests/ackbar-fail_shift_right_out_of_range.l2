@@ -1,0 +1,7 @@
+//test div-by-zero
+//Tests shifting out of range  (should raise SIGFPE) 
+
+int main() {
+    int mega_shift = 32;
+    return 1 >> mega_shift;
+}

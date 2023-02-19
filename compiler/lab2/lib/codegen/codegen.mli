@@ -1,4 +1,4 @@
-(* L1 Compiler
+(* (* L1 Compiler
  * Assembly Code Generator for FAKE assembly
  * Author: Alex Vaynberg <alv@andrew.cmu.edu>
  * Based on code by: Kaustuv Chaudhuri <kaustuv+@cs.cmu.edu>
@@ -8,4 +8,4 @@
  * Implements a "convenient munch" algorithm
  *)
 
-val codegen : Tree.stm list -> Assem.instr list
+val codegen : Tree.stm list -> Assem.instr list *)

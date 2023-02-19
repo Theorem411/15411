@@ -108,4 +108,4 @@ let format = function
 ;;
 
 (* let reg_name = function EAX -> "%eax" | EDX -> "%edx" *)
-let reg_enum = reg_to_enum;;
+let reg_enum = reg_to_enum

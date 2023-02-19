@@ -1,0 +1,15 @@
+//test return 1
+
+int main() { 
+    int x = 0;
+    for (int i = 0; i < 10; i++) {
+        x += 1;
+    }
+    x += 1;
+    x <<= 2;
+    bool y = true;
+    if (y != false) {
+        x++;
+    }
+    return y || false ? 1 : 0;
+}

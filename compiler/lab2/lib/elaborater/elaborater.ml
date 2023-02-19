@@ -12,13 +12,17 @@ let to_pure = function
   | Ast.B_and -> Aste.BitAnd
   | Ast.B_or -> Aste.BitOr
   | Ast.B_xor -> Aste.BitXor
+  | _ -> failwith "Not a pure binop"
+;;
+
+let to_cmp = function
   | Ast.Greater -> Aste.Greater
   | Ast.Greater_eq -> Aste.Geq
   | Ast.Less -> Aste.Less
   | Ast.Less_eq -> Aste.Leq
   | Ast.Equals -> Aste.Eq
   | Ast.Not_equals -> Aste.Neq
-  | _ -> failwith "Not a pure binop"
+  | _ -> failwith "Not a cmp binp"
 ;;
 
 let to_efkt = function
@@ -66,7 +70,7 @@ let update_body (body : Ast.mstm) (post : Ast.mstm option) =
   | Some p ->
     (match Mark.data p with
     | Ast.Declare _ -> failwith "post of for loop can not be a decl"
-    | _ -> copy_mark p (Ast.Block [ p; body ]))
+    | _ -> copy_mark p (Ast.Block [ body; p ]))
 ;;
 
 (* Turn Ast.For to Ast.While and then use other elab functions:) *)
@@ -98,34 +102,42 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
       copy_mark
         m_e
         (Aste.PureBinop
-           { op = Aste.Plus
+           { op = Aste.Minus
            ; lhs = copy_mark m_e (Aste.Const Int32.zero)
            ; rhs = elab_mexp operand
            })
     | Ast.L_not ->
-      copy_mark m_e (Aste.Unop { op = Aste.L_not; operand = elab_mexp operand })
+      copy_mark m_e (Aste.Unop { op = Aste.LogNot; operand = elab_mexp operand })
     | Ast.B_not ->
-      copy_mark m_e (Aste.Unop { op = Aste.B_not; operand = elab_mexp operand }))
+      copy_mark m_e (Aste.Unop { op = Aste.BitNot; operand = elab_mexp operand }))
   | Ternary { cond; first; second } ->
     copy_mark
       m_e
       (Aste.Ternary { cond = elab_mexp cond; lb = elab_mexp first; rb = elab_mexp second })
   (* turning logical ops to ternary*)
-  | Binop { op = Ast.L_and | Ast.L_or; lhs; rhs } ->
+  | Binop { op = Ast.L_and; lhs; rhs } ->
     elab_mexp
       (copy_mark
          m_e
          (Ast.Ternary { cond = lhs; first = rhs; second = copy_mark m_e Ast.False }))
+  | Binop { op = Ast.L_or; lhs; rhs } ->
+    elab_mexp
+      (copy_mark
+         m_e
+         (Ast.Ternary { cond = lhs; first = copy_mark m_e Ast.True; second = rhs }))
   (* pure *)
   | Binop
+      { op = (Ast.Plus | Ast.Minus | Ast.Times | Ast.B_and | Ast.B_or | Ast.B_xor) as op
+      ; lhs
+      ; rhs
+      } ->
+    copy_mark
+      m_e
+      (Aste.PureBinop { op = to_pure op; lhs = elab_mexp lhs; rhs = elab_mexp rhs })
+  (* cmp *)
+  | Binop
       { op =
-          ( Ast.Plus
-          | Ast.Minus
-          | Ast.Times
-          | Ast.B_and
-          | Ast.B_or
-          | Ast.B_xor
-          | Ast.Equals
+          ( Ast.Equals
           | Ast.Greater
           | Ast.Greater_eq
           | Ast.Less
@@ -136,7 +148,7 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
       } ->
     copy_mark
       m_e
-      (Aste.PureBinop { op = to_pure op; lhs = elab_mexp lhs; rhs = elab_mexp rhs })
+      (Aste.CmpBinop { op = to_cmp op; lhs = elab_mexp lhs; rhs = elab_mexp rhs })
   (* efkt *)
   | Binop { op; lhs; rhs } ->
     copy_mark
@@ -157,6 +169,8 @@ let elab_assign_with_op
       Aste.PureBinop { op = to_pure op; lhs = elab_mexp m_l; rhs = elab_mexp m_r }
     | Divided_by | Modulo | ShiftL | ShiftR ->
       Aste.EfktBinop { op = to_efkt op; lhs = elab_mexp m_l; rhs = elab_mexp m_r }
+    | Greater | Greater_eq | Less_eq | Less | Equals | Not_equals ->
+      Aste.CmpBinop { op = to_cmp op; lhs = elab_mexp m_l; rhs = elab_mexp m_r }
     | _ -> failwith "Not asign with op"
   in
   Aste.Assign { var = v; exp = copy_mark m_s expr_new }
@@ -212,11 +226,11 @@ let rec elab_if m_s =
   match s with
   | Ast.If { cond; thenstm; elsestm } ->
     let c = elab_mexp cond in
-    let t : Aste.stmt Mark.t = elab thenstm in
+    let t : Aste.stmt Mark.t = elaborate_stmts [ thenstm ] in
     let f : Aste.stmt Mark.t =
       match elsestm with
       | None -> Mark.naked Aste.Nop
-      | Some elsepart -> elab elsepart
+      | Some elsepart -> elaborate_stmts [ elsepart ]
     in
     Aste.If { cond = c; lb = t; rb = f }
   | _ -> failwith "elab_if recieved not an if"
@@ -226,7 +240,7 @@ and elab_while m_s =
   match s with
   | Ast.While { cond; body } ->
     let c = elab_mexp cond in
-    let b : Aste.stmt Mark.t = elab body in
+    let b : Aste.stmt Mark.t = elaborate_stmts [ body ] in
     Aste.While { cond = c; body = b }
   | _ -> failwith "elab_while recieved not a while"
 
@@ -236,7 +250,7 @@ and elab m_s : Aste.stmt Mark.t =
   match Mark.data m_s with
   (* special cases *)
   | Ast.Block mstms -> elaborate_stmts mstms
-  | Ast.Declare _ -> failwith "declare should be handled in elaborate"
+  | Ast.Declare _ -> failwith "declare should be handled in elaborate_stmts function"
   | Ast.For _ -> elab_for m_s
   (* Nice way to still have copy_mark m_s wrapper around cases who need them *)
   | _ ->

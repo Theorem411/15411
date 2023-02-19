@@ -7,53 +7,56 @@
  *)
 module A = Aste
 
-type int_pbop =
-  | Add
-  | Sub
-  | Mul
-  | BitAnd
-  | BitOr
-  | BitXor
+type pbop = 
+| Add
+| Sub
+| Mul
+| BitAnd
+| BitOr
+| BitXor
 
-type log_pbop =
-  | And
-  | Or
+type ebop = 
+  | Div
+  | Mod
+  | ShftL
+  | ShftR
+
+type cbop =
   | Leq
   | Less
   | Geq
   | Greater
   | Eq
   | Neq
-
-type pbop =
-  | IntOp of int_pbop
-  | LogOp of log_pbop
-
-val aste_pure_binop_to_pbop : A.binop_pure -> pbop
-
-type int_ebop =
-  | Div
-  | Mod
-  | ShftL
-  | ShftR
-
-type ebop = IntOp of int_ebop
-
-val aste_efkt_binop_to_ebop : A.binop_efkt -> ebop
-
+  
+type unop = 
+  | BitNot
 (*_ pure expression: binary operator can only be pure operator *)
 type pexp =
   | Const of Int32.t
   | Temp of Temp.t
-  | Pbop of
+  | Binop of
       { op : pbop
       ; lhs : pexp
       ; rhs : pexp
       }
-
+  | Cmpop of 
+      { op : cbop
+      ; lhs : pexp
+      ; rhs : pexp
+      }
+  | Unop of 
+      { op : unop
+      ; p : pexp
+      }
+and cond = 
+  { cmp : cbop
+  ; p1 : pexp
+  ; p2 : pexp
+  }
 and stm =
   | If of
-      { cond : pexp (*_ cond should only be typed-checked to be boolean-only *)
+      { cond : cond
       ; lt : Label.t
       ; lf : Label.t
       }

@@ -6,7 +6,7 @@
 
 open Core
 
-module AS = Assem
+module AS = Assem_new
 module Vertex : sig
    type reg [@@deriving compare, sexp]
    type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp, hash]
@@ -18,9 +18,9 @@ end
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 (*_ graph utilities *)
 val to_list: t -> (Vertex.t * Vertex.t list) list
-val coloring: t -> (Vertex.t * int) list
+(* val coloring: t -> (Vertex.t * int) list *)
 (*_ liveness *)
-val mk_interfere_graph : AS.instr list -> t
+(* val mk_interfere_graph : AS.instr list -> t *)
 
 (*_ debug printing *)
 val print : t -> unit

@@ -1,0 +1,17 @@
+
+
+//test return 0
+// loopy loops
+
+int main () {
+  int fifteen = 0;
+  bool b = false;
+  int res = 0;
+
+  while (!b) {
+    fifteen++;
+    b = fifteen == 15;
+  }
+
+  return res;
+}

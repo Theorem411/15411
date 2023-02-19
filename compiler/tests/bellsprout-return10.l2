@@ -1,0 +1,13 @@
+//test return 10
+int main() {
+	bool a = false;
+	bool b = false;
+	bool c = true;
+	int n = 1;
+	for (a = false; !(a && b && c); n+= 1) {
+		a = a || b;
+		b = b || c;
+		c = !c;
+	}
+	return n;
+}

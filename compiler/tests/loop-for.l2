@@ -1,0 +1,32 @@
+//test return 21
+
+int main() {
+  int out = 0;
+
+  int x;
+  if(true)
+    x = 1;
+  else
+    x = 2;
+  out += x;
+
+  int y;
+  if(false)
+    y = 10;
+  else
+    y = 20;
+  out += y;
+
+  {
+    int z;
+  }
+
+  while(false)
+    int z;
+
+  int z = 0;
+
+  int a;
+  return out;
+  a += 1;
+}

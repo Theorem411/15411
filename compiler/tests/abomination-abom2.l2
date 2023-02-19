@@ -1,0 +1,15 @@
+int main() {
+    int a = 5 >> 2;
+    if(a > 3) {
+        a++;
+    }
+    int b = a % 5 + 2;
+    while(a > 0) {
+        a /= b;
+    }
+    bool c = true;
+    if(c || false) {
+        return a - b;
+    }
+    return a + b;
+}

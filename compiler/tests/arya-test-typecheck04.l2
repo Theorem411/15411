@@ -1,0 +1,6 @@
+//test return 0
+int main(){
+  bool ff= true||false&&true;
+  for (bool f=false;f&&ff;!ff) !f;
+  return 0;
+}

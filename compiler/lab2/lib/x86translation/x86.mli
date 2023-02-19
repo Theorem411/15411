@@ -1,26 +1,37 @@
 open Core
-module AS = Assem
-
-type operation =
-  | Add
-  | Sub
-  | Subq
-  | Addq
-  | Mul
-  | IDiv
-  | Mod
-  | Mov
-  | Pushq
-  | Movq
-  | Popq
-  | CLTD
-  [@@deriving equal, compare, sexp]
+module AS = Assem_new
 
 type operand =
   | Imm of Int32.t
   | X86Reg of AS.reg
   | Mem of int
-  [@@deriving equal, compare, sexp]
+[@@deriving equal, compare, sexp]
+
+type operation =
+  | Add
+  | Addq
+  | Sub
+  | Subq
+  | IMul
+  | Mul
+  | IDiv
+  | Mod
+  | Cltd
+  | Mov
+  | Movl
+  | Movq
+  | Movzx
+  | Pushq
+  | Popq
+  | And
+  | Or
+  | Xor
+  | Not
+  | Cmp
+  | Sal
+  | Sar
+  | Call
+[@@deriving equal, compare, sexp]
 
 type instr =
   | BinCommand of
@@ -32,17 +43,33 @@ type instr =
       { op : operation
       ; src : operand
       }
-  | Zero of { op : operation }
+  | ZeroCommand of { op : operation }
   | Directive of string
+  | Cmp of
+      { rhs : operand
+      ; lhs : operand
+      }
+  | Lbl of Label.t
+  | Jump of
+      { op : AS.jump_t option
+      ; label : Label.t
+      }
+  | Set of
+      { op : AS.set_t
+      ; src : operand
+      }
   | Comment of string
   | FunName of string
+  (* | Label of string *)
   | Ret
-  [@@deriving equal, compare, sexp]
+[@@deriving equal, compare, sexp]
 
-val to_opr : AS.operation -> operation
+val pure_to_opr : AS.pure_operation -> operation
+val efkt_to_opr : AS.efkt_operation -> operation
+val unary_to_opr : AS.unary_operation -> operation
 val format : instr -> string
 val __FREE_REG : operand
-val all_available_regs: AS.reg list
-val callee_saved: operand -> bool
-val caller_saved: operand -> bool
-val is_reg: operand -> bool
+val all_available_regs : AS.reg list
+val callee_saved : operand -> bool
+val caller_saved : operand -> bool
+val is_reg : operand -> bool

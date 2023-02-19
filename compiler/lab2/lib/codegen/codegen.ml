@@ -1,4 +1,4 @@
-(* L1 Compiler
+(* (* L1 Compiler
  * Assembly Code Generator for FAKE assembly
  * Author: Alex Vaynberg <alv@andrew.cmu.edu>
  * Based on code by: Kaustuv Chaudhuri <kaustuv+@cs.cmu.edu>
@@ -135,4 +135,4 @@ let prop (commands : AS.instr list) : AS.instr list =
 
 (* To codegen a series of statements, just concatenate the results of
  * codegen-ing each statement.*)
-let codegen inp = prop (List.concat_map ~f:munch_stm inp)
+let codegen inp = prop (List.concat_map ~f:munch_stm inp) *)

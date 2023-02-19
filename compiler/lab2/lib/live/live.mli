@@ -1,5 +1,5 @@
-(* open Core *)
+(* open Core
 module AS = Assem
 
 
-val mk_graph: AS.instr list -> Graph.t
+val mk_graph: AS.instr list -> Graph.t *)
