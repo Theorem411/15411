@@ -1,12 +1,4 @@
 //test return 3
 int main () {
-	bool x = true;
-	bool z = false;
-	if (x)
-		int y = 0;
-	if (z)
-		int a = 0;
-	else
-		int a = 0;
-	return 3;
+	return 1;
 }

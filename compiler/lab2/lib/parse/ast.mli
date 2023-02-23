@@ -155,4 +155,5 @@ module Print : sig
   val pp_exp : exp -> string
   val pp_stm : stm -> string
   val pp_stms : function_body -> string
+  val pp_program : program -> string
 end

@@ -36,7 +36,7 @@ let mark
 %token Return
 %token Int Bool
 %token True False
-%token Main
+// %token Mains
 %token If Else While For
 %token Plus Minus Star Slash Percent
 %token Assign Plus_eq Minus_eq Star_eq Slash_eq Percent_eq 
@@ -106,7 +106,7 @@ let mark
 
 
 program :
-  | (*empty*)
+  | Eof
     { [] }
   | g = gdecl; p = program; Eof
     {g :: p}
@@ -158,10 +158,6 @@ decl :
       { Ast.New_var (ident, tp) }
   | tp = type_; ident = Ident; Assign; e = m(exp);
       { Ast.Init (ident, tp, e) }
-  | tp = type_; Main;
-      { Ast.New_var (Symbol.symbol "main", tp) }
-  | tp = type_; Main; Assign; e = m(exp);
-      { Ast.Init (Symbol.symbol "main", tp, e) }
   ;
 
 simp :
@@ -191,8 +187,8 @@ exp :
       { Ast.Const c }
   | True; { Ast.True }
   | False; { Ast.False }
-  | Main;
-      { Ast.Var (Symbol.symbol "main") }
+//   | Main;
+//       { Ast.Var (Symbol.symbol "main") }
   | ident = Ident;
       { Ast.Var ident }
   | ident = Ident; args = arg_list;

@@ -1,0 +1,8 @@
+typedef test1 test2;
+int test(){
+    return 1;
+}
+
+int main(){
+    return test();
+}

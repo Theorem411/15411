@@ -136,7 +136,7 @@ rule initial = parse
   | "++" { T.Plus_plus}
 
   | "assert" { T.Assert }
-  | "main"   { T.Main }
+  (* | "main"   { T.Main } *)
   | "return" { T.Return }
 
   | "bool"    { T.Bool }

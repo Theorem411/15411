@@ -202,6 +202,11 @@ module Print = struct
       sprintf "%s %s = %s;" (T._tostring tp) (Symbol.name id) (pp_mexp e)
   ;;
 
+  let pp_param = function
+  | Param {t; name} -> sprintf "%s %s" (T._tostring t) (Symbol.name name)
+
+  let pp_params ps = (String.concat ~sep:"," (List.map ps ~f:pp_param))
+
   let rec pp_stm = function
     | Declare d -> pp_decl d
     (* | Assign (id, e) -> sprintf "%s = %s;" (Symbol.name id) (pp_mexp e) *)
@@ -222,7 +227,7 @@ module Print = struct
       sprintf "if (%s) [\n%s;]" (pp_mexp e) (pp_mstm t)
     | If { elsestm = Some s; thenstm = t; cond = e } ->
       sprintf "if (%s) \nthen [\n%s]\nELSE[\n%s]" (pp_mexp e) (pp_mstm t) (pp_mstm s)
-    | Block stms -> sprintf "`Block{\n %s }`\n" (pp_stms stms)
+    | Block stms -> sprintf "{\n %s }\n" (pp_stms stms)
     | While { cond = c; body = b } -> sprintf "WHILE (%s) %s" (pp_mexp c) (pp_mstm b)
     | For f ->
       sprintf
@@ -239,5 +244,25 @@ module Print = struct
   and pp_mstm_opt = function
     | None -> ""
     | Some m -> pp_mstm m
-  ;;
+
+  and pp_fundec name ret_type params = let rt = (match ret_type with None -> "void" | Some x -> T._tostring x) in
+  sprintf "%s %s (%s)" rt (Symbol.name name) (pp_params params)
+  and pp_program_single = function
+  | Typedef
+      { old_name : T.t
+      ; new_name : T.t
+      } -> sprintf "typedef %s <--- %s;" (T._tostring new_name) (T._tostring old_name)
+  | FunDec
+      { name : Symbol.t
+      ; ret_type : T.t option
+      ; params : param list
+      } -> (pp_fundec name ret_type params) ^ ";"
+  | FunDef
+      { name : Symbol.t
+      ; ret_type : T.t option
+      ; params : param list
+      ; body : stm (* Block of mstm list *)
+      } -> sprintf "%s %s;" (pp_fundec name ret_type params) (pp_stm body)
+
+  and pp_program p = String.concat ~sep:"\n" (List.map p ~f:pp_program_single)
 end

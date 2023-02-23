@@ -64,6 +64,23 @@ module Emit = struct
   ;;
 end
 
+module HeaderFilename = struct
+  type t = string
+
+  let show (x:t):string = x
+
+  let parse = function
+    | arg -> Result.Ok arg
+  ;;
+
+  let conv =
+    let print ppf emit = Format.fprintf ppf "%s" (show emit) in
+    Cmdliner.Arg.conv (parse, print)
+  ;;
+end
+
+(* let defaul: t = "../runtime/15411-l3.h0";; *)
+
 type cmd_line_args =
   { verbose : bool
   ; dump_parsing : bool
@@ -75,6 +92,7 @@ type cmd_line_args =
   ; emit : Emit.t
   ; opt_level : Opt_level.t
   ; filename : string
+  ; header_filename : string
   }
 
 (* A term (using the vocabulary of the Cmdliner library) that can be used to
@@ -135,6 +153,12 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   and filename =
     let doc = "The source file $(docv) to compile." in
     Arg.(required (pos 0 (some non_dir_file) None (info [] ~doc ~docv:"FILE")))
+  and header_filename =
+    let doc = "The library file with option -l" in
+    opt
+      HeaderFilename.conv
+      ~default:"../runtime/15411-l3.h0"
+      (Arg.info ["l"] ~doc ~docv:"FILE")
   in
   { verbose
   ; dump_parsing
@@ -146,6 +170,7 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   ; emit
   ; opt_level
   ; filename
+  ; header_filename
   }
 ;;
 
@@ -172,17 +197,20 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
   (* Parse *)
+  let astHeaderFile = Parse.parse cmd.header_filename in
   let ast = Parse.parse cmd.filename in
+  say_if cmd.dump_ast (fun () -> Ast.Print.pp_program astHeaderFile);
+  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
-  (* Typecheck *)
+  (* Typecheck
   say_if cmd.verbose (fun () -> "doing elaborating...");
   (* Elaborate *)
-  let elab:Aste.program  = Elaborater.elaborate ast in
+  let elab : Aste.program = Elaborater.elaborate ast in
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab);
   (* if cmd.dump_ast then ignore ((exit 0): unit); *)
   say_if cmd.verbose (fun () -> "doing type Checking...");
-  let ():unit = Statsem.static_semantic elab in 
-  let ():unit = Return.ret_checker elab in
+  let (() : unit) = Statsem.static_semantic elab in
+  let (() : unit) = Return.ret_checker elab in
   (* Typecheck *)
   (* Typechecker.typecheck ast; *)
   if cmd.typecheck_only then exit 0;
@@ -194,19 +222,17 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.verbose (fun () -> "Codegen...");
   let assem = Cogen.cogen ir in
   (* say_if cmd.dump_assem (fun () -> List.to_string ~f:AssemM.format assem); *)
-  (match cmd.emit with
+  match cmd.emit with
   (* Output: abstract 3-address assem *)
   | Abstract_assem ->
-    (let file = cmd.filename ^ ".abs" in
+    let file = cmd.filename ^ ".abs" in
     say_if cmd.verbose (fun () -> sprintf "Writing abstract assem to %s..." file);
-    Out_channel.with_file file ~f:(
-      fun out -> 
+    Out_channel.with_file file ~f:(fun out ->
         let output_instr instr = Out_channel.fprintf out "\t%s\n" (AssemM.format instr) in
         output_instr (AssemM.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_instr (AssemM.Directive ".function\tmain()");
         List.iter ~f:output_instr assem;
         output_instr (AssemM.Directive ".ident\t\"15-411 L1 reference compiler\""))
-    )
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
@@ -219,9 +245,9 @@ let compile (cmd : cmd_line_args) : unit =
         output_x86_instr (X86.Directive ".type\t_c0_main, @function");
         output_x86_instr (X86.FunName "_c0_main:");
         List.iter ~f:output_x86_instr translated;
-        output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\""));)
-    ;;
-
+        output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\""))
+;; *)
+;;
 
 let run (cmd : cmd_line_args) : unit =
   try if cmd.regalloc_only then regalloc cmd else compile cmd with
