@@ -50,6 +50,7 @@ let mark
 %token BAnd_eq Bor_eq BXor_eq
 %token Minus_minus Plus_plus
 %token QuestionMark Colon
+%token Void Comma Assert Typedef
 
 (* Unary is a dummy terminal.
  * We need dummy terminals if we wish to assign a precedence
@@ -83,7 +84,7 @@ let mark
  * but it can improve the quality of parser type errors to annotate
  * the types of other rules.
  *)
-%type <Ast.mstm list> program
+%type <Ast.gdecl list> program
 %type <Ast.mstm list> stms
 %type <Ast.stm> stm
 %type <Ast.mstm> m(stm)
@@ -94,16 +95,21 @@ let mark
 %type <Core.Int32.t> int_const
 %type <Ast.binop> binop
 %type <Ast.binop option> asnop
+%type <Ast.param list> param_list
+%type <Ast.param list> param_follow
+%type <Ast.param> param
+%type <Ast.gdecl> typedef
+%type <Ast.gdecl> fdefn
+%type <Ast.gdecl> fdecl
 
 %%
 
+
 program :
-  | Int;
-    Main;
-    L_paren R_paren;
-    b = block;
-    Eof;
-      { match b with Ast.Block p -> p | _ -> raise (Failure "block must be Block") }
+  | (*empty*)
+    { [] }
+  | g = gdecl; p = program; Eof
+    {g :: p}
   ;
 
 (* This higher-order rule produces a marked result of whatever the
@@ -118,9 +124,15 @@ m(x) :
   ;
 
 type_ :
-  | Int {Ast.T.Int}
-  | Bool {Ast.T.Bool}
+  | Int { Ast.T.Int }
+  | Bool { Ast.T.Bool}
+  | ident = Ident;
+    { Ast.T.Custom (ident) }
   ;
+
+ret_type : 
+    | t = type_ { Some(t) }
+    | Void { None }
 
 stms :
   | (* empty *)
@@ -183,6 +195,8 @@ exp :
       { Ast.Var (Symbol.symbol "main") }
   | ident = Ident;
       { Ast.Var ident }
+  | ident = Ident; args = arg_list;
+      { Ast.Call {name = ident; args = args} }
   | u = unop; { u }
   | lhs = m(exp);
     op = binop;
@@ -196,6 +210,18 @@ exp :
       { Ast.Ternary {cond = cond; first=f; second = s} }
   ;
 
+arg_follow :
+  | (* empty *)
+      { [] }
+  | Comma; e = m(exp); args = arg_follow; {
+    e :: args
+  }
+
+arg_list: 
+    | L_paren; R_paren; {[]}
+    | L_paren; e = m(exp); args = arg_follow  ; R_paren; {
+        e :: args
+    }
 
 unop : 
   | Minus; e = m(exp); %prec Unary
@@ -249,11 +275,50 @@ control :
       R_paren;
       body = m(stm);
         { Ast.For { init = init; cond = cond; post = post; body = body}  }
+    | Return; Semicolon; 
+        {Ast.Return None}
     | Return; 
       e = m(exp);
       Semicolon;
-        {Ast.Return e}
+        {Ast.Return (Some(e))}
+    | Assert; L_paren; e = m(exp); R_paren; Semicolon
+        {Ast.Assert e}
 
+typedef : 
+    | Typedef; t = type_ ; ident = Ident; Semicolon; {
+        Ast.Typedef {old_name = t; new_name = Ast.T.Custom (ident)}
+    } 
+
+param : 
+    | t = type_ ; ident = Ident; {
+        Ast.Param {t = t; name = ident}
+    }
+
+param_follow :
+  | (* empty *)
+      { [] }
+  | Comma; p = param; ps = param_follow; {
+    p :: ps
+  }
+
+param_list: 
+    | L_paren; R_paren; {[]}
+    | L_paren; p = param; ps = param_follow  ; R_paren; {
+        p :: ps
+    }   
+
+fdecl: 
+    | r_opt = ret_type; ident = Ident; params = param_list; Semicolon
+    { Ast.FunDec {name = ident; ret_type = r_opt; params = params} } 
+
+fdefn: 
+    | r_opt= ret_type; ident = Ident; params = param_list; body = block
+    { Ast.FunDef {name = ident; ret_type = r_opt; params = params; body = body} } 
+
+gdecl: 
+    | fundec = fdecl  {fundec}
+    | fundef = fdefn  {fundef}
+    | tdef = typedef  {tdef}
 
 (* See the menhir documentation for %inline.
  * This allows us to factor out binary operators while still

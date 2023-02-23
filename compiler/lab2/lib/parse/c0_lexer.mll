@@ -92,6 +92,7 @@ rule initial = parse
   | ')' { T.R_paren }
 
   | ';' { T.Semicolon }
+  | ',' { T.Comma }
 
   | '='  { T.Assign }
   | "+=" { T.Plus_eq }
@@ -134,16 +135,16 @@ rule initial = parse
   | "--" { T.Minus_minus }
   | "++" { T.Plus_plus}
 
-  | "assert" { assert false }
+  | "assert" { T.Assert }
   | "main"   { T.Main }
   | "return" { T.Return }
 
   | "bool"    { T.Bool }
   | "char"    { assert false }
   | "int"     { T.Int }
-  | "void"    { assert false }
+  | "void"    { T.Void }
   | "struct"  { assert false }
-  | "typedef" { assert false }
+  | "typedef" { T.Typedef }
 
   | "if"    { T.If}
   | "else"  { T.Else }

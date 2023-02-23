@@ -11,7 +11,6 @@
  *)
 
 open Core
-
 module T = Ctype
 
 type binop =
@@ -79,6 +78,10 @@ type exp =
       ; first : mexp
       ; second : mexp
       }
+  | Call of
+      { name : Symbol.t
+      ; args : mexp list
+      }
 
 and mexp = exp Mark.t
 
@@ -97,7 +100,7 @@ type stm =
       { left : mexp
       ; op : binop
       }
-  | Return of mexp
+  | Return of mexp option
   | Exp of mexp
   | If of
       { cond : mexp
@@ -115,11 +118,37 @@ type stm =
       ; body : mstm
       }
   | Block of mstm list
+  | Assert of mexp
   | Nop
 
 and mstm = stm Mark.t
 
-type program = mstm list
+type function_body = mstm list
+
+type param =
+  | Param of
+      { t : T.t
+      ; name : Symbol.t
+      }
+
+type gdecl =
+  | Typedef of
+      { old_name : T.t
+      ; new_name : T.t
+      }
+  | FunDec of
+      { name : Symbol.t
+      ; ret_type : T.t option
+      ; params : param list
+      }
+  | FunDef of
+      { name : Symbol.t
+      ; ret_type : T.t option
+      ; params : param list
+      ; body : stm (* Block of mstm list *)
+      }
+
+type program = gdecl list
 
 module Print = struct
   let pp_binop = function
@@ -157,6 +186,11 @@ module Print = struct
       sprintf "(%s %s %s)" (pp_mexp binop.lhs) (pp_binop binop.op) (pp_mexp binop.rhs)
     | True -> "true"
     | False -> "false"
+    | Call { name; args } ->
+      sprintf
+        "%s(%s)"
+        (Symbol.name name)
+        (String.concat ~sep:"," (List.map args ~f:pp_mexp))
     | Ternary t ->
       sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.first) (pp_mexp t.second)
 
@@ -171,12 +205,18 @@ module Print = struct
   let rec pp_stm = function
     | Declare d -> pp_decl d
     (* | Assign (id, e) -> sprintf "%s = %s;" (Symbol.name id) (pp_mexp e) *)
-    | Return e -> sprintf "return %s;" (pp_mexp e)
+    | Return e ->
+      sprintf
+        "return %s;"
+        (match e with
+        | None -> ""
+        | Some x -> pp_mexp x)
     | Nop -> "nop;"
-    | Assign {left=lhs; right=rhs; asgnop=None} -> sprintf "%s = %s;" (pp_mexp lhs) (pp_mexp rhs)
-    | Assign {left=lhs; right=rhs; asgnop=Some op}  ->
+    | Assign { left = lhs; right = rhs; asgnop = None } ->
+      sprintf "%s = %s;" (pp_mexp lhs) (pp_mexp rhs)
+    | Assign { left = lhs; right = rhs; asgnop = Some op } ->
       sprintf "%s %s= %s;" (pp_mexp lhs) (pp_binop op) (pp_mexp rhs)
-    | PostOp {left=e; op=op} -> sprintf "%s%s%s" (pp_mexp e) (pp_binop op) (pp_binop op)
+    | PostOp { left = e; op } -> sprintf "%s%s%s" (pp_mexp e) (pp_binop op) (pp_binop op)
     | Exp e -> sprintf "%s" (pp_mexp e)
     | If { elsestm = None; thenstm = t; cond = e } ->
       sprintf "if (%s) [\n%s;]" (pp_mexp e) (pp_mstm t)
@@ -191,6 +231,7 @@ module Print = struct
         (pp_mexp f.cond)
         (pp_mstm_opt f.post)
         (pp_mstm f.body)
+    | Assert e -> sprintf "Assert(%s)" (pp_mexp e)
 
   and pp_mstm stm = pp_stm (Mark.data stm)
   and pp_stms stms = String.concat (List.map ~f:(fun stm -> pp_mstm stm ^ "\n") stms)
@@ -199,6 +240,4 @@ module Print = struct
     | None -> ""
     | Some m -> pp_mstm m
   ;;
-
-  let pp_program stms = "int main() {\n" ^ pp_stms stms ^ "}"
 end
