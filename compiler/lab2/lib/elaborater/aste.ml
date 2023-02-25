@@ -60,11 +60,11 @@ type exp =
 
 and mexp = exp Mark.t
 
-type stmt =
+type stm =
   | Declare of
       { var : Symbol.t
-      ; typ : Typ.t
-      ; body : program
+      ; typ : Typ.tau
+      ; body : mstm
       }
   | Assign of
       { var : Symbol.t
@@ -72,19 +72,27 @@ type stmt =
       }
   | If of
       { cond : mexp
-      ; lb : program
-      ; rb : program
+      ; lb : mstm
+      ; rb : mstm
       }
   | While of
       { cond : mexp
-      ; body : program
+      ; body : mstm
       }
   | Return of mexp
   | Nop
-  | Seq of program * program
+  | Seq of mstm * mstm
   | NakedExpr of mexp
 
-and program = stmt Mark.t
+and mstm = stm Mark.t
+
+type glob = 
+  | Typedef of Typ.tau * Typ.tau
+  | Fundecl of Symbol.t * Typ.fsig 
+  | Fundef of Symbol.t * Typ.fsig * mstm
+type mglob = glob Mark.t
+
+type program = mglob list
 
 module Print = struct
   let repeat s n =
@@ -157,26 +165,33 @@ module Print = struct
       | Declare { var; typ; body } ->
         sprintf
           "%s %s;\n%s"
-          (Typ._tostring typ)
+          (Typ._tau_tostring typ)
           (Symbol.name var)
-          (pp_program ~n:(n + 1) body)
+          (pp_mstm ~n:(n + 1) body)
       | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
       | If { cond; lb; rb } ->
         sprintf
           "if (%s) {\n%s} else {\n  %s}"
           (pp_mexp cond)
-          (pp_program ~n:(n + 1) lb)
-          (pp_program ~n:(n + 1) rb)
+          (pp_mstm ~n:(n + 1) lb)
+          (pp_mstm ~n:(n + 1) rb)
       | While { cond; body } ->
-        sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_program ~n:(n + 1) body)
+        sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_mstm ~n:(n + 1) body)
       | Return e -> sprintf "return %s;" (pp_mexp e)
       | NakedExpr e -> sprintf "(%s);" (pp_mexp e)
-      | Seq (s1, s2) -> sprintf "%s  %s" (pp_program ~n s1) (pp_program ~n s2)
+      | Seq (s1, s2) -> sprintf "%s  %s" (pp_mstm ~n s1) (pp_mstm ~n s2)
       | Nop -> "nop;"
     in
     tabs n ^ f ~n stm
-
-  and pp_program ?(n = 0) prog = pp_stm ~n (Mark.data prog) ^ "\n"
-
-  let print_all prog = "\n\n" ^ pp_stm ~n:0 (Mark.data prog) ^ "\n"
+  and pp_mstm ?(n = 0) prog = pp_stm ~n (Mark.data prog) ^ "\n"
+  
+  let pp_glob ?(n = 0) = function 
+    | Typedef _ -> ""
+    | _ -> ""
+  ;;
+  let pp_mglob ?(n = 0) mglob = pp_glob ~n (Mark.data mglob) ^ "\n"
+  ;;
+  let pp_program prog = List.fold prog ~init:"" ~f:(fun s -> fun g -> s ^ pp_mglob ~n:0 g)
+  ;;
+  let print_all prog = "\n\n" ^ pp_program prog ^ "\n"
 end

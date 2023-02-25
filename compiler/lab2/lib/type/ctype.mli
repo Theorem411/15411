@@ -12,5 +12,5 @@ type tau =
 include Comparable.S with type t := Symbol.t
 type fsig = tau Map.t * tau option
 
-val _tau_tostring : t -> string
+val _tau_tostring : tau -> string
 val _fsig_tostring : fsig -> string

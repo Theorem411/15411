@@ -60,11 +60,11 @@ type exp =
 
 and mexp = exp Mark.t
 
-type stmt =
+type stm =
   | Declare of
       { var : Symbol.t
-      ; typ : Typ.t
-      ; body : mstmt
+      ; typ : Typ.tau
+      ; body : mstm
       }
   | Assign of
       { var : Symbol.t
@@ -72,27 +72,34 @@ type stmt =
       }
   | If of
       { cond : mexp
-      ; lb : mstmt
-      ; rb : mstmt
+      ; lb : mstm
+      ; rb : mstm
       }
   | While of
       { cond : mexp
-      ; body : mstmt
+      ; body : mstm
       }
   | Return of mexp
   | Nop
-  | Seq of mstmt * mstmt
+  | Seq of mstm * mstm
   | NakedExpr of mexp
 
-and mstmt = stmt Mark.t
+and mstm = stm Mark.t
 
-type global = 
-  | Typedef of Typ.t * Typ.t
-  | Fundecl of 
+type glob = 
+  | Typedef of Typ.tau * Typ.tau
+  | Fundecl of Symbol.t * Typ.fsig 
+  | Fundef of Symbol.t * Typ.fsig * mstm
+type mglob = glob Mark.t
+
+type program = mglob list
 
 module Print : sig
   val pp_exp : exp -> string
-  val pp_stm : ?n:int -> mstmt -> string
-  val pp_program : ?n:int -> mstmt -> string
-  val print_all : mstmt -> string
+  val pp_mexp : mexp -> string
+  val pp_stm : ?n:int -> stm -> string
+  val pp_mstm : ?n:int -> mstm -> string
+  val pp_glob : ?n:int -> glob -> string
+  val pp_mglob : ?n:int -> mglob -> string
+  val print_all : program -> string
 end
