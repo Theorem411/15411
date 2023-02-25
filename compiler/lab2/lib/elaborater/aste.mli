@@ -64,7 +64,7 @@ type stmt =
   | Declare of
       { var : Symbol.t
       ; typ : Typ.t
-      ; body : program
+      ; body : mstmt
       }
   | Assign of
       { var : Symbol.t
@@ -72,23 +72,27 @@ type stmt =
       }
   | If of
       { cond : mexp
-      ; lb : program
-      ; rb : program
+      ; lb : mstmt
+      ; rb : mstmt
       }
   | While of
       { cond : mexp
-      ; body : program
+      ; body : mstmt
       }
   | Return of mexp
   | Nop
-  | Seq of program * program
+  | Seq of mstmt * mstmt
   | NakedExpr of mexp
 
-and program = stmt Mark.t
+and mstmt = stmt Mark.t
+
+type global = 
+  | Typedef of Typ.t * Typ.t
+  | Fundecl of 
 
 module Print : sig
   val pp_exp : exp -> string
-  val pp_stm : ?n:int -> stmt -> string
-  val pp_program : ?n:int -> program -> string
-  val print_all : program -> string
+  val pp_stm : ?n:int -> mstmt -> string
+  val pp_program : ?n:int -> mstmt -> string
+  val print_all : mstmt -> string
 end

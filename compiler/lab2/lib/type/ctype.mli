@@ -1,7 +1,16 @@
+open Core
 type t = 
   | Int
   | Bool
-  | Custom of Symbol.t
   [@@deriving equal, compare, sexp]
 
-val _tostring : t -> string
+type tau = 
+  | RealTyp of t
+  | FakeTyp of Symbol.t
+  [@@deriving equal, compare, sexp]
+
+include Comparable.S with type t := Symbol.t
+type fsig = tau Map.t * tau option
+
+val _tau_tostring : t -> string
+val _fsig_tostring : fsig -> string
