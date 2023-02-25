@@ -64,6 +64,7 @@ type stm =
   | Declare of
       { var : Symbol.t
       ; typ : Typ.tau
+      ; assign: mexp option
       ; body : mstm
       }
   | Assign of

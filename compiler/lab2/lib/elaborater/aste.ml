@@ -60,10 +60,12 @@ type exp =
 
 and mexp = exp Mark.t
 
+
 type stm =
   | Declare of
       { var : Symbol.t
       ; typ : Typ.tau
+      ; assign: mexp option
       ; body : mstm
       }
   | Assign of
