@@ -84,7 +84,7 @@ type stm =
       { cond : mexp
       ; body : mstm
       }
-  | Return of mexp
+  | Return of mexp option
   | Nop
   | Seq of mstm * mstm
   | NakedExpr of mexp
@@ -162,6 +162,11 @@ module Print = struct
         (pp_binop_efkt binop.op)
         (pp_mexp binop.rhs)
     | Ternary t -> sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.lb) (pp_mexp t.rb)
+    | Call { name; args } ->
+      sprintf
+        "call %s(%s)"
+        (Symbol.name name)
+        (String.concat ~sep:"," (List.map args ~f:pp_mexp))
 
   and pp_mexp e = pp_exp (Mark.data e)
 
@@ -191,7 +196,7 @@ module Print = struct
           (pp_mstm ~n:(n + 1) rb)
       | While { cond; body } ->
         sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_mstm ~n:(n + 1) body)
-      | Return e -> sprintf "return %s;" (pp_mexp e)
+      | Return e -> sprintf "return %s;" (Option.value_map ~default:"" ~f:pp_mexp e)
       | NakedExpr e -> sprintf "(%s);" (pp_mexp e)
       | Seq (s1, s2) -> sprintf "%s  %s" (pp_mstm ~n s1) (pp_mstm ~n s2)
       | Nop -> "nop;"

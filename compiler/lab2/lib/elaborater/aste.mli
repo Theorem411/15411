@@ -84,7 +84,7 @@ type stm =
       { cond : mexp
       ; body : mstm
       }
-  | Return of mexp
+  | Return of mexp option
   | Nop
   | Seq of mstm * mstm
   | NakedExpr of mexp
