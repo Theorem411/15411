@@ -10,8 +10,7 @@ type tau =
   [@@deriving equal, compare, sexp]
 
 include Comparable.S with type t := Symbol.t
-
-type fsig = tau Symbol.Table.t * tau option
+type fsig = tau Symbol.Map.t * tau option
 
 val _tau_tostring : tau -> string
 val _fsig_tostring : fsig -> string

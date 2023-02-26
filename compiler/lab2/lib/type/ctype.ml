@@ -15,7 +15,7 @@ module T = struct
 end
 include Comparable.Make(T)
 
-type fsig = tau Symbol.Table.t * tau option
+type fsig = tau Symbol.Map.t * tau option
 
 let _tau_tostring = function 
   | RealTyp t -> (match t with Int -> "int" | Bool -> "bool")
