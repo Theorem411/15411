@@ -24,6 +24,7 @@ open Core
 type t [@@deriving compare, hash, sexp]
 
 include Comparable.S with type t := t
+include Hashable with type t := t
 
 val symbol : string -> t (* generates a new symbol with given name *)
 
