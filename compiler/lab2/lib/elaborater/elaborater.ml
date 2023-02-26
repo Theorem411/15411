@@ -295,8 +295,6 @@ and elaborate_stmts (p : Ast.mstm list) : Aste.mstm =
           { var; typ; assign = Some (elab_mexp m_e); body = elaborate_stmts mstsms }
       | _ -> Aste.Seq (elab mx, elaborate_stmts mstsms))
 
-and elaborate_stm_list (p : Ast.mstm list) : Aste.mstm = elaborate_stmts p
-(* let elaborate (_ : Ast.mstm list) : Aste.program = failwith "Not implemented" *)
 
 and elaborate' (s : Ast.mgdecl) : Aste.mglob =
   let res =

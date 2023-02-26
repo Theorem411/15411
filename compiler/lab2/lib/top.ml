@@ -194,20 +194,24 @@ let regalloc (cmd : cmd_line_args) =
 
 (* The main driver for the compiler: runs each phase. *)
 let compile (cmd : cmd_line_args) : unit =
-  say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
   (* Parse *)
-  let astHeaderFile = Parse.parse cmd.header_filename in
+  say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
+  let ast_h = Parse.parse cmd.header_filename in
   let ast = Parse.parse cmd.filename in
-  say_if cmd.dump_ast (fun () -> Ast.Print.pp_program astHeaderFile);
+  say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
-  (* Typecheck
-  say_if cmd.verbose (fun () -> "doing elaborating...");
+
   (* Elaborate *)
+  say_if cmd.verbose (fun () -> "doing elaborating...");
+  let elab_h : Aste.program = Elaborater.elaborate ast_h in
   let elab : Aste.program = Elaborater.elaborate ast in
+  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
+  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab);
-  (* if cmd.dump_ast then ignore ((exit 0): unit); *)
+  
+  (*(* if cmd.dump_ast then ignore ((exit 0): unit); *)
   say_if cmd.verbose (fun () -> "doing type Checking...");
   let (() : unit) = Statsem.static_semantic elab in
   let (() : unit) = Return.ret_checker elab in
@@ -245,8 +249,7 @@ let compile (cmd : cmd_line_args) : unit =
         output_x86_instr (X86.Directive ".type\t_c0_main, @function");
         output_x86_instr (X86.FunName "_c0_main:");
         List.iter ~f:output_x86_instr translated;
-        output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\""))
-;; *)
+        output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\"")) *)
 ;;
 
 let run (cmd : cmd_line_args) : unit =

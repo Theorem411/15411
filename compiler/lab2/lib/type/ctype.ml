@@ -10,11 +10,11 @@ type tau =
   | FakeTyp of Symbol.t
 [@@deriving equal, compare, sexp]
 
-module T = struct
+(* module T = struct
   type t = Symbol.t [@@deriving compare, sexp]
 end
 
-include Comparable.Make (T)
+include Comparable.Make (T) *)
 
 type fsig = tau Symbol.Map.t * tau option
 
