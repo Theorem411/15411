@@ -124,10 +124,10 @@ m(x) :
   ;
 
 type_ :
-  | Int { Ast.T.Int }
-  | Bool { Ast.T.Bool}
+  | Int { Ast.T.RealTyp Int }
+  | Bool { Ast.T.RealTyp Bool}
   | ident = Ident;
-    { Ast.T.Custom (ident) }
+    { Ast.T.FakeTyp (ident) }
   ;
 
 ret_type : 
@@ -282,7 +282,7 @@ control :
 
 typedef : 
     | Typedef; t = type_ ; ident = Ident; Semicolon; {
-        Ast.Typedef {old_name = t; new_name = Ast.T.Custom (ident)}
+        Ast.Typedef {old_name = t; new_name = Ast.T.FakeTyp (ident)}
     } 
 
 param : 

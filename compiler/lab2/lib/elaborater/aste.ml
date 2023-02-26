@@ -60,12 +60,11 @@ type exp =
 
 and mexp = exp Mark.t
 
-
 type stm =
   | Declare of
       { var : Symbol.t
       ; typ : Typ.tau
-      ; assign: mexp option
+      ; assign : mexp option
       ; body : mstm
       }
   | Assign of
@@ -88,12 +87,12 @@ type stm =
 
 and mstm = stm Mark.t
 
-type glob = 
+type glob =
   | Typedef of Typ.tau * Typ.tau
-  | Fundecl of Symbol.t * Typ.fsig 
+  | Fundecl of Symbol.t * Typ.fsig
   | Fundef of Symbol.t * Typ.fsig * mstm
-type mglob = glob Mark.t
 
+type mglob = glob Mark.t
 type program = mglob list
 
 module Print = struct
@@ -164,12 +163,21 @@ module Print = struct
 
   let rec pp_stm ?(n = 0) stm =
     let f ~n = function
-      | Declare { var; typ; body } ->
-        sprintf
-          "%s %s;\n%s"
-          (Typ._tau_tostring typ)
-          (Symbol.name var)
-          (pp_mstm ~n:(n + 1) body)
+      | Declare { var; typ; assign; body } ->
+        (match assign with
+        | None ->
+          sprintf
+            "%s %s;\n%s"
+            (Typ._tau_tostring typ)
+            (Symbol.name var)
+            (pp_mstm ~n:(n + 1) body)
+        | Some e ->
+          sprintf
+            "%s %s=%s;\n%s"
+            (Typ._tau_tostring typ)
+            (Symbol.name var)
+            (pp_mexp e)
+            (pp_mstm ~n:(n + 1) body))
       | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
       | If { cond; lb; rb } ->
         sprintf
@@ -185,15 +193,15 @@ module Print = struct
       | Nop -> "nop;"
     in
     tabs n ^ f ~n stm
+
   and pp_mstm ?(n = 0) prog = pp_stm ~n (Mark.data prog) ^ "\n"
-  
-  let pp_glob ?(n = 0) = function 
-    | Typedef _ -> ""
-    | _ -> ""
+
+  let pp_glob ?(n = 0) = function
+    | Typedef (a, b) -> sprintf "typedef %s <--- %s;" (Typ._tau_tostring a) (Typ._tau_tostring b)
+    | _ -> tabs n ^ ""
   ;;
+
   let pp_mglob ?(n = 0) mglob = pp_glob ~n (Mark.data mglob) ^ "\n"
-  ;;
-  let pp_program prog = List.fold prog ~init:"" ~f:(fun s -> fun g -> s ^ pp_mglob ~n:0 g)
-  ;;
+  let pp_program prog = List.fold prog ~init:"" ~f:(fun s g -> s ^ pp_mglob ~n:0 g)
   let print_all prog = "\n\n" ^ pp_program prog ^ "\n"
 end

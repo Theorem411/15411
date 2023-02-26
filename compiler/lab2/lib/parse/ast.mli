@@ -86,8 +86,8 @@ type exp =
 and mexp = exp Mark.t
 
 type decl =
-  | New_var of Symbol.t * T.t
-  | Init of Symbol.t * T.t * mexp
+  | New_var of Symbol.t * T.tau
+  | Init of Symbol.t * T.tau * mexp
 
 type stm =
   | Declare of decl
@@ -127,23 +127,23 @@ type function_body = mstm list
 
 type param =
   | Param of
-      { t : T.t
+      { t : T.tau
       ; name : Symbol.t
       }
 
 type gdecl =
   | Typedef of
-      { old_name : T.t
-      ; new_name : T.t
+      { old_name : T.tau
+      ; new_name : T.tau
       }
   | FunDec of
       { name : Symbol.t
-      ; ret_type : T.t option
+      ; ret_type : T.tau option
       ; params : param list
       }
   | FunDef of
       { name : Symbol.t
-      ; ret_type : T.t option
+      ; ret_type : T.tau option
       ; params : param list
       ; body : stm (* Block of mstm list *)
       }

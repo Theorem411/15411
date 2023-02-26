@@ -86,8 +86,8 @@ type exp =
 and mexp = exp Mark.t
 
 type decl =
-  | New_var of Symbol.t * T.t
-  | Init of Symbol.t * T.t * mexp
+  | New_var of Symbol.t * T.tau
+  | Init of Symbol.t * T.tau * mexp
 
 type stm =
   | Declare of decl
@@ -127,23 +127,23 @@ type function_body = mstm list
 
 type param =
   | Param of
-      { t : T.t
+      { t : T.tau
       ; name : Symbol.t
       }
 
 type gdecl =
   | Typedef of
-      { old_name : T.t
-      ; new_name : T.t
+      { old_name : T.tau
+      ; new_name : T.tau
       }
   | FunDec of
       { name : Symbol.t
-      ; ret_type : T.t option
+      ; ret_type : T.tau option
       ; params : param list
       }
   | FunDef of
       { name : Symbol.t
-      ; ret_type : T.t option
+      ; ret_type : T.tau option
       ; params : param list
       ; body : stm (* Block of mstm list *)
       }
@@ -197,13 +197,13 @@ module Print = struct
   and pp_mexp e = pp_exp (Mark.data e)
 
   let pp_decl = function
-    | New_var (id, tp) -> sprintf "%s %s;" (T._tostring tp) (Symbol.name id)
+    | New_var (id, tp) -> sprintf "%s %s;" (T._tau_tostring tp) (Symbol.name id)
     | Init (id, tp, e) ->
-      sprintf "%s %s = %s;" (T._tostring tp) (Symbol.name id) (pp_mexp e)
+      sprintf "%s %s = %s;" (T._tau_tostring tp) (Symbol.name id) (pp_mexp e)
   ;;
 
   let pp_param = function
-  | Param {t; name} -> sprintf "%s %s" (T._tostring t) (Symbol.name name)
+  | Param {t; name} -> sprintf "%s %s" (T._tau_tostring t) (Symbol.name name)
 
   let pp_params ps = (String.concat ~sep:"," (List.map ps ~f:pp_param))
 
@@ -245,21 +245,21 @@ module Print = struct
     | None -> ""
     | Some m -> pp_mstm m
 
-  and pp_fundec name ret_type params = let rt = (match ret_type with None -> "void" | Some x -> T._tostring x) in
+  and pp_fundec name ret_type params = let rt = (match ret_type with None -> "void" | Some x -> T._tau_tostring x) in
   sprintf "%s %s (%s)" rt (Symbol.name name) (pp_params params)
   and pp_program_single = function
   | Typedef
-      { old_name : T.t
-      ; new_name : T.t
-      } -> sprintf "typedef %s <--- %s;" (T._tostring new_name) (T._tostring old_name)
+      { old_name : T.tau
+      ; new_name : T.tau
+      } -> sprintf "typedef %s <--- %s;" (T._tau_tostring new_name) (T._tau_tostring old_name)
   | FunDec
       { name : Symbol.t
-      ; ret_type : T.t option
+      ; ret_type : T.tau option
       ; params : param list
       } -> (pp_fundec name ret_type params) ^ ";"
   | FunDef
       { name : Symbol.t
-      ; ret_type : T.t option
+      ; ret_type : T.tau option
       ; params : param list
       ; body : stm (* Block of mstm list *)
       } -> sprintf "%s %s;" (pp_fundec name ret_type params) (pp_stm body)
