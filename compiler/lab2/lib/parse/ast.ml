@@ -148,7 +148,9 @@ type gdecl =
       ; body : mstm (* Block of mstm list *)
       }
 
-type program = gdecl list
+and mgdecl = gdecl Mark.t
+
+type program = mgdecl list
 
 module Print = struct
   let pp_binop = function
@@ -203,9 +205,10 @@ module Print = struct
   ;;
 
   let pp_param = function
-  | Param {t; name} -> sprintf "%s %s" (T._tau_tostring t) (Symbol.name name)
+    | Param { t; name } -> sprintf "%s %s" (T._tau_tostring t) (Symbol.name name)
+  ;;
 
-  let pp_params ps = (String.concat ~sep:"," (List.map ps ~f:pp_param))
+  let pp_params ps = String.concat ~sep:"," (List.map ps ~f:pp_param)
 
   let rec pp_stm = function
     | Declare d -> pp_decl d
@@ -245,24 +248,27 @@ module Print = struct
     | None -> ""
     | Some m -> pp_mstm m
 
-  and pp_fundec name ret_type params = let rt = (match ret_type with None -> "void" | Some x -> T._tau_tostring x) in
-  sprintf "%s %s (%s)" rt (Symbol.name name) (pp_params params)
-  and pp_program_single = function
-  | Typedef
-      { old_name : T.tau
-      ; new_name : T.tau
-      } -> sprintf "typedef %s <--- %s;" (T._tau_tostring new_name) (T._tau_tostring old_name)
-  | FunDec
-      { name : Symbol.t
-      ; ret_type : T.tau option
-      ; params : param list
-      } -> (pp_fundec name ret_type params) ^ ";"
-  | FunDef
-      { name : Symbol.t
-      ; ret_type : T.tau option
-      ; params : param list
-      ; body : mstm (* Block of mstm list *)
-      } -> sprintf "%s %s;" (pp_fundec name ret_type params) (pp_mstm body)
+  and pp_fundec name ret_type params =
+    let rt =
+      match ret_type with
+      | None -> "void"
+      | Some x -> T._tau_tostring x
+    in
+    sprintf "%s %s (%s)" rt (Symbol.name name) (pp_params params)
 
-  and pp_program p = String.concat ~sep:"\n" (List.map p ~f:pp_program_single)
+  and pp_gdecl_single = function
+    | Typedef { old_name : T.tau; new_name : T.tau } ->
+      sprintf "typedef %s <--- %s;" (T._tau_tostring new_name) (T._tau_tostring old_name)
+    | FunDec { name : Symbol.t; ret_type : T.tau option; params : param list } ->
+      pp_fundec name ret_type params ^ ";"
+    | FunDef
+        { name : Symbol.t
+        ; ret_type : T.tau option
+        ; params : param list
+        ; body : mstm (* Block of mstm list *)
+        } -> sprintf "%s %s;" (pp_fundec name ret_type params) (pp_mstm body)
+
+  (* and pp_gdecl gdecls = String.concat ~sep:"\n" (List.map gdecls ~f:pp_gdecl_single) *)
+  and pp_mgdecl gd = pp_gdecl_single (Mark.data gd)
+  and pp_program p = String.concat (List.map ~f:(fun mgd -> pp_mgdecl mgd ^ "\n") p)
 end

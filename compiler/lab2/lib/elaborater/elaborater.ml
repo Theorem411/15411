@@ -1,8 +1,6 @@
 open Core
-
-module Typ =  Ast.T
+module Typ = Ast.T
 (* module SymbolMap = Hashtbl.Make (Symbol) *)
-
 
 let to_pure = function
   | Ast.Plus -> Aste.Plus
@@ -14,11 +12,11 @@ let to_pure = function
   | _ -> failwith "Not a pure binop"
 ;;
 
-let to_fsig (params: Ast.param list) (ret_type: Typ.tau option): (Typ.fsig) = 
-  let param_tuple = List.map ~f:(fun (Ast.Param {t; name}) -> (name, t)) params in
-  let m: Typ.tau Symbol.Map.t =  Symbol.Map.of_alist_exn param_tuple in
-  (m, ret_type)
-  
+let to_fsig (params : Ast.param list) (ret_type : Typ.tau option) : Typ.fsig =
+  let param_tuple = List.map ~f:(fun (Ast.Param { t; name }) -> name, t) params in
+  let m : Typ.tau Symbol.Map.t = Symbol.Map.of_alist_exn param_tuple in
+  m, ret_type
+;;
 
 let to_cmp = function
   | Ast.Greater -> Aste.Greater
@@ -159,6 +157,9 @@ let rec elab_mexp (m_e : Ast.mexp) : Aste.mexp =
     copy_mark
       m_e
       (Aste.EfktBinop { op = to_efkt op; lhs = elab_mexp lhs; rhs = elab_mexp rhs })
+  | Ast.Call { name; args } ->
+    let argsnew = List.map ~f:elab_mexp args in
+    copy_mark m_e (Aste.Call { name; args = argsnew })
 ;;
 
 let elab_assign_with_op
@@ -221,8 +222,13 @@ let elab_postop m_s =
 ;;
 
 let elab_return m_s =
+  let helper (m_r : Ast.mexp option) =
+    match m_r with
+    | None -> None
+    | Some r -> Some (elab_mexp r)
+  in
   match Mark.data m_s with
-  | Ast.Return m_r -> Aste.Return (elab_mexp m_r)
+  | Ast.Return m_r -> Aste.Return (helper m_r)
   | _ -> failwith "elab_return recieved not a return"
 ;;
 
@@ -231,8 +237,8 @@ let rec elab_if m_s =
   match s with
   | Ast.If { cond; thenstm; elsestm } ->
     let c = elab_mexp cond in
-    let t : Aste.stmt Mark.t = elaborate_stmts [ thenstm ] in
-    let f : Aste.stmt Mark.t =
+    let t : Aste.stm Mark.t = elaborate_stmts [ thenstm ] in
+    let f : Aste.stm Mark.t =
       match elsestm with
       | None -> Mark.naked Aste.Nop
       | Some elsepart -> elaborate_stmts [ elsepart ]
@@ -245,7 +251,7 @@ and elab_while m_s =
   match s with
   | Ast.While { cond; body } ->
     let c = elab_mexp cond in
-    let b : Aste.stmt Mark.t = elaborate_stmts [ body ] in
+    let b : Aste.stm Mark.t = elaborate_stmts [ body ] in
     Aste.While { cond = c; body = b }
   | _ -> failwith "elab_while recieved not a while"
 
@@ -280,28 +286,26 @@ and elaborate_stmts (p : Ast.mstm list) : Aste.mstm =
       mx
       (match Mark.data mx with
       | Ast.Declare (Ast.New_var (var, typ)) ->
-        Aste.Declare { var; typ; body = elaborate_stmts mstsms }
+        Aste.Declare { var; typ; body = elaborate_stmts mstsms; assign = None }
       | Ast.Declare (Ast.Init (var, typ, m_e)) ->
+        (* may I can remove this check? *)
         let () = check_rec_dcl var (Mark.data m_e) in
         (*_ checking if int x = x + 1;*)
         Aste.Declare
-          { var
-          ; typ
-          ; body =
-              copy_mark
-                mx
-                (Aste.Seq
-                   ( copy_mark mx (Aste.Assign { var; exp = elab_mexp m_e })
-                   , elaborate_stmts mstsms ))
-          }
+          { var; typ; assign = Some (elab_mexp m_e); body = elaborate_stmts mstsms }
       | _ -> Aste.Seq (elab mx, elaborate_stmts mstsms))
 
 and elaborate_stm_list (p : Ast.mstm list) : Aste.mstm = elaborate_stmts p
 (* let elaborate (_ : Ast.mstm list) : Aste.program = failwith "Not implemented" *)
 
-and elaborate': Ast.gdecl -> Aste.glob = function
-| Ast.Typedef {old_name; new_name} -> Aste.Typedef (old_name, new_name)
-| Ast.FunDec {name;ret_type;params} -> Aste.Fundecl (name, to_fsig params ret_type)
-| Ast.FunDef {name;ret_type;params; body} -> Aste.Fundef (name, to_fsig params ret_type, elaborate_stmts [body])
+and elaborate' (s : Ast.mgdecl) : Aste.mglob =
+  let res =
+    match Mark.data s with
+    | Ast.Typedef { old_name; new_name } -> Aste.Typedef (old_name, new_name)
+    | Ast.FunDec { name; ret_type; params } -> Aste.Fundecl (name, to_fsig params ret_type)
+    | Ast.FunDef { name; ret_type; params; body } ->
+      Aste.Fundef (name, to_fsig params ret_type, elaborate_stmts [ body ])
+  in
+  copy_mark s res
 
-and elaborate: Ast.program -> Aste.program = failwith "not implemented"
+and elaborate p : Aste.program = List.map ~f:elaborate' p

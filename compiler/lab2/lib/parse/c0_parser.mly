@@ -84,7 +84,7 @@ let mark
  * but it can improve the quality of parser type errors to annotate
  * the types of other rules.
  *)
-%type <Ast.gdecl list> program
+%type <Ast.mgdecl list> program
 %type <Ast.mstm list> stms
 %type <Ast.stm> stm
 %type <Ast.mstm> m(stm)
@@ -308,13 +308,13 @@ fdecl:
     { Ast.FunDec {name = ident; ret_type = r_opt; params = params} } 
 
 fdefn: 
-    | r_opt= ret_type; ident = Ident; params = param_list; body = block
+    | r_opt= ret_type; ident = Ident; params = param_list; body = m(block)
     { Ast.FunDef {name = ident; ret_type = r_opt; params = params; body = body} } 
 
 gdecl: 
-    | fundec = fdecl  {fundec}
-    | fundef = fdefn  {fundef}
-    | tdef = typedef  {tdef}
+    | fundec = m(fdecl)  {fundec}
+    | fundef = m(fdefn)  {fundef}
+    | tdef = m(typedef)  {tdef}
 
 (* See the menhir documentation for %inline.
  * This allows us to factor out binary operators while still

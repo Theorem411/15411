@@ -148,7 +148,9 @@ type gdecl =
       ; body : mstm (* Block of mstm list *)
       }
 
-type program = gdecl list
+and mgdecl = gdecl Mark.t
+
+type program = mgdecl list
 
 (* Print as source, with redundant parentheses *)
 module Print : sig
