@@ -1,9 +1,8 @@
-(* open Core
+open Core
 
-(*_ 
-1. Remove invalid assignments (x + 1) = 2;  
--> 2. Do elaboration
-*)
+module Typ =  Ast.T
+(* module SymbolMap = Hashtbl.Make (Symbol) *)
+
 
 let to_pure = function
   | Ast.Plus -> Aste.Plus
@@ -14,6 +13,12 @@ let to_pure = function
   | Ast.B_xor -> Aste.BitXor
   | _ -> failwith "Not a pure binop"
 ;;
+
+let to_fsig (params: Ast.param list) (ret_type: Typ.tau option): (Typ.fsig) = 
+  let param_tuple = List.map ~f:(fun (Ast.Param {t; name}) -> (name, t)) params in
+  let m: Typ.tau Symbol.Map.t =  Symbol.Map.of_alist_exn param_tuple in
+  (m, ret_type)
+  
 
 let to_cmp = function
   | Ast.Greater -> Aste.Greater
@@ -246,7 +251,7 @@ and elab_while m_s =
 
 and elab_for m_s = elab (for_to_while m_s)
 
-and elab m_s : Aste.stmt Mark.t =
+and elab m_s : Aste.stm Mark.t =
   match Mark.data m_s with
   (* special cases *)
   | Ast.Block mstms -> elaborate_stmts mstms
@@ -266,7 +271,7 @@ and elab m_s : Aste.stmt Mark.t =
       | Ast.While _ -> elab_while m_s
       | _ -> failwith "should not reach here")
 
-and elaborate_stmts (p : Ast.mstm list) : Aste.program =
+and elaborate_stmts (p : Ast.mstm list) : Aste.mstm =
   let () = List.iter ~f:vldt_assign p in
   match p with
   | [] -> Mark.naked Aste.Nop
@@ -290,7 +295,13 @@ and elaborate_stmts (p : Ast.mstm list) : Aste.program =
                    , elaborate_stmts mstsms ))
           }
       | _ -> Aste.Seq (elab mx, elaborate_stmts mstsms))
-;;
 
-let elaborate (p : Ast.mstm list) : Aste.program = elaborate_stmts p *)
-let elaborate (_ : Ast.mstm list) : Aste.program = failwith "Not implemented"
+and elaborate_stm_list (p : Ast.mstm list) : Aste.mstm = elaborate_stmts p
+(* let elaborate (_ : Ast.mstm list) : Aste.program = failwith "Not implemented" *)
+
+and elaborate': Ast.gdecl -> Aste.glob = function
+| Ast.Typedef {old_name; new_name} -> Aste.Typedef (old_name, new_name)
+| Ast.FunDec {name;ret_type;params} -> Aste.Fundecl (name, to_fsig params ret_type)
+| Ast.FunDef {name;ret_type;params; body} -> Aste.Fundef (name, to_fsig params ret_type, elaborate_stmts [body])
+
+and elaborate: Ast.program -> Aste.program = failwith "not implemented"

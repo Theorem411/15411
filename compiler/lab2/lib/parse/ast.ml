@@ -145,7 +145,7 @@ type gdecl =
       { name : Symbol.t
       ; ret_type : T.tau option
       ; params : param list
-      ; body : stm (* Block of mstm list *)
+      ; body : mstm (* Block of mstm list *)
       }
 
 type program = gdecl list
@@ -261,8 +261,8 @@ module Print = struct
       { name : Symbol.t
       ; ret_type : T.tau option
       ; params : param list
-      ; body : stm (* Block of mstm list *)
-      } -> sprintf "%s %s;" (pp_fundec name ret_type params) (pp_stm body)
+      ; body : mstm (* Block of mstm list *)
+      } -> sprintf "%s %s;" (pp_fundec name ret_type params) (pp_mstm body)
 
   and pp_program p = String.concat ~sep:"\n" (List.map p ~f:pp_program_single)
 end

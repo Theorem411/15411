@@ -1,3 +1,3 @@
 
 
-val elaborate: Ast.mstm list -> Aste.program
+val elaborate: Ast.program -> Aste.program

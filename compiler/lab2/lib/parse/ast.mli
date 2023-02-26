@@ -145,7 +145,7 @@ type gdecl =
       { name : Symbol.t
       ; ret_type : T.tau option
       ; params : param list
-      ; body : stm (* Block of mstm list *)
+      ; body : mstm (* Block of mstm list *)
       }
 
 type program = gdecl list
