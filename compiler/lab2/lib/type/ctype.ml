@@ -9,13 +9,7 @@ type tau =
   | FakeTyp of Symbol.t
   [@@deriving equal, compare, sexp]
 
-module T = struct
-  type t = Symbol.t
-  [@@deriving compare, sexp]
-end
-include Comparable.Make(T)
-
-type fsig = tau Map.t * tau option
+type fsig = tau Symbol.Map.t * tau option
 
 let _tau_tostring = function 
   | RealTyp t -> (match t with Int -> "int" | Bool -> "bool")

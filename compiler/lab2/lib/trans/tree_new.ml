@@ -1,3 +1,4 @@
+open Core
 module A = Aste
 
 type pbop = 
@@ -65,10 +66,15 @@ and stm =
     { dest : Temp.t
     ; src : pexp
     }
-| Return of pexp
-
-type program = stm list
-
+| MovFuncApp of 
+    { dest : Temp.t option
+    ; fname : Symbol.t
+    ; args : pexp list}
+| Return of pexp option
+| AssertFail
+type fspace = { fname : Symbol.t
+              ; fdef : stm list}
+type program = fspace list
 module type PRINT = sig
   val pp_pexp : pexp -> string
   val pp_stm : stm -> string
@@ -125,8 +131,6 @@ module Print : PRINT = struct
         (pp_unop uop.op)
         (pp_pexp uop.p)
   ;;
-
-
   let pp_if_cond (cond : cond) =
     Printf.sprintf 
       "(%s %s %s)" 
@@ -137,14 +141,30 @@ module Print : PRINT = struct
   let pp_stm = function
     | MovPureExp mv -> Temp.name mv.dest ^ "  <--  " ^ pp_pexp mv.src
     | MovEfktExp mv -> Temp.name mv.dest ^ "  <--  " ^ Printf.sprintf "(%s %s %s)" (pp_pexp mv.lhs) (pp_ebop mv.ebop) (pp_pexp mv.rhs)
+    | MovFuncApp { dest; fname; args; } -> (
+        let fstr = Symbol.name fname in
+        let argstr = List.fold args ~init:"" ~f:(fun acc -> fun e -> acc ^ pp_pexp e ^ ", ") in
+        match dest with
+        | None -> Printf.sprintf "%s(%s)" fstr argstr
+        | Some d -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr
+      )
     | Goto l -> "goto " ^ Label.name l
     | Label l -> Label.name l
     | If ifs -> "if " ^ (pp_if_cond ifs.cond) ^ Label.name ifs.lt ^ " else " ^ Label.name ifs.lf
-    | Return e -> "return " ^ pp_pexp e
+    | Return eopt -> (
+      match eopt with 
+      | None -> "return"
+      | Some e -> "return " ^ pp_pexp e)
+    | AssertFail -> "assertfail"
   ;;
-
-  let rec pp_program = function
+  let pp_stms (stms : stm list) = 
+    List.fold ~init:"" ~f:(fun acc -> fun s -> acc ^ pp_stm s ^ "\n") stms 
+  ;;
+  let rec pp_program (prog : program) =
+    match prog with
     | [] -> ""
-    | stm :: stms -> pp_stm stm ^ "\n" ^ pp_program stms
+    | {fname; fdef} :: prog' -> 
+        Printf.sprintf "%s:\n%s\n----\n%s" 
+        (Symbol.name fname) (pp_stms fdef) (pp_program prog')
   ;;
 end
