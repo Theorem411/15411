@@ -198,6 +198,8 @@ let compile (cmd : cmd_line_args) : unit =
   (* Parse *)
   say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
   let ast_h = Parse.parse cmd.header_filename in
+      (* TODO check that ast_h has the only fdecl or typedef *)
+      (* TODO rename functions in ast_h *)
   let ast = Parse.parse cmd.filename in
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");

@@ -107,6 +107,19 @@ type instr =
   | Ret of operand
   | Lab of Label.t
   | Cmp of operand * operand
+  | AssertFail
+  | App of
+      { name : Symbol.t
+      ; args : operand list
+      ; dest_opt : operand option
+      }
+  (* this is in the third assem *)
+  | Call of Symbol.t
+  | Push of operand
+  | ArgMov of
+      { arg_idx : int
+      ; src : operand
+      }
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
@@ -170,4 +183,11 @@ let format = function
   | Set c ->
     sprintf "%s %s" (c.typ |> sexp_of_set_t |> string_of_sexp) (format_operand c.src)
   | Cmp (l, r) -> sprintf "cmp %s, %s" (format_operand l) (format_operand r)
+  | AssertFail -> "call __assert_fail"
+  | App {name; _} -> sprintf "calling %s [%s]" (Symbol.name name) ("If you need to debug this, implement me  .|.  <3") 
+  | Call name -> sprintf "call %s" (Symbol.name name)
+  | Push o -> sprintf "push %s" (format_operand o)
+  | ArgMov {arg_idx; src} -> sprintf "arg[%s] <- %s" (Int.to_string arg_idx) (format_operand src)
 ;;
+
+type program = (Symbol.t * instr list) list

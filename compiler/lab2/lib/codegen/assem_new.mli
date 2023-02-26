@@ -111,11 +111,26 @@ type instr =
   | Ret of operand
   | Lab of Label.t
   | Cmp of operand * operand
+  | AssertFail
+  | App of
+      { name : Symbol.t
+      ; args : operand list
+      ; dest_opt : operand option
+      }
+  (* this is in the third assem *)
+  | Call of Symbol.t
+  | Push of operand
+  | ArgMov of
+      { arg_idx : int
+      ; src : operand
+      }
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
   | Comment of string
 [@@deriving equal, sexp, compare]
+
+type program = (Symbol.t * instr list) list
 
 val format_reg: reg -> string;;
 val format: instr ->  string;;
