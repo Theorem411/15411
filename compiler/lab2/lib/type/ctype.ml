@@ -36,5 +36,5 @@ let _fsig_tostring ((args, ret) : fsig) : string =
     acc ^ Printf.sprintf "%s:%s, " (Symbol.name k) (_tau_tostring d)
   in
   let argstyp = Symbol.Map.fold args ~init:"" ~f:argsstr in
-  argstyp ^ "-> " ^ rettyp
+  "(" ^ argstyp ^ ") -> " ^ rettyp
 ;;

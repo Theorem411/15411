@@ -3,7 +3,7 @@ module T = Ctype
 module SM = Symbol.Map
 module SS = Symbol.Set *)
 module A = Aste
-module TS = Comparable.Make(struct 
+(*module TS = Comparable.Make(struct 
   type t = T.tau 
   [@@deriving compare, sexp]
 end)
@@ -31,6 +31,6 @@ module Omega = struct
 end
 
 let ck_glob (glob : A.mglob) = ()
-;;
-let static_semantic (prog : A.program) = ()
+;; *)
+let static_semantic (_ : A.program) = ()
 ;;

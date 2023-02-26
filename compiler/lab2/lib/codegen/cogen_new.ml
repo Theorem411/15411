@@ -1,7 +1,7 @@
-open Core
+ (* open Core *)
 module T = Tree_new
 module A = Assem_new
-
+(*
 (*_ *)
 let if_cond_to_rev_jump_t (cond : T.cond) =
   match cond.cmp with
@@ -101,4 +101,5 @@ let munch_stm = function
     (munch_exp (A.Reg A.EAX) e) @ [A.Ret (A.Reg A.EAX)]
 ;;
 
-let cogen inp = List.concat_map ~f:munch_stm inp
+let cogen inp = List.concat_map ~f:munch_stm inp *)
+let cogen = failwith "Not implemented yet."

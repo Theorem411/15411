@@ -255,6 +255,18 @@ and elab_while m_s =
     Aste.While { cond = c; body = b }
   | _ -> failwith "elab_while recieved not a while"
 
+and elab_assert m_s =
+  let s = Mark.data m_s in
+  match s with
+  | Ast.Assert e ->
+    let c = elab_mexp e in
+    Aste.If
+      { cond = copy_mark c (Aste.Unop { operand = c; op = Aste.LogNot })
+      ; rb = copy_mark m_s Aste.Nop
+      ; lb = copy_mark m_s Aste.AssertFail
+      }
+  | _ -> failwith "elab_assert recieved not an assert"
+
 and elab_for m_s = elab (for_to_while m_s)
 
 and elab m_s : Aste.stm Mark.t =
@@ -275,6 +287,7 @@ and elab m_s : Aste.stm Mark.t =
       | Ast.Exp e -> Aste.NakedExpr (elab_mexp e)
       | Ast.If _ -> elab_if m_s
       | Ast.While _ -> elab_while m_s
+      | Ast.Assert _ -> elab_assert m_s
       | _ -> failwith "should not reach here")
 
 and elaborate_stmts (p : Ast.mstm list) : Aste.mstm =
@@ -294,7 +307,6 @@ and elaborate_stmts (p : Ast.mstm list) : Aste.mstm =
         Aste.Declare
           { var; typ; assign = Some (elab_mexp m_e); body = elaborate_stmts mstsms }
       | _ -> Aste.Seq (elab mx, elaborate_stmts mstsms))
-
 
 and elaborate' (s : Ast.mgdecl) : Aste.mglob =
   let res =
