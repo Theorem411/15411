@@ -57,6 +57,10 @@ type exp =
       { op : unop
       ; operand : mexp
       }
+  | Call of
+      { name : Symbol.t
+      ; args : mexp list
+      }
 
 and mexp = exp Mark.t
 
@@ -197,7 +201,8 @@ module Print = struct
   and pp_mstm ?(n = 0) prog = pp_stm ~n (Mark.data prog) ^ "\n"
 
   let pp_glob ?(n = 0) = function
-    | Typedef (a, b) -> sprintf "typedef %s <--- %s;" (Typ._tau_tostring a) (Typ._tau_tostring b)
+    | Typedef (a, b) ->
+      sprintf "typedef %s <--- %s;" (Typ._tau_tostring a) (Typ._tau_tostring b)
     | _ -> tabs n ^ ""
   ;;
 

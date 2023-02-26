@@ -57,6 +57,10 @@ type exp =
       { op : unop
       ; operand : mexp
       }
+  | Call of
+      { name : Symbol.t
+      ; args : mexp list
+      }
 
 and mexp = exp Mark.t
 
@@ -64,7 +68,7 @@ type stm =
   | Declare of
       { var : Symbol.t
       ; typ : Typ.tau
-      ; assign: mexp option
+      ; assign : mexp option
       ; body : mstm
       }
   | Assign of
@@ -87,12 +91,12 @@ type stm =
 
 and mstm = stm Mark.t
 
-type glob = 
+type glob =
   | Typedef of Typ.tau * Typ.tau
-  | Fundecl of Symbol.t * Typ.fsig 
+  | Fundecl of Symbol.t * Typ.fsig
   | Fundef of Symbol.t * Typ.fsig * mstm
-type mglob = glob Mark.t
 
+type mglob = glob Mark.t
 type program = mglob list
 
 module Print : sig
