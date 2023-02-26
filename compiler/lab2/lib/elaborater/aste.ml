@@ -162,12 +162,7 @@ module Print = struct
         (pp_binop_efkt binop.op)
         (pp_mexp binop.rhs)
     | Ternary t -> sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.lb) (pp_mexp t.rb)
-    | Call { name; args } ->
-      sprintf
-        "call %s(%s)"
-        (Symbol.name name)
-        (String.concat ~sep:"," (List.map args ~f:pp_mexp))
-
+    | Call { name; args } -> sprintf "(%s (%s))" (Symbol.name name) (List.fold args ~init:"" ~f:(fun acc -> fun e -> acc ^ pp_mexp e ^ "\n"))
   and pp_mexp e = pp_exp (Mark.data e)
 
   let rec pp_stm ?(n = 0) stm =

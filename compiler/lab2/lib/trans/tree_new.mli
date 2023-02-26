@@ -50,31 +50,37 @@ type pexp =
       ; p : pexp
       }
 and cond = 
-  { cmp : cbop
-  ; p1 : pexp
-  ; p2 : pexp
-  }
+{ cmp : cbop
+; p1 : pexp
+; p2 : pexp
+}
 and stm =
-  | If of
-      { cond : cond
-      ; lt : Label.t
-      ; lf : Label.t
-      }
-  | Goto of Label.t
-  | Label of Label.t
-  | MovEfktExp of
-      { dest : Temp.t
-      ; ebop : ebop
-      ; lhs : pexp
-      ; rhs : pexp
-      }
-  | MovPureExp of
-      { dest : Temp.t
-      ; src : pexp
-      }
-  | Return of pexp
-
-type program = stm list
+| If of
+    { cond : cond
+    ; lt : Label.t
+    ; lf : Label.t
+    }
+| Goto of Label.t
+| Label of Label.t
+| MovEfktExp of
+    { dest : Temp.t
+    ; ebop : ebop
+    ; lhs : pexp
+    ; rhs : pexp
+    }
+| MovPureExp of
+    { dest : Temp.t
+    ; src : pexp
+    }
+| MovFuncApp of 
+    { dest : Temp.t option
+    ; fname : Symbol.t
+    ; args : pexp list}
+| Return of pexp option
+| AssertFail
+type fspace = { fname : Symbol.t
+              ; fdef : stm list}
+type program = fspace list
 
 module Print : sig
   val pp_pexp : pexp -> string
