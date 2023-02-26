@@ -1,7 +1,7 @@
-open Core
+(* open Core *)
 module T = Tree_new
 module A = Aste
-module S = Symbol.Map
+(*module S = Symbol.Map
 (* 
 exception TypeCheckFailure
 
@@ -237,4 +237,6 @@ and tr_stm_while env (cond : A.mexp) (body : A.program) =
 ;;
 
 let tr_stm (env : Temp.t S.t) (stm : A.program) = List.rev (tr_stm_rev env stm)
-let translate (prog : A.program) = tr_stm S.empty prog
+let translate (prog : A.program) = tr_stm S.empty prog *)
+
+let translate: A.program -> T.stm list = failwith "Not implemented";;

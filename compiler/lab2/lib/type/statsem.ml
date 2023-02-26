@@ -1,9 +1,9 @@
-open Core
+(* open Core
 module T = Ctype
 module SM = Symbol.Map
-module SS = Symbol.Set
+module SS = Symbol.Set *)
 module A = Aste
-
+(*
 (*_ exception and error printing *)
 let global_err = Error_msg.create ()
 
@@ -236,4 +236,6 @@ let static_semantic (prog : A.program) : unit =
     StatSemanticCmd.semantic_synther (StatSemanticCmd.hyps_init ~prog ~typ:T.Int)
   in
   ()
-;;
+;; *)
+
+let static_semantic (_ : A.program) = failwith "Not implemented";;
