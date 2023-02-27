@@ -234,8 +234,9 @@ and tr_stm_while genv env (cond : A.mexp) (body : A.mstm) =
 let tr_stm (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) = List.rev (tr_stm_rev genv env stm)
 
 let args_tag =
-  Symbol.Set.fold ~init:S.empty ~f:(fun acc s ->
-    S.add_exn acc ~key:s ~data:(Temp.create ()))
+  Symbol.Set.fold ~init:([], S.empty) ~f:(fun (args, acc) s ->
+    let t = Temp.create () in
+    t::args, S.set acc ~key:s ~data:t)
 ;;
 
 let tr_glob (glob : A.mglob) (global_env : Symbol.Set.t) =
@@ -246,10 +247,10 @@ let tr_glob (glob : A.mglob) (global_env : Symbol.Set.t) =
     None, global_env'
   | A.Fundef (fname, fsig, s) ->
     let args = Typ.args fsig in
-    let args_env = args_tag args in
+    let args_lst, args_env = args_tag args in
     let global_env' = Symbol.Set.add global_env fname in
     let fdef = tr_stm global_env' args_env s in
-    Some ({ fname; fdef } : T.fspace), global_env'
+    Some ({ fname; args=args_lst; fdef } : T.fspace), global_env'
 ;;
 
 let translate (prog : A.program) : T.program =

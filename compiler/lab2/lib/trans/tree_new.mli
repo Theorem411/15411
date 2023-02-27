@@ -79,6 +79,7 @@ and stm =
 | Return of pexp option
 | AssertFail
 type fspace = { fname : Symbol.t
+              ; args : Temp.t list
               ; fdef : stm list}
 type program = fspace list
 

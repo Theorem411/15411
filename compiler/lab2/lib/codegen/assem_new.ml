@@ -20,8 +20,6 @@ type reg =
   | RSP
 [@@deriving equal, sexp, compare, enum, hash]
 
-let format_reg r = sexp_of_reg r |> string_of_sexp
-
 type operand =
   | Imm of Int32.t
   | Reg of reg
@@ -37,14 +35,14 @@ type pure_operation =
   | BitXor
 [@@deriving equal, sexp, compare]
 
+type unary_operation = BitNot [@@deriving equal, sexp, compare]
+
 type efkt_operation =
   | Div
   | Mod
   | ShiftL
   | ShiftR
 [@@deriving equal, sexp, compare]
-
-type unary_operation = BitNot [@@deriving equal, sexp, compare]
 
 type jump_t =
   | Je (*_ jump if p1 == p2 *)
@@ -57,10 +55,19 @@ type jump_t =
   (* | Jnl _ jump if NOT p1 < p2 *)
   | Jle (*_ jump if p1 <= p2 *)
   (* | Jng _ jump if NOT p1 > p2 *)
-  | Jg (*_ jump if p1 > p2 *)
+  | Jg
+(*_ jump if p1 > p2 *)
 (* | Jnle _ jump if NOT p1 <= p2 *)
 [@@deriving equal, sexp, compare]
 
+(*_ what is potentially missing? 
+  - Any parity flag related jumps: e.g., jp, jpe
+  - Any unsigned version of the above: e.g. jb, ja
+  - Any carry flag related jumps : e.g., jc, jnc
+  - Any sign flag related jumps: e.g., js, jns 
+  btw disabled jz and jnz because I think they need to be used with test (an
+  alternative to cmp in x86)
+   *)
 type set_t =
   | Sete
   | Setne
@@ -108,24 +115,19 @@ type instr =
   | Lab of Label.t
   | Cmp of operand * operand
   | AssertFail
-  | App of
-      { name : Symbol.t
-      ; args : operand list
-      ; dest_opt : operand option
-      }
   (* this is in the third assem *)
-  | Call of Symbol.t
-  | Push of operand
-  | ArgMov of
-      { arg_idx : int
-      ; src : operand
+  | Call of
+      { fname : Symbol.t
+      ; args_overflow : Temp.t list
       }
+  | LoadFromStack of Temp.t list
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
   | Comment of string
 [@@deriving equal, sexp, compare]
 
+let format_reg r = sexp_of_reg r |> string_of_sexp
 let format_operand = function
   | Imm n -> "$" ^ Int32.to_string n
   | Temp t -> Temp.name t
@@ -184,10 +186,8 @@ let format = function
     sprintf "%s %s" (c.typ |> sexp_of_set_t |> string_of_sexp) (format_operand c.src)
   | Cmp (l, r) -> sprintf "cmp %s, %s" (format_operand l) (format_operand r)
   | AssertFail -> "call __assert_fail"
-  | App {name; _} -> sprintf "calling %s [%s]" (Symbol.name name) ("If you need to debug this, implement me  .|.  <3") 
-  | Call name -> sprintf "call %s" (Symbol.name name)
-  | Push o -> sprintf "push %s" (format_operand o)
-  | ArgMov {arg_idx; src} -> sprintf "arg[%s] <- %s" (Int.to_string arg_idx) (format_operand src)
+  | Call { fname; args_overflow } -> sprintf "call %s(%s)" (Symbol.name fname) (List.map args_overflow ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
+  | LoadFromStack ts -> sprintf "load_from_stack(%s)" (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
 ;;
 
 type program = (Symbol.t * instr list) list
