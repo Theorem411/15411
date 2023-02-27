@@ -150,7 +150,7 @@ let rec tr_stm_rev (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
   | A.If ifs -> tr_stm_if genv env ifs.cond ifs.lb ifs.rb
   | A.While loop -> tr_stm_while genv env loop.cond loop.body
   | A.AssertFail -> [T.AssertFail]
-  | A.VoidCall { name; args; } -> 
+  | A.NakedCall { name; args; } -> 
     let fname = Symbol.Set.find_exn genv ~f:(fun s -> Symbol.equal s name) in 
     let cmdllist, explist = List.fold_right args ~f:(fun arg -> fun (cll, el) -> let cmd, e = tr_exp_rev genv env arg in (cmd :: cll, e :: el)) ~init:([], []) in
     let cmdlist = List.concat cmdllist in

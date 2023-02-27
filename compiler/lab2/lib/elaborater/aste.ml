@@ -89,7 +89,7 @@ type stm =
   | Seq of mstm * mstm
   | NakedExpr of mexp
   | AssertFail
-  | VoidCall of
+  | NakedCall of
       { name : Symbol.t
       ; args : mexp list
       }
@@ -179,19 +179,19 @@ module Print = struct
     let f ~n = function
       | Declare { var; typ; assign; body } ->
         (match assign with
-        | None ->
-          sprintf
-            "%s %s;\n%s"
-            (Typ._tau_tostring typ)
-            (Symbol.name var)
-            (pp_mstm ~n:(n + 1) body)
-        | Some e ->
-          sprintf
-            "%s %s=%s;\n%s"
-            (Typ._tau_tostring typ)
-            (Symbol.name var)
-            (pp_mexp e)
-            (pp_mstm ~n:(n + 1) body))
+         | None ->
+           sprintf
+             "%s %s;\n%s"
+             (Typ._tau_tostring typ)
+             (Symbol.name var)
+             (pp_mstm ~n:(n + 1) body)
+         | Some e ->
+           sprintf
+             "%s %s=%s;\n%s"
+             (Typ._tau_tostring typ)
+             (Symbol.name var)
+             (pp_mexp e)
+             (pp_mstm ~n:(n + 1) body))
       | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
       | If { cond; lb; rb } ->
         sprintf
@@ -206,6 +206,8 @@ module Print = struct
       | Seq (s1, s2) -> sprintf "%s  %s" (pp_mstm ~n s1) (pp_mstm ~n s2)
       | Nop -> "nop;"
       | AssertFail -> "__assert_fail;"
+      | NakedCall { name; args } ->
+        sprintf "%s(%s)" (Symbol.name name) (List.map args ~f:pp_mexp |> String.concat)
     in
     tabs n ^ f ~n stm
 

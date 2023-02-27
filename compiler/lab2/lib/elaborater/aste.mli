@@ -89,7 +89,7 @@ type stm =
   | Seq of mstm * mstm
   | NakedExpr of mexp
   | AssertFail
-  | VoidCall of
+  | NakedCall of
       { name : Symbol.t
       ; args : mexp list
       }
