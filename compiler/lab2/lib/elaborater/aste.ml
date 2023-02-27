@@ -89,6 +89,10 @@ type stm =
   | Seq of mstm * mstm
   | NakedExpr of mexp
   | AssertFail
+  | VoidCall of
+      { name : Symbol.t
+      ; args : mexp list
+      }
 
 and mstm = stm Mark.t
 

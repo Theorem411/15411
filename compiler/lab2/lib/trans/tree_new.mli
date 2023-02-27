@@ -73,7 +73,7 @@ and stm =
     ; src : pexp
     }
 | MovFuncApp of 
-    { dest : Temp.t
+    { dest : Temp.t option
     ; fname : Symbol.t
     ; args : pexp list}
 | Return of pexp option

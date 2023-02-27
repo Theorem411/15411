@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module T = Tree_new
 module A = Assem_new
 
@@ -101,4 +101,9 @@ let munch_stm = function
     (munch_exp (A.Reg A.EAX) e) @ [A.Ret (A.Reg A.EAX)]
 ;;
 
-let cogen inp = List.concat_map ~f:munch_stm inp
+let cogen inp = List.concat_map ~f:munch_stm inp *)
+open Core
+module T = Tree_new
+module A = Assem_new
+
+let cogen inp = 
