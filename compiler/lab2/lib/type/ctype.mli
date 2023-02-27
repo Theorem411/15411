@@ -12,5 +12,7 @@ type tau =
 (* include Comparable.S with type t := Symbol.t *)
 type fsig = tau Symbol.Map.t * tau option
 
+val args : fsig -> Symbol.Set.t
+
 val _tau_tostring : tau -> string
 val _fsig_tostring : fsig -> string

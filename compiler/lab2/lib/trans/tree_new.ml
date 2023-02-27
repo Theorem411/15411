@@ -67,7 +67,7 @@ and stm =
     ; src : pexp
     }
 | MovFuncApp of 
-    { dest : Temp.t option
+    { dest : Temp.t
     ; fname : Symbol.t
     ; args : pexp list}
 | Return of pexp option
@@ -144,9 +144,7 @@ module Print : PRINT = struct
     | MovFuncApp { dest; fname; args; } -> (
         let fstr = Symbol.name fname in
         let argstr = List.fold args ~init:"" ~f:(fun acc -> fun e -> acc ^ pp_pexp e ^ ", ") in
-        match dest with
-        | None -> Printf.sprintf "%s(%s)" fstr argstr
-        | Some d -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr
+          Printf.sprintf "%s  <--  %s(%s)" (Temp.name dest) fstr argstr
       )
     | Goto l -> "goto " ^ Label.name l
     | Label l -> Label.name l

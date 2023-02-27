@@ -88,6 +88,7 @@ type stm =
   | Nop
   | Seq of mstm * mstm
   | NakedExpr of mexp
+  | AssertFail
 
 and mstm = stm Mark.t
 
@@ -162,7 +163,12 @@ module Print = struct
         (pp_binop_efkt binop.op)
         (pp_mexp binop.rhs)
     | Ternary t -> sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.lb) (pp_mexp t.rb)
-    | Call { name; args } -> sprintf "(%s (%s))" (Symbol.name name) (List.fold args ~init:"" ~f:(fun acc -> fun e -> acc ^ pp_mexp e ^ "\n"))
+    | Call { name; args } ->
+      sprintf
+        "(%s (%s))"
+        (Symbol.name name)
+        (List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mexp e ^ "\n"))
+
   and pp_mexp e = pp_exp (Mark.data e)
 
   let rec pp_stm ?(n = 0) stm =
@@ -195,6 +201,7 @@ module Print = struct
       | NakedExpr e -> sprintf "(%s);" (pp_mexp e)
       | Seq (s1, s2) -> sprintf "%s  %s" (pp_mstm ~n s1) (pp_mstm ~n s2)
       | Nop -> "nop;"
+      | AssertFail -> "__assert_fail;"
     in
     tabs n ^ f ~n stm
 
@@ -203,7 +210,10 @@ module Print = struct
   let pp_glob ?(n = 0) = function
     | Typedef (a, b) ->
       sprintf "typedef %s <--- %s;" (Typ._tau_tostring a) (Typ._tau_tostring b)
-    | _ -> tabs n ^ ""
+    | Fundecl (name, fsig) ->
+      sprintf "%s: %s" (Symbol.name name) (Typ._fsig_tostring fsig)
+    | Fundef (name, fsig, body) ->
+      sprintf "%s: %s = %s" (Symbol.name name) (Typ._fsig_tostring fsig) (pp_mstm ~n body)
   ;;
 
   let pp_mglob ?(n = 0) mglob = pp_glob ~n (Mark.data mglob) ^ "\n"

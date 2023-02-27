@@ -18,6 +18,9 @@ include Comparable.Make (T) *)
 
 type fsig = tau Symbol.Map.t * tau option
 
+let args ((args, _) : fsig) : Symbol.Set.t = Symbol.Map.key_set args
+;;
+
 let _tau_tostring = function
   | RealTyp t ->
     (match t with

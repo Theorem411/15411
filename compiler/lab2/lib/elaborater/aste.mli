@@ -88,6 +88,7 @@ type stm =
   | Nop
   | Seq of mstm * mstm
   | NakedExpr of mexp
+  | AssertFail
 
 and mstm = stm Mark.t
 
