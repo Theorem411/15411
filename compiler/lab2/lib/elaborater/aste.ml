@@ -202,10 +202,11 @@ module Print = struct
       | While { cond; body } ->
         sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_mstm ~n:(n + 1) body)
       | Return e -> sprintf "return %s;" (Option.value_map ~default:"" ~f:pp_mexp e)
-      | NakedExpr e -> sprintf "(%s);" (pp_mexp e)
+      | NakedExpr e -> sprintf "NakedExpr(%s);" (pp_mexp e)
       | Seq (s1, s2) -> sprintf "%s  %s" (pp_mstm ~n s1) (pp_mstm ~n s2)
       | Nop -> "nop;"
       | AssertFail -> "__assert_fail;"
+      | VoidCall {name; args} -> sprintf "NakedCall %s(%s);" (Symbol.name name) (List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mexp e ^ "\n"))
     in
     tabs n ^ f ~n stm
 

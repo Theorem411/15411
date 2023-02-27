@@ -29,6 +29,7 @@ let get_all_addressable_line instr =
     | Jmp _ | Cjmp _ | Lab _ | AS.Directive _ | AS.Comment _ | Ret _ -> []
     | Cmp (l, r) -> [ l; r ]
     | Set { src; _ } -> [ src; AS.Reg EAX ]
+    | _ -> failwith "not implemented yet"
   in
   List.filter (all_ops instr) ~f:(fun i ->
       match i with

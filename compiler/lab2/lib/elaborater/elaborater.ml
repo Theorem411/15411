@@ -269,6 +269,14 @@ and elab_assert m_s =
 
 and elab_for m_s = elab (for_to_while m_s)
 
+and elab_stm_exp e =
+  let s = Mark.data e in
+    (match s with
+    | Ast.Call { name; args } ->
+      let argsnew = List.map ~f:elab_mexp args in
+      Aste.VoidCall { name; args = argsnew }
+    | _ -> Aste.NakedExpr (elab_mexp e))
+
 and elab m_s : Aste.stm Mark.t =
   match Mark.data m_s with
   (* special cases *)
@@ -284,7 +292,7 @@ and elab m_s : Aste.stm Mark.t =
       | Ast.Assign _ -> elab_assign m_s
       | Ast.PostOp _ -> elab_postop m_s
       | Ast.Return _ -> elab_return m_s
-      | Ast.Exp e -> Aste.NakedExpr (elab_mexp e)
+      | Ast.Exp e -> elab_stm_exp e
       | Ast.If _ -> elab_if m_s
       | Ast.While _ -> elab_while m_s
       | Ast.Assert _ -> elab_assert m_s

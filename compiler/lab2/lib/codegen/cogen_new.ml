@@ -106,4 +106,7 @@ let cogen inp = List.concat_map ~f:munch_stm inp *) *)
 module T = Tree_new
 module A = Assem_new
 let cogen inp =  *)
+
+module T = Tree_new
+module A = Assem_new
   let cogen = failwith "Not implemented yet."

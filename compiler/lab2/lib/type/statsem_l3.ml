@@ -1,4 +1,4 @@
-(* open Core
+(* (* open Core
 module T = Ctype
 module SM = Symbol.Map
 module SS = Symbol.Set
@@ -252,4 +252,4 @@ exception TypeError
 let error ~msg ~ast =
   Error_msg.error global_err (Mark.src_span ast) ~msg;
   raise TypeError
-;;
+;; *)
