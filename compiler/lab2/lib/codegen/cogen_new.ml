@@ -86,19 +86,26 @@ let munch_stm = function
     @ [ A.EfktBinop { op; dest = A.Temp mv.dest; lhs = t1; rhs = t2 } ]
   | T.AssertFail -> [ A.AssertFail ]
   | T.MovFuncApp { dest; fname; args } ->
-    let mapf a =
-      let t = A.Temp (Temp.create ()) in
-      t, munch_exp t a
+    let cogen_arg e =
+      let t = Temp.create () in
+      t, munch_exp (A.Temp t) e
     in
-    let tlist, argsllist = List.map args ~f:mapf |> List.unzip in
-    let argslist = List.concat argsllist in
-    let dest_opt =
-      match dest with
-      | None -> None
-      | Some t -> Some (A.Temp t)
+    let ops, cogen_args = List.map args ~f:cogen_arg |> List.unzip in
+    let cogen_args = List.concat cogen_args in
+    let args_mv_f i t =
+      if i < 6
+      then Some (A.Mov { dest = A.Reg (A.arg_i_to_reg i); src = A.Temp t })
+      else None
     in
-    let app = A.App { name = fname; args = tlist; dest_opt } in
-    argslist @ [ app ]
+    let args_mv = List.mapi ops ~f:args_mv_f |> List.filter_opt in
+    let args_overflow_f i op = if i >= 6 then Some op else None in
+    let args_overflow = List.mapi ops ~f:args_overflow_f |> List.filter_opt in
+    let call = A.Call { fname; args_overflow } in
+    (match dest with
+     | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
+     | Some d ->
+       [ cogen_args; args_mv; [ call; A.Mov { dest = A.Temp d; src = A.Reg A.EAX } ] ]
+       |> List.concat)
   | T.If { cond; lt; lf } ->
     let jmptyp = if_cond_to_rev_jump_t cond in
     let e1 = cond.p1 in
@@ -117,29 +124,11 @@ let munch_stm = function
      | Some e -> munch_exp (A.Reg A.EAX) e @ [ A.Ret (A.Reg A.EAX) ])
 ;;
 
-let munch_fspace (fspace : T.fspace) =
-  fspace.fname, List.concat_map ~f:munch_stm fspace.fdef
+let munch_fspace (fspace : T.fspace) : A.fspace =
+  { fname = fspace.fname
+  ; args = fspace.args
+  ; fdef = List.concat_map ~f:munch_stm fspace.fdef
+  }
 ;;
 
-(*_ first pass *)
-let munch_program (tprog : T.program) : A.program = List.map tprog ~f:munch_fspace
-
-let rm_app (prog : A.program) : A.program =
-  let rm_app_instr = function
-    | A.App { name; args; dest_opt } ->
-      let mapi_f arg_idx op =
-        if arg_idx < 6 then A.ArgMov { arg_idx; src = op } else A.Push op
-      in
-      (match dest_opt with
-       | None -> List.mapi args ~f:mapi_f @ [ A.Call name ]
-       | Some d ->
-         List.mapi args ~f:mapi_f @ [ A.Call name; A.Mov { dest = d; src = A.Reg A.EAX } ])
-    | i -> [ i ]
-  in
-  let mapf ((fname, ins) : Symbol.t * A.instr list) =
-    fname, List.map ins ~f:rm_app_instr |> List.concat
-  in
-  List.map prog ~f:mapf
-;;
-
-let cogen (tprog : T.program) : A.program = munch_program tprog |> rm_app
+let cogen (tprog : T.program) : A.program = List.map tprog ~f:munch_fspace

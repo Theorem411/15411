@@ -20,6 +20,15 @@ type reg =
   | RSP
 [@@deriving equal, sexp, compare, enum, hash]
 
+let arg_i_to_reg = function 
+  | 0 -> EDI
+  | 1 -> ESI
+  | 2 -> EDX
+  | 3 -> ECX
+  | 4 -> R8D
+  | 5 -> R9D
+  | _ -> failwith "args overflow 6"
+
 type operand =
   | Imm of Int32.t
   | Reg of reg
@@ -127,7 +136,16 @@ type instr =
   | Comment of string
 [@@deriving equal, sexp, compare]
 
+type fspace =
+  { fname : Symbol.t
+  ; args : Temp.t list
+  ; fdef : instr list
+  }
+
+type program = fspace list
+
 let format_reg r = sexp_of_reg r |> string_of_sexp
+
 let format_operand = function
   | Imm n -> "$" ^ Int32.to_string n
   | Temp t -> Temp.name t
@@ -154,7 +172,7 @@ let format_unop = function
   | BitNot -> "~"
 ;;
 
-let format = function
+let format_instr = function
   | PureBinop binop ->
     sprintf
       "%s <-- %s %s %s"
@@ -186,8 +204,24 @@ let format = function
     sprintf "%s %s" (c.typ |> sexp_of_set_t |> string_of_sexp) (format_operand c.src)
   | Cmp (l, r) -> sprintf "cmp %s, %s" (format_operand l) (format_operand r)
   | AssertFail -> "call __assert_fail"
-  | Call { fname; args_overflow } -> sprintf "call %s(%s)" (Symbol.name fname) (List.map args_overflow ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
-  | LoadFromStack ts -> sprintf "load_from_stack(%s)" (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
+  | Call { fname; args_overflow } ->
+    sprintf
+      "call %s(%s)"
+      (Symbol.name fname)
+      (List.map args_overflow ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
+  | LoadFromStack ts ->
+    sprintf
+      "load_from_stack(%s)"
+      (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
 ;;
 
-type program = (Symbol.t * instr list) list
+let format_program prog =
+  let format_fspace fspace =
+    sprintf
+      "%s(%s): \n%s"
+      (Symbol.name fspace.fname)
+      (List.map fspace.args ~f:Temp.name |> String.concat)
+      (List.map fspace.fdef ~f:format_instr |> String.concat)
+  in
+  List.map prog ~f:format_fspace |> String.concat
+;;

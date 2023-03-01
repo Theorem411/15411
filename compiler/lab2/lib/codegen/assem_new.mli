@@ -124,8 +124,15 @@ type instr =
   | Comment of string
 [@@deriving equal, sexp, compare]
 
-type program = (Symbol.t * instr list) list
+type fspace =
+  { fname : Symbol.t
+  ; args : Temp.t list
+  ; fdef : instr list
+  }
+
+type program = fspace list
 
 val arg_i_to_reg : int -> reg
 val format_reg : reg -> string
-val format : instr -> string
+val format_instr : instr -> string
+val format_program : program -> string
