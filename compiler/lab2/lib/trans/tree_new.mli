@@ -94,6 +94,5 @@ type program = fspace list
 module Print : sig
   val pp_pexp : pexp -> string
   val pp_stm : stm -> string
-  val pp_blocks : block list -> string
   val pp_program : program -> string
 end

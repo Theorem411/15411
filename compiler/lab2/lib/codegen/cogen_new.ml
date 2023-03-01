@@ -149,6 +149,9 @@ let munch_fspace ({ fname; args; fdef_block } : A.fspace_block) : A.fspace =
   { fname; args; fdef=List.concat_map ~f:block_to_instr fdef_block;}
 ;;
 
-let cogen (tprog : T.program) : A.program = 
-  let map_f (p : T.fspace) = munch_fspace_block p |> munch_fspace in
+let cogen_block (tprog : T.program) : A.program_block = 
+  let map_f (p : T.fspace) = munch_fspace_block p in
   List.map tprog ~f:map_f
+;;
+let cogen (prog_block : A.program_block) : A.program = 
+  List.map ~f:munch_fspace prog_block

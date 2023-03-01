@@ -138,20 +138,23 @@ type block =
   ; jump : jump_tag_t
   }
 
-type fspace_block = 
+type fspace_block =
   { fname : Symbol.t
   ; args : Temp.t list
   ; fdef_block : block list
   }
+
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
   ; fdef : instr list
   }
 
+type program_block = fspace_block list
 type program = fspace list
 
 val arg_i_to_reg : int -> reg
 val format_reg : reg -> string
 val format_instr : instr -> string
+val format_program_block : program_block -> string
 val format_program : program -> string

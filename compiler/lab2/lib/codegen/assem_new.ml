@@ -20,7 +20,7 @@ type reg =
   | RSP
 [@@deriving equal, sexp, compare, enum, hash]
 
-let arg_i_to_reg = function 
+let arg_i_to_reg = function
   | 0 -> EDI
   | 1 -> ESI
   | 2 -> EDX
@@ -28,6 +28,7 @@ let arg_i_to_reg = function
   | 4 -> R8D
   | 5 -> R9D
   | _ -> failwith "args overflow 6"
+;;
 
 type operand =
   | Imm of Int32.t
@@ -150,12 +151,19 @@ type block =
   ; jump : jump_tag_t
   }
 
+type fspace_block =
+  { fname : Symbol.t
+  ; args : Temp.t list
+  ; fdef_block : block list
+  }
+
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
   ; fdef : instr list
   }
 
+type program_block = fspace_block list
 type program = fspace list
 
 let format_reg r = sexp_of_reg r |> string_of_sexp
@@ -229,16 +237,27 @@ let format_instr = function
       (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
 ;;
 
-let format_jump_tag = function 
-| JRet -> "ret"
-| JCon { jt; jf; } -> sprintf "if(%s|%s)" (Label.name jt) (Label.name jf)
-| JUncon l -> Label.name l
+let format_jump_tag = function
+  | JRet -> "ret"
+  | JCon { jt; jf } -> sprintf "if(%s|%s)" (Label.name jt) (Label.name jf)
+  | JUncon l -> Label.name l
+;;
 
-let format_block ({ label; block; jump; } : block) : string = 
-  sprintf "\n%s:\n%s\n%s\n"
-  (Label.name label)
-  (List.map block ~f:format_instr |> String.concat)
-  (format_jump_tag jump)
+let format_block ({ label; block; jump } : block) : string =
+  sprintf
+    "\n%s:\n%s\n%s\n"
+    (Label.name label)
+    (List.map block ~f:format_instr |> String.concat)
+    (format_jump_tag jump)
+;;
+let format_program_block (prog_block) =
+  let format_fspace_block { fname; args; fdef_block; } = 
+    sprintf "%s(%s): \n%s"
+    (Symbol.name fname)
+    (List.map args ~f:Temp.name |> String.concat)
+    (List.map fdef_block ~f:format_block |> String.concat)
+  in
+  List.map prog_block ~f:format_fspace_block |> String.concat
 ;;
 let format_program prog =
   let format_fspace fspace =
