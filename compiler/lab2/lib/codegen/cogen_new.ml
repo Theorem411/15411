@@ -124,11 +124,31 @@ let munch_stm = function
      | Some e -> munch_exp (A.Reg A.EAX) e @ [ A.Ret (A.Reg A.EAX) ])
 ;;
 
-let munch_fspace (fspace : T.fspace) : A.fspace =
+let munch_block ({ label; block; jump } : T.block) : A.block =
+  let ablock = List.concat_map ~f:munch_stm block in
+  let ajump =
+    match jump with
+    | T.Return _ -> A.JRet
+    | T.If { lt; lf; _ } -> A.JCon { jt = lt; jf = lf }
+    | T.Goto l -> A.JUncon l
+    | _ -> failwith "impossible"
+  in
+  { label; block = ablock; jump = ajump }
+  
+;;
+
+let munch_fspace_block (fspace : T.fspace) : A.fspace_block =
   { fname = fspace.fname
   ; args = fspace.args
-  ; fdef = List.concat_map ~f:munch_stm fspace.fdef
+  ; fdef_block = List.map ~f:munch_block fspace.fdef
   }
 ;;
 
-let cogen (tprog : T.program) : A.program = List.map tprog ~f:munch_fspace
+let munch_fspace ({ fname; args; fdef_block } : A.fspace_block) : A.fspace = 
+  let block_to_instr ({ block; _ } : A.block) = block in
+  { fname; args; fdef=List.concat_map ~f:block_to_instr fdef_block;}
+;;
+
+let cogen (tprog : T.program) : A.program = 
+  let map_f (p : T.fspace) = munch_fspace_block p |> munch_fspace in
+  List.map tprog ~f:map_f

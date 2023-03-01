@@ -303,8 +303,7 @@ let break_into_blocks (stms : T.stm list) : T.block list =
     let hd = List.hd_exn sblock in
     let label = get_label_exn hd in
     let tl = List.last_exn sblock in
-    let block = List.tl_exn sblock |> List.rev |> List.tl_exn |> List.rev in
-    { label; block; jump=tl; }
+    { label; block=sblock; jump=tl; }
   in
   List.map pass2 ~f:map_sblock_block
 ;;

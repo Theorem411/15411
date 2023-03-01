@@ -136,6 +136,20 @@ type instr =
   | Comment of string
 [@@deriving equal, sexp, compare]
 
+type jump_tag_t =
+  | JRet
+  | JCon of
+      { jt : Label.t
+      ; jf : Label.t
+      }
+  | JUncon of Label.t
+
+type block =
+  { label : Label.t
+  ; block : instr list
+  ; jump : jump_tag_t
+  }
+
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
@@ -215,6 +229,17 @@ let format_instr = function
       (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
 ;;
 
+let format_jump_tag = function 
+| JRet -> "ret"
+| JCon { jt; jf; } -> sprintf "if(%s|%s)" (Label.name jt) (Label.name jf)
+| JUncon l -> Label.name l
+
+let format_block ({ label; block; jump; } : block) : string = 
+  sprintf "\n%s:\n%s\n%s\n"
+  (Label.name label)
+  (List.map block ~f:format_instr |> String.concat)
+  (format_jump_tag jump)
+;;
 let format_program prog =
   let format_fspace fspace =
     sprintf

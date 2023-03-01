@@ -124,6 +124,25 @@ type instr =
   | Comment of string
 [@@deriving equal, sexp, compare]
 
+type jump_tag_t =
+  | JRet
+  | JCon of
+      { jt : Label.t
+      ; jf : Label.t
+      }
+  | JUncon of Label.t
+
+type block =
+  { label : Label.t
+  ; block : instr list
+  ; jump : jump_tag_t
+  }
+
+type fspace_block = 
+  { fname : Symbol.t
+  ; args : Temp.t list
+  ; fdef_block : block list
+  }
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
