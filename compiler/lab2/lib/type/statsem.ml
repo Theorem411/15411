@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module T = Ctype
 module SM = Symbol.Map
 module SS = Symbol.Set
@@ -67,4 +67,4 @@ let static_semantic_gdecl (gdecl : A.mglob) ({fdef; fdec; tdef; } : global_ctx) 
 ;;
 
 let static_semantic ~hdr:A.program ~src:A.program = ()
-;;
+;; *)
