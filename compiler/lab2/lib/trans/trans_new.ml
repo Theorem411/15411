@@ -249,7 +249,7 @@ let tr_stm (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
 ;;
 
 let args_tag =
-  Symbol.Set.fold ~init:([], S.empty) ~f:(fun (args, acc) s ->
+  List.fold ~init:([], S.empty) ~f:(fun (args, acc) s ->
     let t = Temp.create () in
     t :: args, S.set acc ~key:s ~data:t)
 ;;
@@ -311,15 +311,14 @@ let break_into_blocks (stms : T.stm list) : T.block list =
 let tr_glob (glob : A.mglob) (global_env : Symbol.Set.t) =
   match Mark.data glob with
   | A.Typedef _ -> None, global_env
-  | A.Fundecl (fname, _) ->
-    let global_env' = Symbol.Set.add global_env fname in
+  | A.Fundecl {f; _} ->
+    let global_env' = Symbol.Set.add global_env f in
     None, global_env'
-  | A.Fundef (fname, fsig, s) ->
-    let args = Typ.args fsig in
+  | A.Fundef {f; args; fdef; _} ->
     let args_lst, args_env = args_tag args in
-    let global_env' = Symbol.Set.add global_env fname in
-    let fdef = tr_stm global_env' args_env s |> break_into_blocks in
-    Some ({ fname; args = args_lst; fdef } : T.fspace), global_env'
+    let global_env' = Symbol.Set.add global_env f in
+    let fdef = tr_stm global_env' args_env fdef |> break_into_blocks in
+    Some ({ fname=f; args = args_lst; fdef } : T.fspace), global_env'
 ;;
 
 let translate (prog : A.program) : T.program =
