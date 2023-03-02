@@ -97,9 +97,21 @@ type stm =
 and mstm = stm Mark.t
 
 type glob =
-  | Typedef of Typ.tau * Typ.tau
-  | Fundecl of Symbol.t * Typ.fsig
-  | Fundef of Symbol.t * Typ.fsig * mstm
+  | Typedef of
+      { told : Typ.tau
+      ; tnew : Typ.tau
+      }
+  | Fundecl of
+      { f : Symbol.t
+      ; args : Symbol.t list
+      ; fsig : Typ.fsig
+      }
+  | Fundef of
+      { f : Symbol.t
+      ; args : Symbol.t list
+      ; fsig : Typ.fsig
+      ; fdef : mstm
+      }
 
 type mglob = glob Mark.t
 type program = mglob list
@@ -214,12 +226,21 @@ module Print = struct
   and pp_mstm ?(n = 0) prog = pp_stm ~n (Mark.data prog) ^ "\n"
 
   let pp_glob ?(n = 0) = function
-    | Typedef (a, b) ->
-      sprintf "typedef %s <--- %s;" (Typ._tau_tostring a) (Typ._tau_tostring b)
-    | Fundecl (name, fsig) ->
-      sprintf "%s: %s" (Symbol.name name) (Typ._fsig_tostring fsig)
-    | Fundef (name, fsig, body) ->
-      sprintf "%s: %s = %s" (Symbol.name name) (Typ._fsig_tostring fsig) (pp_mstm ~n body)
+    | Typedef { told; tnew } ->
+      sprintf "typedef %s <--- %s;" (Typ._tau_tostring told) (Typ._tau_tostring tnew)
+    | Fundecl { f; args; fsig } ->
+      sprintf
+        "%s(%s): %s"
+        (Symbol.name f)
+        (List.map args ~f:(fun s -> Symbol.name s ^ ",") |> String.concat)
+        (Typ._fsig_tostring fsig)
+    | Fundef { f; args; fsig; fdef } ->
+      sprintf
+        "%s(%s): %s =\n %s"
+        (Symbol.name f)
+        (List.map args ~f:(fun s -> Symbol.name s ^ ",") |> String.concat)
+        (Typ._fsig_tostring fsig)
+        (pp_mstm ~n fdef)
   ;;
 
   let pp_mglob ?(n = 0) mglob = pp_glob ~n (Mark.data mglob) ^ "\n"

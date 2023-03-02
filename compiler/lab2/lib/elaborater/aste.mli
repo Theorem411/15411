@@ -97,9 +97,21 @@ type stm =
 and mstm = stm Mark.t
 
 type glob =
-  | Typedef of Typ.tau * Typ.tau
-  | Fundecl of Symbol.t * Typ.fsig
-  | Fundef of Symbol.t * Typ.fsig * mstm
+  | Typedef of
+      { told : Typ.tau
+      ; tnew : Typ.tau
+      }
+  | Fundecl of
+      { f : Symbol.t
+      ; args : Symbol.t list
+      ; fsig : Typ.fsig
+      }
+  | Fundef of
+      { f : Symbol.t
+      ; args : Symbol.t list
+      ; fsig : Typ.fsig
+      ; fdef : mstm
+      }
 
 type mglob = glob Mark.t
 type program = mglob list
