@@ -78,8 +78,17 @@ and stm =
     ; args : pexp list}
 | Return of pexp option
 | AssertFail
+
+type block =
+  { label : Label.t
+  ; block : stm list
+  ; jump : stm
+  }
+
 type fspace = { fname : Symbol.t
-              ; fdef : stm list}
+              ; args : Temp.t list
+              ; fdef : block list}
+
 type program = fspace list
 
 module Print : sig

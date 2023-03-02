@@ -62,12 +62,19 @@ let rec tr_exp_rev (genv : Symbol.Set.t) (env : Temp.t S.t) (exp : A.mexp) : tr_
     (match uop.op with
      | A.LogNot -> tr_exp_logNot genv env uop.operand
      | A.BitNot -> tr_exp_bitNot genv env uop.operand)
-  | A.Call { name; args; } -> 
+  | A.Call { name; args } ->
     let t = Temp.create () in
-    let fname = Symbol.Set.find_exn genv ~f:(fun s -> Symbol.equal s name) in 
-    let cmdllist, explist = List.fold_right args ~f:(fun arg -> fun (cll, el) -> let cmd, e = tr_exp_rev genv env arg in (cmd :: cll, e :: el)) ~init:([], []) in
+    let fname = Symbol.Set.find_exn genv ~f:(fun s -> Symbol.equal s name) in
+    let cmdllist, explist =
+      List.fold_right
+        args
+        ~f:(fun arg (cll, el) ->
+          let cmd, e = tr_exp_rev genv env arg in
+          cmd :: cll, e :: el)
+        ~init:([], [])
+    in
     let cmdlist = List.concat cmdllist in
-    T.MovFuncApp { dest=Some t; fname; args=explist}::cmdlist, T.Temp t
+    T.MovFuncApp { dest = Some t; fname; args = explist } :: cmdlist, T.Temp t
 
 and tr_exp_ternary genv env e1 e2 e3 =
   let t = Temp.create () in
@@ -80,12 +87,12 @@ and tr_exp_ternary genv env e1 e2 e3 =
   let cond : T.cond = { cmp = T.Neq; p1 = exp1; p2 = T.Const (Int32.of_int_exn 0) } in
   let newcode =
     (*_ view in reverse order *)
-    [ [T.Label l3]
+    [ [ T.Label l3 ]
     ; T.Goto l3 :: T.MovPureExp { dest = t; src = exp3 } :: cmd3
-    ; [T.Label l2]
+    ; [ T.Label l2 ]
     ; T.Goto l3 :: T.MovPureExp { dest = t; src = exp2 } :: cmd2
-    ; [T.Label l1]
-    ; [T.If { cond; lt=l1; lf=l2 }]
+    ; [ T.Label l1 ]
+    ; [ T.If { cond; lt = l1; lf = l2 } ]
     ; cmd1
     ]
     |> List.concat
@@ -93,23 +100,21 @@ and tr_exp_ternary genv env e1 e2 e3 =
   newcode, T.Temp t
 
 and tr_exp_logNot genv env e =
-
   match Mark.data e with
   | A.Unop uop ->
     (match uop.op with
      | A.LogNot -> tr_exp_rev genv env uop.operand
-     | _ -> 
-        let cmd, exp = tr_exp_rev genv env e in
-          cmd, T.Binop { op = T.BitXor; lhs = exp; rhs = T.Const (Int32.of_int_exn 1) })
-  | _ -> 
-        let cmd, exp = tr_exp_rev genv env e in
-          cmd, T.Binop { op = T.BitXor; lhs = exp; rhs = T.Const (Int32.of_int_exn 1) }
-  
+     | _ ->
+       let cmd, exp = tr_exp_rev genv env e in
+       cmd, T.Binop { op = T.BitXor; lhs = exp; rhs = T.Const (Int32.of_int_exn 1) })
+  | _ ->
+    let cmd, exp = tr_exp_rev genv env e in
+    cmd, T.Binop { op = T.BitXor; lhs = exp; rhs = T.Const (Int32.of_int_exn 1) }
 
 and tr_exp_bitNot genv env e =
-  let normal_case env e = 
+  let normal_case env e =
     let cmd, exp = tr_exp_rev genv env e in
-      cmd, T.Unop { op = T.BitNot; p = exp }
+    cmd, T.Unop { op = T.BitNot; p = exp }
   in
   match Mark.data e with
   | A.Unop uop ->
@@ -140,7 +145,8 @@ let rec tr_stm_rev (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
        T.Return (Some exp) :: cmd
      | None -> [ T.Return None ])
   | A.Nop -> []
-  | A.Seq (s1, s2) -> tr_stm_rev genv env s2 @ tr_stm_rev genv env s1 (*_ reverse order! *)
+  | A.Seq (s1, s2) ->
+    tr_stm_rev genv env s2 @ tr_stm_rev genv env s1 (*_ reverse order! *)
   | A.NakedExpr e ->
     (*_ Bug source: should we assign fresh variable or should we ignore *)
     let t = Temp.create () in
@@ -149,15 +155,22 @@ let rec tr_stm_rev (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
     T.MovPureExp { dest = t; src = exp } :: cmd
   | A.If ifs -> tr_stm_if genv env ifs.cond ifs.lb ifs.rb
   | A.While loop -> tr_stm_while genv env loop.cond loop.body
-  | A.AssertFail -> [T.AssertFail]
-  | A.VoidCall { name; args; } -> 
-    let fname = Symbol.Set.find_exn genv ~f:(fun s -> Symbol.equal s name) in 
-    let cmdllist, explist = List.fold_right args ~f:(fun arg -> fun (cll, el) -> let cmd, e = tr_exp_rev genv env arg in (cmd :: cll, e :: el)) ~init:([], []) in
+  | A.AssertFail -> [ T.AssertFail ]
+  | A.NakedCall { name; args } ->
+    let fname = Symbol.Set.find_exn genv ~f:(fun s -> Symbol.equal s name) in
+    let cmdllist, explist =
+      List.fold_right
+        args
+        ~f:(fun arg (cll, el) ->
+          let cmd, e = tr_exp_rev genv env arg in
+          cmd :: cll, e :: el)
+        ~init:([], [])
+    in
     let cmdlist = List.concat cmdllist in
-    T.MovFuncApp { dest=None; fname; args=explist; }::cmdlist
+    T.MovFuncApp { dest = None; fname; args = explist } :: cmdlist
 
 and tr_stm_if genv env (cond : A.mexp) (s1 : A.mstm) (s2 : A.mstm) =
-  let normal_case (env: Temp.t S.t) cond s1 s2 =
+  let normal_case (env : Temp.t S.t) cond s1 s2 =
     let res1 = tr_stm_rev genv env s1 in
     let res2 = tr_stm_rev genv env s2 in
     let ccmd, cexp = tr_exp_rev genv env cond in
@@ -231,25 +244,81 @@ and tr_stm_while genv env (cond : A.mexp) (body : A.mstm) =
   |> List.concat
 ;;
 
-let tr_stm (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) = List.rev (tr_stm_rev genv env stm)
+let tr_stm (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
+  List.rev (tr_stm_rev genv env stm)
+;;
 
 let args_tag =
-  Symbol.Set.fold ~init:S.empty ~f:(fun acc s ->
-    S.add_exn acc ~key:s ~data:(Temp.create ()))
+  List.fold ~init:([], S.empty) ~f:(fun (args, acc) s ->
+    let t = Temp.create () in
+    t :: args, S.set acc ~key:s ~data:t)
+;;
+
+let break_into_blocks (stms : T.stm list) : T.block list =
+  let is_jmp s = match s with
+    | T.If _ -> true
+    | T.Return _ -> true
+    | T.Goto _ -> true
+    | _ -> false in
+  let is_label s = match s with
+  | T.Label _ -> true
+  | _ -> false in
+  let break l break_l break_r = 
+    let gap_r = List.group ~break:break_r l in
+    let map_f ss = List.group ~break:break_l ss in
+    let gap_l = List.map ~f:map_f gap_r |> List.concat in
+      List.filter ~f:(fun ss -> if List.length ss > 0 then true else false) gap_l
+  in
+  let break_by_jmp s _ = is_jmp s in
+  let break_by_lab _ s = is_label s in
+  let pass1 = break stms break_by_lab break_by_jmp in 
+  let prelab sl =
+    let hd = List.hd_exn sl in
+    if is_label hd then sl else let l = Label.create () in (T.Label l) :: sl
+  in
+  let pass1_prelab = List.map pass1 ~f:prelab in 
+  let endjmp sl = 
+    let tl = List.last_exn sl in 
+    let sl_opt = List.map sl ~f:(fun a -> Some a) in
+    if is_jmp tl then sl_opt else sl_opt @ [None]
+  in
+  let pass1_endjmp = List.map pass1_prelab ~f:endjmp |> List.concat in
+  let rec borrow stm_opt_list = 
+    match stm_opt_list with 
+    | [] -> []
+    | Some s :: rest -> s :: borrow rest
+    | None :: rest -> (
+      match rest with 
+      | Some (T.Label l) :: _ -> T.Goto l :: borrow rest
+      | _ -> failwith "impossible in break_into_blocks!"
+    )
+  in
+  let pass1_borrow = borrow pass1_endjmp in
+  let pass2 = break pass1_borrow break_by_lab break_by_jmp in
+  let map_sblock_block (sblock : T.stm list) : T.block =
+    let get_label_exn = function
+    | T.Label l -> l
+    | _ -> failwith "impossible in break_into_blocks"
+    in  
+    let hd = List.hd_exn sblock in
+    let label = get_label_exn hd in
+    let tl = List.last_exn sblock in
+    { label; block=sblock; jump=tl; }
+  in
+  List.map pass2 ~f:map_sblock_block
 ;;
 
 let tr_glob (glob : A.mglob) (global_env : Symbol.Set.t) =
   match Mark.data glob with
   | A.Typedef _ -> None, global_env
-  | A.Fundecl (fname, _) ->
-    let global_env' = Symbol.Set.add global_env fname in
+  | A.Fundecl {f; _} ->
+    let global_env' = Symbol.Set.add global_env f in
     None, global_env'
-  | A.Fundef (fname, fsig, s) ->
-    let args = Typ.args fsig in
-    let args_env = args_tag args in
-    let global_env' = Symbol.Set.add global_env fname in
-    let fdef = tr_stm global_env' args_env s in
-    Some ({ fname; fdef } : T.fspace), global_env'
+  | A.Fundef {f; args; fdef; _} ->
+    let args_lst, args_env = args_tag args in
+    let global_env' = Symbol.Set.add global_env f in
+    let fdef = tr_stm global_env' args_env fdef |> break_into_blocks in
+    Some ({ fname=f; args = args_lst; fdef } : T.fspace), global_env'
 ;;
 
 let translate (prog : A.program) : T.program =

@@ -1,8 +1,7 @@
- (* (* open Core *)
+open Core
 module T = Tree_new
 module A = Assem_new
-(*
-(*_ *)
+
 let if_cond_to_rev_jump_t (cond : T.cond) =
   match cond.cmp with
   | T.Leq -> A.Jg
@@ -85,6 +84,28 @@ let munch_stm = function
     munch_exp t1 mv.lhs
     @ munch_exp t2 mv.rhs
     @ [ A.EfktBinop { op; dest = A.Temp mv.dest; lhs = t1; rhs = t2 } ]
+  | T.AssertFail -> [ A.AssertFail ]
+  | T.MovFuncApp { dest; fname; args } ->
+    let cogen_arg e =
+      let t = Temp.create () in
+      t, munch_exp (A.Temp t) e
+    in
+    let ops, cogen_args = List.map args ~f:cogen_arg |> List.unzip in
+    let cogen_args = List.concat cogen_args in
+    let args_mv_f i t =
+      if i < 6
+      then Some (A.Mov { dest = A.Reg (A.arg_i_to_reg i); src = A.Temp t })
+      else None
+    in
+    let args_mv = List.mapi ops ~f:args_mv_f |> List.filter_opt in
+    let args_overflow_f i op = if i >= 6 then Some op else None in
+    let args_overflow = List.mapi ops ~f:args_overflow_f |> List.filter_opt in
+    let call = A.Call { fname; args_overflow } in
+    (match dest with
+     | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
+     | Some d ->
+       [ cogen_args; args_mv; [ call; A.Mov { dest = A.Temp d; src = A.Reg A.EAX } ] ]
+       |> List.concat)
   | T.If { cond; lt; lf } ->
     let jmptyp = if_cond_to_rev_jump_t cond in
     let e1 = cond.p1 in
@@ -93,20 +114,44 @@ let munch_stm = function
     let t2 = A.Temp (Temp.create ()) in
     munch_exp t1 e1
     @ munch_exp t2 e2
-    @ [ A.Cmp (t1, t2); A.Cjmp { typ = jmptyp; l = lf }; A.Jmp lt]
+    @ [ A.Cmp (t1, t2); A.Cjmp { typ = jmptyp; l = lf }; A.Jmp lt ]
   | T.Goto l -> [ A.Jmp l ]
   | T.Label l -> [ A.Lab l ]
-  | T.Return e ->
+  | T.Return eopt ->
     (* return e is implemented as %eax <- e *)
-    (munch_exp (A.Reg A.EAX) e) @ [A.Ret (A.Reg A.EAX)]
+    (match eopt with
+     | None -> []
+     | Some e -> munch_exp (A.Reg A.EAX) e @ [ A.Ret (A.Reg A.EAX) ])
 ;;
 
-let cogen inp = List.concat_map ~f:munch_stm inp *) *)
-(* open Core
-module T = Tree_new
-module A = Assem_new
-let cogen inp =  *)
+let munch_block ({ label; block; jump } : T.block) : A.block =
+  let ablock = List.concat_map ~f:munch_stm block in
+  let ajump =
+    match jump with
+    | T.Return _ -> A.JRet
+    | T.If { lt; lf; _ } -> A.JCon { jt = lt; jf = lf }
+    | T.Goto l -> A.JUncon l
+    | _ -> failwith "impossible"
+  in
+  { label; block = ablock; jump = ajump }
+  
+;;
 
-module T = Tree_new
-module A = Assem_new
-  let cogen = failwith "Not implemented yet."
+let munch_fspace_block (fspace : T.fspace) : A.fspace_block =
+  { fname = fspace.fname
+  ; args = fspace.args
+  ; fdef_block = List.map ~f:munch_block fspace.fdef
+  }
+;;
+
+let munch_fspace ({ fname; args; fdef_block } : A.fspace_block) : A.fspace = 
+  let block_to_instr ({ block; _ } : A.block) = block in
+  { fname; args; fdef=List.concat_map ~f:block_to_instr fdef_block;}
+;;
+
+let cogen_block (tprog : T.program) : A.program_block = 
+  let map_f (p : T.fspace) = munch_fspace_block p in
+  List.map tprog ~f:map_f
+;;
+let cogen (prog_block : A.program_block) : A.program = 
+  List.map ~f:munch_fspace prog_block

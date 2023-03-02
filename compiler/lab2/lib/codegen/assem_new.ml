@@ -20,7 +20,15 @@ type reg =
   | RSP
 [@@deriving equal, sexp, compare, enum, hash]
 
-let format_reg r = sexp_of_reg r |> string_of_sexp
+let arg_i_to_reg = function
+  | 0 -> EDI
+  | 1 -> ESI
+  | 2 -> EDX
+  | 3 -> ECX
+  | 4 -> R8D
+  | 5 -> R9D
+  | _ -> failwith "args overflow 6"
+;;
 
 type operand =
   | Imm of Int32.t
@@ -37,14 +45,14 @@ type pure_operation =
   | BitXor
 [@@deriving equal, sexp, compare]
 
+type unary_operation = BitNot [@@deriving equal, sexp, compare]
+
 type efkt_operation =
   | Div
   | Mod
   | ShiftL
   | ShiftR
 [@@deriving equal, sexp, compare]
-
-type unary_operation = BitNot [@@deriving equal, sexp, compare]
 
 type jump_t =
   | Je (*_ jump if p1 == p2 *)
@@ -57,10 +65,19 @@ type jump_t =
   (* | Jnl _ jump if NOT p1 < p2 *)
   | Jle (*_ jump if p1 <= p2 *)
   (* | Jng _ jump if NOT p1 > p2 *)
-  | Jg (*_ jump if p1 > p2 *)
+  | Jg
+(*_ jump if p1 > p2 *)
 (* | Jnle _ jump if NOT p1 <= p2 *)
 [@@deriving equal, sexp, compare]
 
+(*_ what is potentially missing? 
+  - Any parity flag related jumps: e.g., jp, jpe
+  - Any unsigned version of the above: e.g. jb, ja
+  - Any carry flag related jumps : e.g., jc, jnc
+  - Any sign flag related jumps: e.g., js, jns 
+  btw disabled jz and jnz because I think they need to be used with test (an
+  alternative to cmp in x86)
+   *)
 type set_t =
   | Sete
   | Setne
@@ -108,23 +125,48 @@ type instr =
   | Lab of Label.t
   | Cmp of operand * operand
   | AssertFail
-  | App of
-      { name : Symbol.t
-      ; args : operand list
-      ; dest_opt : operand option
-      }
   (* this is in the third assem *)
-  | Call of Symbol.t
-  | Push of operand
-  | ArgMov of
-      { arg_idx : int
-      ; src : operand
+  | Call of
+      { fname : Symbol.t
+      ; args_overflow : Temp.t list
       }
+  | LoadFromStack of Temp.t list
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
   | Comment of string
 [@@deriving equal, sexp, compare]
+
+type jump_tag_t =
+  | JRet
+  | JCon of
+      { jt : Label.t
+      ; jf : Label.t
+      }
+  | JUncon of Label.t
+
+type block =
+  { label : Label.t
+  ; block : instr list
+  ; jump : jump_tag_t
+  }
+
+type fspace_block =
+  { fname : Symbol.t
+  ; args : Temp.t list
+  ; fdef_block : block list
+  }
+
+type fspace =
+  { fname : Symbol.t
+  ; args : Temp.t list
+  ; fdef : instr list
+  }
+
+type program_block = fspace_block list
+type program = fspace list
+
+let format_reg r = sexp_of_reg r |> string_of_sexp
 
 let format_operand = function
   | Imm n -> "$" ^ Int32.to_string n
@@ -152,7 +194,7 @@ let format_unop = function
   | BitNot -> "~"
 ;;
 
-let format = function
+let format_instr = function
   | PureBinop binop ->
     sprintf
       "%s <-- %s %s %s"
@@ -184,10 +226,46 @@ let format = function
     sprintf "%s %s" (c.typ |> sexp_of_set_t |> string_of_sexp) (format_operand c.src)
   | Cmp (l, r) -> sprintf "cmp %s, %s" (format_operand l) (format_operand r)
   | AssertFail -> "call __assert_fail"
-  | App {name; _} -> sprintf "calling %s [%s]" (Symbol.name name) ("If you need to debug this, implement me  .|.  <3") 
-  | Call name -> sprintf "call %s" (Symbol.name name)
-  | Push o -> sprintf "push %s" (format_operand o)
-  | ArgMov {arg_idx; src} -> sprintf "arg[%s] <- %s" (Int.to_string arg_idx) (format_operand src)
+  | Call { fname; args_overflow } ->
+    sprintf
+      "call %s(%s)"
+      (Symbol.name fname)
+      (List.map args_overflow ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
+  | LoadFromStack ts ->
+    sprintf
+      "load_from_stack(%s)"
+      (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
 ;;
 
-type program = (Symbol.t * instr list) list
+let format_jump_tag = function
+  | JRet -> "ret"
+  | JCon { jt; jf } -> sprintf "if(%s|%s)" (Label.name jt) (Label.name jf)
+  | JUncon l -> Label.name l
+;;
+
+let format_block ({ label; block; jump } : block) : string =
+  sprintf
+    "\n%s:\n%s\n%s\n"
+    (Label.name label)
+    (List.map block ~f:format_instr |> String.concat)
+    (format_jump_tag jump)
+;;
+let format_program_block (prog_block) =
+  let format_fspace_block { fname; args; fdef_block; } = 
+    sprintf "%s(%s): \n%s"
+    (Symbol.name fname)
+    (List.map args ~f:Temp.name |> String.concat)
+    (List.map fdef_block ~f:format_block |> String.concat)
+  in
+  List.map prog_block ~f:format_fspace_block |> String.concat
+;;
+let format_program prog =
+  let format_fspace fspace =
+    sprintf
+      "%s(%s): \n%s"
+      (Symbol.name fspace.fname)
+      (List.map fspace.args ~f:Temp.name |> String.concat)
+      (List.map fspace.fdef ~f:format_instr |> String.concat)
+  in
+  List.map prog ~f:format_fspace |> String.concat
+;;
