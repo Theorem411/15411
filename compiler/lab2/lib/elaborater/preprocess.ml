@@ -7,20 +7,26 @@ let lookup (ctx : Symbol.Set.t) (f : Symbol.t) =
 
 let copy_mark (a : 'a Mark.t) (b : 'b) : 'b Mark.t = Mark.map ~f:(fun _ -> b) a
 
-let rec rename_mexpr (ctx: Symbol.Set.t) (mexp : AstElab.mexp) : AstElab.mexp =
+let rec rename_mexpr (ctx : Symbol.Set.t) (mexp : AstElab.mexp) : AstElab.mexp =
   let f = rename_mexpr ctx in
   let exp = Mark.data mexp in
-  match exp with  
-  | AstElab.Ternary {cond; lb; rb} -> AstElab.Ternary {cond = f cond; lb = f lb; rb = f rb} |> copy_mark mexp
-  | AstElab.PureBinop {op; lhs; rhs} -> AstElab.PureBinop {op; lhs = f lhs; rhs = f rhs;} |> copy_mark mexp
-  | AstElab.EfktBinop {op; lhs; rhs} -> AstElab.EfktBinop {op; lhs = f lhs; rhs = f rhs;} |> copy_mark mexp
-  | AstElab.CmpBinop {op; lhs; rhs} -> AstElab.CmpBinop {op; lhs = f lhs; rhs = f rhs;} |> copy_mark mexp
-  | AstElab.Unop {op; operand} -> AstElab.Unop {op; operand = f operand} |> copy_mark mexp
-  | AstElab.Call {name; args} -> (
-    if lookup ctx name then mexp else 
+  match exp with
+  | AstElab.Ternary { cond; lb; rb } ->
+    AstElab.Ternary { cond = f cond; lb = f lb; rb = f rb } |> copy_mark mexp
+  | AstElab.PureBinop { op; lhs; rhs } ->
+    AstElab.PureBinop { op; lhs = f lhs; rhs = f rhs } |> copy_mark mexp
+  | AstElab.EfktBinop { op; lhs; rhs } ->
+    AstElab.EfktBinop { op; lhs = f lhs; rhs = f rhs } |> copy_mark mexp
+  | AstElab.CmpBinop { op; lhs; rhs } ->
+    AstElab.CmpBinop { op; lhs = f lhs; rhs = f rhs } |> copy_mark mexp
+  | AstElab.Unop { op; operand } ->
+    AstElab.Unop { op; operand = f operand } |> copy_mark mexp
+  | AstElab.Call { name; args } ->
+    if lookup ctx name
+    then mexp
+    else (
       let newname = Symbol.symbol ("_c0_" ^ Symbol.name name) in
-      AstElab.Call {name = newname; args = List.map ~f args} |> copy_mark mexp
-  )
+      AstElab.Call { name = newname; args = List.map ~f args } |> copy_mark mexp)
   | _ -> mexp
 
 and rename_mstm (ctx : Symbol.Set.t) (mstm : AstElab.mstm) : AstElab.mstm =
@@ -37,13 +43,14 @@ and rename_mstm (ctx : Symbol.Set.t) (mstm : AstElab.mstm) : AstElab.mstm =
   | AstElab.While { cond; body } ->
     AstElab.While { cond = f cond; body = s body } |> copy_mark mstm
   | AstElab.Return r -> AstElab.Return (Option.map ~f r) |> copy_mark mstm
-  | AstElab.Seq (s1, s2) -> AstElab.Seq (s s1,s s2)  |> copy_mark mstm
-  | AstElab.NakedExpr e -> AstElab.NakedExpr (f e)  |> copy_mark mstm
-  | AstElab.NakedCall {name; args} -> (
-    if lookup ctx name then mstm else 
+  | AstElab.Seq (s1, s2) -> AstElab.Seq (s s1, s s2) |> copy_mark mstm
+  | AstElab.NakedExpr e -> AstElab.NakedExpr (f e) |> copy_mark mstm
+  | AstElab.NakedCall { name; args } ->
+    if lookup ctx name
+    then mstm
+    else (
       let newname = Symbol.symbol ("_c0_" ^ Symbol.name name) in
-      AstElab.NakedCall {name = newname; args = List.map ~f args} |> copy_mark mstm
-  )
+      AstElab.NakedCall { name = newname; args = List.map ~f args } |> copy_mark mstm)
   | _ -> mstm
 ;;
 
@@ -80,5 +87,7 @@ let rename (header : AstElab.program) (source : AstElab.program) : AstElab.progr
   let externalFuns : Symbol.Set.t =
     Symbol.Set.of_list (List.filter_map ~f:get_ext_names header)
   in
-  List.map ~f:(rename_glob externalFuns) source
+  if lookup externalFuns (Symbol.symbol "main")
+  then failwith "header has main"
+  else List.map ~f:(rename_glob externalFuns) source
 ;;

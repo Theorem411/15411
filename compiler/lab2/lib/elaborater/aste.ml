@@ -118,11 +118,10 @@ type program = mglob list
 
 module Print = struct
   let repeat s n =
-    let rec helper s1 n1 = if n1 = 0 then s1 else helper (s1 ^ s) (n1 - 1) in
-    helper "" n
+    List.map ~f:(fun _ -> s) (List.range 0 n) |> String.concat
   ;;
 
-  let tabs = repeat "  "
+  let tabs = repeat ""
 
   let pp_binop_pure = function
     | Plus -> "+"
@@ -183,7 +182,7 @@ module Print = struct
       sprintf
         "(%s (%s))"
         (Symbol.name name)
-        (List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mexp e ^ "\n"))
+        (List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mexp e))
 
   and pp_mexp e = pp_exp (Mark.data e)
 
@@ -196,47 +195,52 @@ module Print = struct
              "%s %s;\n%s"
              (Typ._tau_tostring typ)
              (Symbol.name var)
-             (pp_mstm ~n:(n + 1) body)
+             (pp_mstm ~n body)
          | Some e ->
            sprintf
              "%s %s=%s;\n%s"
              (Typ._tau_tostring typ)
              (Symbol.name var)
              (pp_mexp e)
-             (pp_mstm ~n:(n + 1) body))
+             (pp_mstm ~n body))
       | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
       | If { cond; lb; rb } ->
         sprintf
-          "if (%s) {\n%s} else {\n  %s}"
+          "if (%s) {%s\n%s\n%s}\n%selse {\n%s%s\n%s}"
           (pp_mexp cond)
+          (tabs n)
           (pp_mstm ~n:(n + 1) lb)
+          (tabs n)
+          (tabs n)
           (pp_mstm ~n:(n + 1) rb)
+          (tabs (n + 1))
+          (tabs n)
       | While { cond; body } ->
         sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_mstm ~n:(n + 1) body)
       | Return e -> sprintf "return %s;" (Option.value_map ~default:"" ~f:pp_mexp e)
-      | NakedExpr e -> sprintf "NakedExpr(%s);" (pp_mexp e)
-      | Seq (s1, s2) -> sprintf "%s  %s" (pp_mstm ~n s1) (pp_mstm ~n s2)
+      | NakedExpr e -> sprintf "(%s);" (pp_mexp e)
+      | Seq (s1, s2) -> sprintf "%s\n%s" (pp_mstm ~n s1) (pp_mstm ~n s2)
       | Nop -> "nop;"
       | AssertFail -> "__assert_fail;"
       | NakedCall { name; args } ->
-        sprintf "%s(%s)" (Symbol.name name) (List.map args ~f:pp_mexp |> String.concat)
+        sprintf "%s(%s);" (Symbol.name name) (List.map args ~f:pp_mexp |> String.concat)
     in
     tabs n ^ f ~n stm
 
-  and pp_mstm ?(n = 0) prog = pp_stm ~n (Mark.data prog) ^ "\n"
+  and pp_mstm ?(n = 0) prog = pp_stm ~n (Mark.data prog)
 
   let pp_glob ?(n = 0) = function
     | Typedef { told; tnew } ->
       sprintf "typedef %s <--- %s;" (Typ._tau_tostring told) (Typ._tau_tostring tnew)
     | Fundecl { f; args; fsig } ->
       sprintf
-        "%s(%s): %s"
+        "%s(%s): %s\n\n"
         (Symbol.name f)
         (List.map args ~f:(fun s -> Symbol.name s ^ ",") |> String.concat)
         (Typ._fsig_tostring fsig)
     | Fundef { f; args; fsig; fdef } ->
       sprintf
-        "%s(%s): %s =\n %s"
+        "%s(%s): %s =\n%s\n\n"
         (Symbol.name f)
         (List.map args ~f:(fun s -> Symbol.name s ^ ",") |> String.concat)
         (Typ._fsig_tostring fsig)

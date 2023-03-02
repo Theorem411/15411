@@ -208,8 +208,12 @@ let compile (cmd : cmd_line_args) : unit =
   (* Elaborate *)
   say_if cmd.verbose (fun () -> "doing elaborating...");
   let elab_h : Aste.program = Elaborater.elaborate ast_h in
-  let elab : Aste.program = Elaborater.elaborate ast in
+  let elab_raw : Aste.program = Elaborater.elaborate ast in
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
+  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
+  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
+  say_if cmd.verbose (fun () -> "renaming what is necc...");
+  let elab = Preprocess.rename elab_h elab_raw in
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab);
   

@@ -5,6 +5,7 @@
 // Absolute value. Behavior is undefined if i = 0x80000000
 int abs(int i);
 
+
 // Get a random number from the random number generator
 int rand();
 

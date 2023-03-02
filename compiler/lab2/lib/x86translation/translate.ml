@@ -292,7 +292,7 @@ let translate_line
   | AS.Directive d -> Directive d :: prev_lines
   | AS.Set s -> List.rev_append (translate_set get_reg (AS.Set s)) prev_lines
   | AS.Ret _ -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
-  | AS.App _ -> failwith "app is not allowed :("
+  (* | AS.App _ -> failwith "app is not allowed :(" *)
   | _ -> failwith "not implemented"
 ;;
 
