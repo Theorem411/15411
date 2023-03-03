@@ -68,6 +68,7 @@ val pure_to_opr : AS.pure_operation -> operation
 val efkt_to_opr : AS.efkt_operation -> operation
 val unary_to_opr : AS.unary_operation -> operation
 val format : instr -> string
+val format_list : instr list -> string
 val __FREE_REG : operand
 val all_available_regs : AS.reg list
 val callee_saved : operand -> bool

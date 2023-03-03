@@ -116,10 +116,10 @@ let translate_call
           let d = X86.Mem (i * 8) in
           match src with
           | Mem _ ->
-            [ X86.BinCommand { op = Movq; dest = d; src = X86.__FREE_REG }
-            ; X86.BinCommand { op = Movq; dest = X86.__FREE_REG; src }
+            [ X86.BinCommand { op = Mov; dest = d; src = X86.__FREE_REG }
+            ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src }
             ]
-          | _ -> [ X86.BinCommand { op = Movq; dest = d; src } ])
+          | _ -> [ X86.BinCommand { op = Mov; dest = d; src } ])
         stack_args
     in
     call @ arg_moves)
@@ -158,6 +158,12 @@ let translate_line
       ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = src_final }
       ]
       @ prev_lines
+      | Mem _, _ ->
+        (* mov mem, mem *)
+        [ X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
+        ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = src_final }
+        ]
+        @ prev_lines
     | _ -> X86.BinCommand { op = Mov; dest = d_final; src = src_final } :: prev_lines)
   (* Translating pure operations *)
   | AS.PureBinop e -> List.rev_append (translate_pure get_reg (AS.PureBinop e)) prev_lines
@@ -178,7 +184,7 @@ let translate_line
   (* | AS.App _ -> failwith "app is not allowed :(" *)
   | AS.AssertFail -> [ X86.Call "abort" ]
   | AS.Call { fname; args_overflow = stack_args } ->
-    translate_call get_reg (Symbol.name fname) stack_args
+    (translate_call get_reg (Symbol.name fname) stack_args)  @ prev_lines
 ;;
 
 (* | _ -> failwith "not implemented" *)

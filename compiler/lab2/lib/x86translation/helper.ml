@@ -36,6 +36,7 @@ let back_coloring_adapter : AS.operand * color -> V.t * color = function
   | AS.Reg AS.EAX, color -> V.R AS.EAX, color
   | AS.Reg AS.EDX, color -> V.R AS.EDX, color
   | AS.Reg AS.ECX, color -> V.R AS.ECX, color
+  | AS.Reg r, color -> V.R r, color
   | _ -> raise (Failure "Can not happen")
 ;;
 
@@ -64,7 +65,8 @@ let coloring_adapter : V.t * color -> AS.operand * color = function
   | V.T t, color -> AS.Temp t, color
   | V.R AS.EAX, color -> AS.Reg AS.EAX, color
   | V.R AS.EDX, color -> AS.Reg AS.EDX, color
-  | _ -> raise (Failure "Not now, brah (coloring adapter getting not eax or edx)")
+  | V.R r, color -> AS.Reg r, color
+  (* | _ -> raise (Failure "Not now, brah (coloring adapter getting not eax or edx)") *)
 ;;
 
 let __regalloc (l : AS.instr list) : (AS.operand * color) list =
@@ -192,8 +194,8 @@ let get_max_call_count fdef =
 let do_arg_moves (reg_map : X86.operand AS.Map.t) (args : AS.operand list) total_size =
   let reg_args, stack_args = List.take args 6, List.drop args 6 in
   let reg_moves =
-    let dests = List.mapi reg_args ~f:(fun i _ -> X86.Reg (AS.arg_i_to_reg i)) in
-    let srcs = List.map reg_args ~f:(AS.Map.find_exn reg_map) in
+    let srcs = List.mapi reg_args ~f:(fun i _ -> X86.Reg (AS.arg_i_to_reg i)) in
+    let dests = List.map reg_args ~f:(AS.Map.find_exn reg_map) in
     let create d s = X86.BinCommand { op = Movq; dest = d; src = s } in
     List.map2_exn dests srcs ~f:create
   in

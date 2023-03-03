@@ -198,7 +198,7 @@ let format_unop = function
   | BitNot -> "~"
 ;;
 
-let format_instr = function
+let format_instr' = function
   | PureBinop binop ->
     sprintf
       "%s <-- %s %s %s"
@@ -241,6 +241,8 @@ let format_instr = function
       (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat) *)
 ;;
 
+let format_instr i = (format_instr' i) ^ "\n"
+
 let format_jump_tag = function
   | JRet -> "ret"
   | JCon { jt; jf } -> sprintf "if(%s|%s)" (Label.name jt) (Label.name jf)
@@ -268,7 +270,7 @@ let format_program prog =
     sprintf
       "%s(%s): \n%s"
       (Symbol.name fspace.fname)
-      (List.map fspace.args ~f:Temp.name |> String.concat)
+      (List.map fspace.args ~f:Temp.name |> String.concat ~sep:", ")
       (List.map fspace.fdef ~f:format_instr |> String.concat)
   in
   List.map prog ~f:format_fspace |> String.concat

@@ -225,6 +225,8 @@ let format = function
   | Call fname -> sprintf "\tcall\t%s" fname
 ;;
 
+let format_list l = List.map ~f: format l |> String.concat ~sep:"\n";;
+
 let pure_to_opr = function
   | AS.Add -> Add
   | AS.Sub -> Sub
@@ -274,10 +276,10 @@ let all_available_regs =
   ; AS.R9D
   ; AS.R10D
   ; AS.EBX *)
-    AS.R12D
+    (* AS.R12D
   ; AS.R13D
   ; AS.R14D
-  ; AS.R15D
+  ; AS.R15D *)
   ]
 ;;
 

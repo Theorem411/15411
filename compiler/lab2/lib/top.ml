@@ -237,7 +237,7 @@ let compile (cmd : cmd_line_args) : unit =
   (* let assem_blocks = Cogen.cogen_block ir in
   let assem = Cogen.cogen assem_blocks in *)
   let assem = Cogen.cogen ir in
-  (* say_if cmd.dump_assem (fun () -> List.to_string ~f:AssemM.format assem); *)
+  say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
   match cmd.emit with
   (* Output: abstract 3-address assem *)
   | Abstract_assem ->
