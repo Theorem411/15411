@@ -250,10 +250,14 @@ let tr_stm (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
   List.rev (tr_stm_rev genv env stm)
 ;;
 
-let args_tag =
-  List.fold ~init:([], S.empty) ~f:(fun (args, acc) s ->
+let args_tag (sl : Symbol.t list) =
+  let s2t = List.map sl ~f:(fun s -> let t = Temp.create () in (s, t)) in
+  let sset = S.of_alist_exn s2t in
+  let _, tlst = List.unzip s2t in
+  (* List.fold ~init:([], S.empty) ~f:(fun (args, acc) s ->
     let t = Temp.create () in
-    t :: args, S.set acc ~key:s ~data:t)
+    t :: args, S.set acc ~key:s ~data:t) sl *)
+    tlst, sset
 ;;
 
 let break_into_blocks (stms : T.stm list) : T.block list =
