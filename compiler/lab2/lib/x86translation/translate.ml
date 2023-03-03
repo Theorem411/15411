@@ -19,17 +19,20 @@ type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
 let debug_mode_translate = true
 
 (*_ CREATES A COLORING THAT IS UNIQUE FOR ALL TEMPS *)
-(*_ ONLY FOR DEBUGGING PURPOSES *)
+(*_ ONLY FOR DEBUGGING PURPOSES xD*)
+
+let templist_to_operand l = List.map ~f:(fun t -> AS.Temp t) l;;
+
 let get_all_addressable_line instr =
   let all_ops : AS.instr -> AS.operand list = function
     | AS.Mov m -> [ m.dest; m.src ]
     | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
     | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
     | Unop u -> [ u.dest ]
-    | Jmp _ | Cjmp _ | Lab _ | AS.Directive _ | AS.Comment _ | Ret _ -> []
+    | Jmp _ | Cjmp _ | Lab _ | AssertFail | AS.Directive _ | AS.Comment _ | Ret _ -> []
     | Cmp (l, r) -> [ l; r ]
     | Set { src; _ } -> [ src; AS.Reg EAX ]
-    | _ -> failwith "not implemented yet"
+    | Call {args_overflow; _ } -> templist_to_operand args_overflow
   in
   List.filter (all_ops instr) ~f:(fun i ->
       match i with

@@ -130,7 +130,7 @@ type instr =
       { fname : Symbol.t
       ; args_overflow : Temp.t list
       }
-  | LoadFromStack of Temp.t list
+  (* | LoadFromStack of Temp.t list *)
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
@@ -231,10 +231,10 @@ let format_instr = function
       "call %s(%s)"
       (Symbol.name fname)
       (List.map args_overflow ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
-  | LoadFromStack ts ->
+  (* | LoadFromStack ts ->
     sprintf
       "load_from_stack(%s)"
-      (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
+      (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat) *)
 ;;
 
 let format_jump_tag = function
