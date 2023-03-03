@@ -133,7 +133,7 @@ let rec tr_stm_rev (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
      | None -> tr_stm_rev genv env' body
      | Some exp ->
        let cmd, texp = tr_exp_rev genv env' exp in
-       T.MovPureExp { dest = t; src = texp } :: cmd)
+       tr_stm_rev genv env' body @ T.MovPureExp { dest = t; src = texp } :: cmd)
   | A.Assign { var; exp } ->
     let x = S.find_exn env var in
     let cmd, texp = tr_exp_rev genv env exp in
@@ -142,6 +142,8 @@ let rec tr_stm_rev (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
     (match eopt with
      | Some e ->
        let cmd, exp = tr_exp_rev genv env e in
+       (* let () = printf "show me commands %s" (List.map ~f:T.Print.pp_stm cmd|> String.concat) in
+       let () = printf "show me return %s" (T.Print.pp_pexp exp) in *)
        T.Return (Some exp) :: cmd
      | None -> [ T.Return None ])
   | A.Nop -> []
@@ -322,6 +324,7 @@ let tr_glob (glob : A.mglob) (global_env : Symbol.Set.t) =
     let global_env' = Symbol.Set.add global_env f in
     None, global_env'
   | A.Fundef { f; args; fdef; _ } ->
+    (* let () = printf "f defined %s: %s\n" (Symbol.name f) (A.Print.pp_mstm fdef) in *)
     let args_lst, args_env = args_tag args in
     let global_env' = Symbol.Set.add global_env f in
     let fdef = tr_stm global_env' args_env fdef in
@@ -337,7 +340,7 @@ let translate (prog : A.program) : T.program =
     | Some fspace -> fspace :: acc, genv'
   in
   let tprog, _ = List.fold prog ~init:([], Symbol.Set.empty) ~f:foldf in
-  tprog
+  tprog |> List.rev
 ;;
 
 let translate_block (tprog : T.program) : T.program_block =
