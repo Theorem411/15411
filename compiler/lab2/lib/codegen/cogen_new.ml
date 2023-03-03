@@ -120,7 +120,7 @@ let munch_stm = function
   | T.Return eopt ->
     (* return e is implemented as %eax <- e *)
     (match eopt with
-     | None -> [A.Ret]
+     | None -> [ A.Ret ]
      | Some e -> munch_exp (A.Reg A.EAX) e @ [ A.Ret ])
 ;;
 
@@ -134,24 +134,18 @@ let munch_block ({ label; block; jump } : T.block) : A.block =
     | _ -> failwith "impossible"
   in
   { label; block = ablock; jump = ajump }
-  
 ;;
 
-let munch_fspace_block (fspace : T.fspace) : A.fspace_block =
-  { fname = fspace.fname
-  ; args = fspace.args
-  ; fdef_block = List.map ~f:munch_block fspace.fdef
-  }
+let munch_fspace_block ({ fname; args; fdef } : T.fspace_block) : A.fspace_block =
+  { fname; args; fdef_block = List.map ~f:munch_block fdef }
 ;;
 
-let munch_fspace ({ fname; args; fdef_block } : A.fspace_block) : A.fspace = 
-  let block_to_instr ({ block; _ } : A.block) = block in
-  { fname; args; fdef=List.concat_map ~f:block_to_instr fdef_block;}
+let cogen_block (tprog : T.program_block) : A.program_block =
+  List.map ~f:munch_fspace_block tprog
 ;;
 
-let cogen_block (tprog : T.program) : A.program_block = 
-  let map_f (p : T.fspace) = munch_fspace_block p in
-  List.map tprog ~f:map_f
+let munch_fspace ({ fname; args; fdef } : T.fspace) : A.fspace =
+  { fname; args; fdef = List.concat_map ~f:munch_stm fdef }
 ;;
-let cogen (prog_block : A.program_block) : A.program = 
-  List.map ~f:munch_fspace prog_block
+
+let cogen (prog : T.program) : A.program = List.map ~f:munch_fspace prog

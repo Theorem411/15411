@@ -7,15 +7,15 @@
  *)
 module A = Aste
 
-type pbop = 
-| Add
-| Sub
-| Mul
-| BitAnd
-| BitOr
-| BitXor
+type pbop =
+  | Add
+  | Sub
+  | Mul
+  | BitAnd
+  | BitOr
+  | BitXor
 
-type ebop = 
+type ebop =
   | Div
   | Mod
   | ShftL
@@ -28,9 +28,9 @@ type cbop =
   | Greater
   | Eq
   | Neq
-  
-type unop = 
-  | BitNot
+
+type unop = BitNot
+
 (*_ pure expression: binary operator can only be pure operator *)
 type pexp =
   | Const of Int32.t
@@ -40,44 +40,47 @@ type pexp =
       ; lhs : pexp
       ; rhs : pexp
       }
-  | Cmpop of 
+  | Cmpop of
       { op : cbop
       ; lhs : pexp
       ; rhs : pexp
       }
-  | Unop of 
+  | Unop of
       { op : unop
       ; p : pexp
       }
-and cond = 
-{ cmp : cbop
-; p1 : pexp
-; p2 : pexp
-}
+
+and cond =
+  { cmp : cbop
+  ; p1 : pexp
+  ; p2 : pexp
+  }
+
 and stm =
-| If of
-    { cond : cond
-    ; lt : Label.t
-    ; lf : Label.t
-    }
-| Goto of Label.t
-| Label of Label.t
-| MovEfktExp of
-    { dest : Temp.t
-    ; ebop : ebop
-    ; lhs : pexp
-    ; rhs : pexp
-    }
-| MovPureExp of
-    { dest : Temp.t
-    ; src : pexp
-    }
-| MovFuncApp of 
-    { dest : Temp.t option
-    ; fname : Symbol.t
-    ; args : pexp list}
-| Return of pexp option
-| AssertFail
+  | If of
+      { cond : cond
+      ; lt : Label.t
+      ; lf : Label.t
+      }
+  | Goto of Label.t
+  | Label of Label.t
+  | MovEfktExp of
+      { dest : Temp.t
+      ; ebop : ebop
+      ; lhs : pexp
+      ; rhs : pexp
+      }
+  | MovPureExp of
+      { dest : Temp.t
+      ; src : pexp
+      }
+  | MovFuncApp of
+      { dest : Temp.t option
+      ; fname : Symbol.t
+      ; args : pexp list
+      }
+  | Return of pexp option
+  | AssertFail
 
 type block =
   { label : Label.t
@@ -85,14 +88,24 @@ type block =
   ; jump : stm
   }
 
-type fspace = { fname : Symbol.t
-              ; args : Temp.t list
-              ; fdef : block list}
+type fspace =
+  { fname : Symbol.t
+  ; args : Temp.t list
+  ; fdef : stm list
+  }
+
+type fspace_block =
+  { fname : Symbol.t
+  ; args : Temp.t list
+  ; fdef : block list
+  }
 
 type program = fspace list
+type program_block = fspace_block list
 
 module Print : sig
   val pp_pexp : pexp -> string
   val pp_stm : stm -> string
   val pp_program : program -> string
+  val pp_program_block : program_block -> string
 end
