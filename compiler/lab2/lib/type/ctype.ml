@@ -10,14 +10,16 @@ type tau =
   | FakeTyp of Symbol.t
 [@@deriving equal, compare, sexp, hash]
 
+type fsig_real = t list * t option
+[@@deriving equal, compare, sexp]
+type fsig = tau list * tau option 
+[@@deriving equal, compare, sexp]
+
 module T = struct
   type t = tau
   [@@deriving compare, equal, sexp]
 end
 include Comparable.Make(T)
-
-type fsig = tau list * tau option
-type fsig_real = t list * t option
 
 let _tau_tostring = function
   | RealTyp t ->
