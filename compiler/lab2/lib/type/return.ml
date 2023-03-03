@@ -1,6 +1,6 @@
-(* open Core *)
+open Core
 module A = Aste
-(*let global_err = Error_msg.create ()
+let global_err = Error_msg.create ()
 ;;
 exception ReturnError
 let error ~msg ~ast = 
@@ -8,7 +8,7 @@ let error ~msg ~ast =
   raise ReturnError
 ;;
 
-let rec ret_checker_bool (prog : A.program) = 
+let rec ret_checker_bool (prog : A.mstm) = 
   match Mark.data prog with 
   | A.Declare decl -> ret_checker_bool decl.body
   | A.Assign _ -> false
@@ -18,9 +18,16 @@ let rec ret_checker_bool (prog : A.program) =
   | A.Nop -> false
   | A.Seq (s1, s2) -> ret_checker_bool s1 || ret_checker_bool s2
   | A.NakedExpr _ -> false
+  | A.AssertFail -> true
+  | A.NakedCall _ -> false
 
-let ret_checker (prog : A.program) = 
+let ret_checker_stm (prog : A.mstm) = 
   if ret_checker_bool prog then ()
-  else error ~msg:(sprintf "program does not have explicit return") ~ast:prog *)
+  else error ~msg:(sprintf "program does not have explicit return") ~ast:prog
+;;
+let ret_checker_glob (mglob : A.mglob) =
+  match (Mark.data mglob) with
+  | A.Fundef { fdef; _ } -> ret_checker_stm fdef
+  | _ -> ()
 
-let ret_checker: A.program -> unit = failwith "Not implemented";;
+let ret_checker: A.program -> unit = List.iter ~f:ret_checker_glob;;

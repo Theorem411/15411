@@ -130,7 +130,6 @@ type instr =
       { fname : Symbol.t
       ; args_overflow : Temp.t list
       }
-  | LoadFromStack of Temp.t list
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)

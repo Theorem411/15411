@@ -1,3 +1,3 @@
 module A = Aste
 
-val ret_checker : Aste.program -> unit
+val ret_checker : A.program -> unit
