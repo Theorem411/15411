@@ -1,10 +1,16 @@
-int sub(int i, int j) {
-    return i - j;
+int sum(int i, int j) {
+  int sum = 0;
+  for (; i <= j; i+=1)
+    sum += i;
+  return sum;
 }
 
 int main () {
-    int x = 1;
-    int y = 2;
-    int z = sub(x, y);
-    return z;
+  int n;
+  int x;
+  int y;
+  n = 100;
+  x = sum(1,100);
+  y = n*(n+1)/2;
+  return x - y;
 }
