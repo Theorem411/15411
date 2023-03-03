@@ -144,7 +144,7 @@ let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) l
 
 let get_callee_regs (reg_map : X86.operand AS.Map.t) =
   let used_map = AS.Map.filter ~f:(fun o -> X86.is_reg o && X86.callee_saved o) reg_map in
-  X86.Reg RBP :: AS.Map.data used_map
+  AS.Map.data used_map
 ;;
 
 let callee_handle reg_map =

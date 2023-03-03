@@ -1,11 +1,4 @@
-int f(){
-    return 2;
-}
-
 int main()
 {
-    int x = 1;
-    int y = f();
-    int z = x / y;
-    return z;
+    return 2;
 }
