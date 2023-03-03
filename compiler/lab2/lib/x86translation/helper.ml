@@ -105,7 +105,9 @@ let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
   if colors_len > available_len
   then (
     let memcell_count = colors_len - available_len in
-    let memcells = List.map (List.range 1 (memcell_count + 1)) ~f:(fun i -> X86.Mem i) in
+    let memcells =
+      List.map (List.range 1 (memcell_count + 1)) ~f:(fun i -> X86.Mem (i * 8))
+    in
     let free_regs = List.map free_regs ~f:(fun x -> X86.Reg x) in
     List.zip_exn to_be_assigned (free_regs @ memcells), memcell_count)
   else (
@@ -175,41 +177,73 @@ let reg_alloc program =
   reg_map, mem_cell_count
 ;;
 
+let get_max_call_count fdef =
+  let only_calls =
+    List.filter_map
+      ~f:(fun i ->
+        match i with
+        | AS.Call { args_overflow; _ } -> Some (List.length args_overflow)
+        | _ -> None)
+      fdef
+  in
+  Option.value ~default:0 (List.max_elt only_calls ~compare:Int.compare)
+;;
 
-let get_max_call_count fdef = 
-  let only_calls = List.filter_map ~f:(fun i -> match i with
-  | AS.Call {args_overflow; _} -> Some (List.length args_overflow)
-  | _ -> None) fdef in 
-  Option.value ~default:0 (List.max_elt only_calls ~compare:Int.compare);;
+let do_arg_moves (reg_map : X86.operand AS.Map.t) (args : AS.operand list) total_size =
+  let reg_args, stack_args = List.take args 6, List.drop args 6 in
+  let reg_moves =
+    let dests = List.mapi reg_args ~f:(fun i _ -> X86.Reg (AS.arg_i_to_reg i)) in
+    let srcs = List.map reg_args ~f:(AS.Map.find_exn reg_map) in
+    let create d s = X86.BinCommand { op = Movq; dest = d; src = s } in
+    List.map2_exn dests srcs ~f:create
+  in
+  let stack_refs =
+    List.mapi stack_args ~f:(fun i t ->
+        X86.BinCommand
+          { op = Movq
+          ; dest = AS.Map.find_exn reg_map t
+          ; src = X86.Mem (total_size + 16 + (8 * i))
+          })
+  in
+  reg_moves @ stack_refs
+;;
 
-
-let do_arg_moves (reg_map:X86.operand AS.Map.t) (args:AS.operand list) =
-  let reg_args, stack_args = List.take args 6, List.drop args 6 in 
-  let reg_moves = 
-    (let dests = List.mapi args ~f:(fun i _ -> X86.Reg (AS.arg_i_to_reg i)) in 
-    let srcs = List.map args ~f:(AS.Map.find_exn reg_map) in 
-    let create d s = X86.BinCommand { op = Movq; dest = d; src = s} in
-    List.map2_exn dests srcs ~f:create)
-  in []
-  (* arg[7 + i] <- rsp has some size so recalculate *)
+(* arg[7 + i] <- rsp has some size so recalculate *)
 
 let get_function_be (fname, __args, fdef) reg_map mem_cell_count =
-  let args = templist_to_operand __args in 
-  let mc = get_max_call_count fdef in 
-  let local_count = mem_cell_count in 
-  let cee_regs, cee_start, cee_finish = callee_handle reg_map in 
+  let args = templist_to_operand __args in
+  let mc = get_max_call_count fdef in
+  let local_count = mem_cell_count in
+  let cee_regs, cee_start, cee_finish = callee_handle reg_map in
   (* let cee_count = List.length cee_regs in  *)
-  let n = local_count + mc in (*active size of frame (local and arg pushes)*)
-  let m = n + (List.length cee_regs) in (* total size of frame (added regs)*)
-  let __sub_count, mc = if m % 2 = 0 then (n * 8, mc) else (n * 8 + 8, mc + 1) in
+  let n = local_count + mc in
+  (*active size of frame (local and arg pushes)*)
+  let m = n + List.length cee_regs in
+  (* total size of frame (added regs)*)
+  let (__sub_count, _) : int * int =
+    if m % 2 = 0 then n * 8, mc else (n * 8) + 8, mc + 1
+  in
   let sub_count = Int32.of_int_exn __sub_count in
+  let total_size = __sub_count + List.length cee_regs in
+  let locals = do_arg_moves reg_map args total_size in
+  let ret_label = Label.create () in
   (* function labels *)
-  [
-    X86.UnCommand {op = X86.Pushq; src = X86.Reg AS.RBP};
-    X86.BinCommand { op = Movq; dest = X86.Reg AS.RBP; src = X86.Reg AS.RSP } 
-  ]
-  @
-  cee_start
-  @
-  [X86.BinCommand {op = X86.Subq; dest = X86.Reg AS.RSP; src = X86.Imm sub_count}]
-  @
+  let enter =
+    [ X86.Directive (sprintf "globl %s" (Symbol.name fname))
+    ; X86.FunName (Symbol.name fname)
+    ; X86.UnCommand { op = X86.Pushq; src = X86.Reg AS.RBP }
+    ; X86.BinCommand { op = Movq; dest = X86.Reg AS.RBP; src = X86.Reg AS.RSP }
+    ]
+    @ cee_start
+    @ [ X86.BinCommand { op = X86.Subq; dest = X86.Reg AS.RSP; src = X86.Imm sub_count } ]
+    @ locals
+  in
+  let exit =
+    [ X86.Lbl ret_label
+    ; X86.BinCommand { op = X86.Addq; dest = X86.Reg AS.RSP; src = X86.Imm sub_count }
+    ]
+    @ cee_finish
+    @ [ X86.UnCommand { op = X86.Pushq; src = X86.Reg AS.RBP }; X86.Ret ]
+  in
+  enter, exit, ret_label
+;;

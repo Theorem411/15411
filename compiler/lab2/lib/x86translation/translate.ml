@@ -4,14 +4,10 @@ module V = Graph.Vertex
 
 (*_ DEBUGGING STAFF  *)
 
-type fspace =
-  { fname : Symbol.t
-  ; fdef : X86.instr list
-  }
-
+type fspace = X86.instr list
 type program = fspace list
 
-let debug_mode_translate = true
+(* let debug_mode_translate = true *)
 
 let translate_pure get_reg = function
   | AS.PureBinop { op; dest = d; lhs; rhs } ->
@@ -104,6 +100,31 @@ let translate_set get_reg = function
   | _ -> failwith "Not a set operation on translate_set"
 ;;
 
+let translate_call
+    (get_reg : AS.operand -> X86.operand)
+    (fname : string)
+    (stack_args : Temp.t list)
+  =
+  let call = [ X86.Call fname ] in
+  if List.length stack_args = 0
+  then call
+  else (
+    let arg_moves =
+      List.concat_mapi
+        ~f:(fun i t ->
+          let src = get_reg (AS.Temp t) in
+          let d = X86.Mem (i * 8) in
+          match src with
+          | Mem _ ->
+            [ X86.BinCommand { op = Movq; dest = d; src = X86.__FREE_REG }
+            ; X86.BinCommand { op = Movq; dest = X86.__FREE_REG; src }
+            ]
+          | _ -> [ X86.BinCommand { op = Movq; dest = d; src } ])
+        stack_args
+    in
+    call @ arg_moves)
+;;
+
 let translate_cmp get_reg = function
   | AS.Cmp (r, l) ->
     let lf = get_reg l in
@@ -155,10 +176,14 @@ let translate_line
   | AS.Set s -> List.rev_append (translate_set get_reg (AS.Set s)) prev_lines
   | AS.Ret _ -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
   (* | AS.App _ -> failwith "app is not allowed :(" *)
-  | _ -> failwith "not implemented"
+  | AS.AssertFail -> [ X86.Call "abort" ]
+  | AS.Call { fname; args_overflow = stack_args } ->
+    translate_call get_reg (Symbol.name fname) stack_args
 ;;
 
-let mem_handle = function
+(* | _ -> failwith "not implemented" *)
+
+(* let mem_handle = function
   | 0 -> raise (Failure "can not happen to have 0 count and mem_handle")
   | cnt ->
     let n =
@@ -168,7 +193,7 @@ let mem_handle = function
     in
     ( [ X86.BinCommand { op = X86.Subq; dest = X86.Reg RSP; src = X86.Imm n } ]
     , [ X86.BinCommand { op = X86.Addq; dest = X86.Reg RSP; src = X86.Imm n } ] )
-;;
+;; *)
 
 let get_error_block errLabel =
   [ X86.Lbl errLabel
@@ -179,44 +204,31 @@ let get_error_block errLabel =
   ]
 ;;
 
-let translate_function (fspace : AS.fspace) : X86.instr list =
+let translate_function errLabel (fspace : AS.fspace) : X86.instr list =
   match fspace with
-  | {fname; fdef; args = __args} -> 
-  let errLabel = Label.create () in
-  let retLabel = Label.create () in
-  let reg_map, mem_cell_count = Helper.reg_alloc fdef in
-  let get_reg o =
-    match o with
-    | AS.Imm n -> X86.Imm n
-    | _ -> AS.Map.find_exn reg_map o
-  in
-  let b, e = Helper.get_function_be (fname, __args, fdef) reg_map mem_cell_count in
-  let translated : X86.instr list =
-    List.fold fdef ~init:[] ~f:(translate_line retLabel errLabel get_reg)
-  in
-  (* TODO: optimize appends *)
-  match mem_cell_count with
-  | 0 ->
-    callee_start
-    @ rsp_to_rbp
-    @ List.rev translated
-    @ ret_block_lbl
-    @ callee_finish
-    @ ret_stm
-    @ get_error_block errLabel
-  | _ ->
-    let mem_init, mem_finish = mem_handle mem_cell_count in
-    callee_start
-    @ mem_init
-    @ rsp_to_rbp
-    @ List.rev translated
-    @ ret_block_lbl
-    @ mem_finish
-    @ callee_finish
-    @ ret_stm
-    @ get_error_block errLabel
+  | { fname; fdef; args = __args } ->
+    (* has to be changed to the global one *)
+    let reg_map, mem_cell_count = Helper.reg_alloc fdef in
+    let get_reg o =
+      match o with
+      | AS.Imm n -> X86.Imm n
+      | _ -> AS.Map.find_exn reg_map o
+    in
+    let b, e, retLabel =
+      Helper.get_function_be (fname, __args, fdef) reg_map mem_cell_count
+    in
+    let translated : X86.instr list =
+      List.fold fdef ~init:(List.rev b) ~f:(translate_line retLabel errLabel get_reg)
+    in
+    let full_rev = List.rev_append e translated in
+    List.rev full_rev
 ;;
 
-let translate = failwith "not imp"
-let pp_fspace = failwith "not imp"
-let pp_program = failwith "not imp"
+let translate fs =
+  let errLabel = Label.create () in
+  [ get_error_block errLabel ] @ List.map ~f:(fun f -> translate_function errLabel f) fs
+;;
+
+(* let pp_fspace l = List.map ~f:(X86.format) l
+let pp_program l = List.concat_map ~f:pp_fspace l *)
+let get_string_list p : X86.instr list = List.concat p

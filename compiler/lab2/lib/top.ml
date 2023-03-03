@@ -67,7 +67,7 @@ end
 module HeaderFilename = struct
   type t = string
 
-  let show (x:t):string = x
+  let show (x : t) : string = x
 
   let parse = function
     | arg -> Result.Ok arg
@@ -158,7 +158,7 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
     opt
       HeaderFilename.conv
       ~default:"../runtime/15411-l3.h0"
-      (Arg.info ["l"] ~doc ~docv:"FILE")
+      (Arg.info [ "l" ] ~doc ~docv:"FILE")
   in
   { verbose
   ; dump_parsing
@@ -192,7 +192,7 @@ let regalloc (cmd : cmd_line_args) =
           (output |> Lab1_checkpoint.json_of_allocations |> Yojson.Basic.to_string))
 ;;
 
-let elaboration_step (ast, ast_h) cmd=   
+let elaboration_step (ast, ast_h) cmd =
   say_if cmd.verbose (fun () -> "doing elaborating...");
   let elab_h : Aste.program = Elaborater.elaborate ast_h in
   let elab_raw : Aste.program = Elaborater.elaborate ast in
@@ -203,7 +203,8 @@ let elaboration_step (ast, ast_h) cmd=
   let elab = Preprocess.rename elab_h elab_raw in
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab);
-  (elab_h, elab)
+  elab_h, elab
+;;
 
 (* The main driver for the compiler: runs each phase. *)
 let compile (cmd : cmd_line_args) : unit =
@@ -211,17 +212,15 @@ let compile (cmd : cmd_line_args) : unit =
   (* Parse *)
   say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
   let ast_h = Parse.parse cmd.header_filename in
-      (* TODO check that ast_h has the only fdecl or typedef *)
-      (* TODO rename functions in ast_h *)
+  (* TODO check that ast_h has the only fdecl or typedef *)
+  (* TODO rename functions in ast_h *)
   let ast = Parse.parse cmd.filename in
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
-
   (* Elaborate *)
   (* let elab_h, elab = elaboration_step (ast, ast_h) cmd in *)
   let _, elab = elaboration_step (ast, ast_h) cmd in
-  
   (*(* if cmd.dump_ast then ignore ((exit 0): unit); *)
   say_if cmd.verbose (fun () -> "doing type Checking...");
   let (() : unit) = Statsem.static_semantic elab in
@@ -256,10 +255,10 @@ let compile (cmd : cmd_line_args) : unit =
     Out_channel.with_file file ~f:(fun out ->
         let output_x86_instr instr = Out_channel.fprintf out "%s\n" (X86.format instr) in
         let translated = Translate.translate assem in
+        let union = Translate.get_string_list translated in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");
-        Out_channel.fprintf out "%s\n" (Translate.pp_program translated)
-        )
+        List.iter ~f:output_x86_instr union)
 ;;
 
 let run (cmd : cmd_line_args) : unit =

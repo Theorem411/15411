@@ -70,7 +70,7 @@ let format_operand ?(quad = false) ?(word = false) = function
     | false, true -> __format_reg_word r
     | false, false -> __format_reg r
     | _, _ -> failwith "can not have both quad and word true")
-  | Mem n -> string_of_int (4 * n) ^ "(%rsp)"
+  | Mem n -> string_of_int n ^ "(%rsp)"
 ;;
 
 type operation =
@@ -122,6 +122,7 @@ let format_operation = function
   | Mod -> "mod"
   | Sal -> "sal"
   | Sar -> "sar"
+  | Call -> "call"
   (* | Sete -> "sete"
   | Setne -> "setne"
   | Setl -> "setl"
@@ -131,7 +132,7 @@ let format_operation = function
   | Jz -> "jz"
   | Je -> "je"
   | Jmp -> "jmp" *)
-  | _ -> raise (Failure "no such operation is allowed (yet).")
+  (* | _ -> raise (Failure "no such operation is allowed (yet).") *)
 ;;
 
 let format_jump j =
@@ -185,7 +186,7 @@ type instr =
       }
   | Comment of string
   | FunName of string
-  (* | Label of string *)
+  | Call of string
   | Ret
 [@@deriving equal, compare, sexp]
 
@@ -215,12 +216,13 @@ let format = function
   | ZeroCommand z -> sprintf "\t%s" (format_operation z.op)
   | Directive dir -> sprintf "\t%s" dir
   | Comment comment -> sprintf "/* %s */" comment
-  | FunName s -> sprintf "%s" s
+  | FunName s -> sprintf "%s:" s
   | Ret -> sprintf "\t%s" "ret"
   | Cmp { rhs; lhs } -> sprintf "\tcmp\t%s, %s" (format_operand lhs) (format_operand rhs)
   | Lbl l -> Label.name l ^ ":"
   | Jump { op; label } -> sprintf "\t%s\t%s" (format_jump op) (Label.name label)
   | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand ~word:true src)
+  | Call fname -> sprintf "\tcall\t%s" fname
 ;;
 
 let pure_to_opr = function
