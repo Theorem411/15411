@@ -60,7 +60,7 @@ type instr =
       }
   | Comment of string
   | FunName of string
-  (* | Label of string *)
+  | Call of string
   | Ret
 [@@deriving equal, compare, sexp]
 

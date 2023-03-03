@@ -2,148 +2,12 @@ open Core
 module AS = Assem_new
 module V = Graph.Vertex
 
-(* TODO: ADD SUPPORT FOR CALLEE SAVED REGISTERS: 	%esp, %ebx, %ebp, %r12d, %r13d, %r14d, %r15d *)
-
-type color = int [@@deriving compare, equal, sexp]
-
 (*_ DEBUGGING STAFF  *)
 
-let debug_mode_translate = true
+type fspace = X86.instr list
+type program = fspace list
 
-(*_ CREATES A COLORING THAT IS UNIQUE FOR ALL TEMPS *)
-(*_ ONLY FOR DEBUGGING PURPOSES xD*)
-
-let templist_to_operand l = List.map ~f:(fun t -> AS.Temp t) l;;
-
-let get_all_addressable_line instr =
-  let all_ops : AS.instr -> AS.operand list = function
-    | AS.Mov m -> [ m.dest; m.src ]
-    | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
-    | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
-    | Unop u -> [ u.dest ]
-    | Jmp _ | Cjmp _ | Lab _ | AssertFail | AS.Directive _ | AS.Comment _ | Ret _ -> []
-    | Cmp (l, r) -> [ l; r ]
-    | Set { src; _ } -> [ src; AS.Reg EAX ]
-    | Call {args_overflow; _ } -> templist_to_operand args_overflow
-  in
-  List.filter (all_ops instr) ~f:(fun i ->
-      match i with
-      | AS.Temp _ | AS.Reg _ -> true
-      | _ -> false)
-;;
-
-let get_all_nodes instrs =
-  List.dedup_and_sort
-    ~compare:AS.compare_operand
-    (List.concat (List.map instrs ~f:get_all_addressable_line))
-;;
-
-let back_coloring_adapter : AS.operand * color -> V.t * color = function
-  | AS.Temp t, color -> V.T t, color
-  | AS.Reg AS.EAX, color -> V.R AS.EAX, color
-  | AS.Reg AS.EDX, color -> V.R AS.EDX, color
-  | AS.Reg AS.ECX, color -> V.R AS.ECX, color
-  | _ -> raise (Failure "Can not happen")
-;;
-
-let __coloring_debug (program : AS.instr list) : (V.t * color) list =
-  let nodes = get_all_nodes program in
-  let max_color = List.length nodes in
-  let all_colors : color list = List.range 1 (max_color + 1) in
-  let coloring = List.zip_exn nodes all_colors in
-  List.map coloring ~f:back_coloring_adapter
-;;
-
-(*_ COLORING USING REG ALLOCATOR *)
-let __coloring (program : AS.instr list) : (V.t * color) list =
-  (* if debug_mode_translate
-  then __coloring_debug program
-  else (
-    let graph = Live.mk_graph program in
-    (* let graph = Graph.mk_interfere_graph program in *)
-    Graph.coloring graph) *)
-  if debug_mode_translate then __coloring_debug program else __coloring_debug program
-;;
-
-let coloring_adapter : V.t * color -> AS.operand * color = function
-  | V.T t, color -> AS.Temp t, color
-  | V.R AS.EAX, color -> AS.Reg AS.EAX, color
-  | V.R AS.EDX, color -> AS.Reg AS.EDX, color
-  | _ -> raise (Failure "Not now, brah (coloring adapter getting not eax or edx)")
-;;
-
-let __regalloc (l : AS.instr list) : (AS.operand * color) list =
-  List.map (__coloring l) ~f:coloring_adapter
-;;
-
-let __compare_color = compare_color
-let __equal_color = equal_color
-
-let get_free_regs (used_regs : AS.reg list) =
-  List.filter X86.all_available_regs ~f:(fun (x : AS.reg) ->
-      not (List.mem used_regs x ~equal:AS.equal_reg))
-;;
-
-let group_by_colors (colors : (AS.operand * color) list) =
-  let sorted = List.sort colors ~compare:(fun (_, a) (_, b) -> __compare_color b a) in
-  List.group sorted ~break:(fun (_, a) (_, b) -> not (__equal_color a b))
-;;
-
-let get_unassigned_colors groups used_regs_with_color =
-  let all_colors =
-    List.map
-      (groups : (AS.operand * color) list list)
-      ~f:(fun l ->
-        match l with
-        | (_, color) :: _ -> color
-        | [] -> raise (Failure "Group can not be empty"))
-  in
-  List.filter all_colors ~f:(fun c ->
-      not (List.exists used_regs_with_color ~f:(fun (_, uc) -> equal_color c uc)))
-;;
-
-let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
-    : (color * X86.operand) list * int
-  =
-  let available_len = List.length free_regs in
-  let colors_len = List.length to_be_assigned in
-  if colors_len > available_len
-  then (
-    let memcell_count = colors_len - available_len in
-    let memcells = List.map (List.range 1 (memcell_count + 1)) ~f:(fun i -> X86.Mem i) in
-    let free_regs = List.map free_regs ~f:(fun x -> X86.Reg x) in
-    List.zip_exn to_be_assigned (free_regs @ memcells), memcell_count)
-  else (
-    let free_regs = List.map free_regs ~f:(fun x -> X86.Reg x) in
-    List.zip_exn to_be_assigned (List.take free_regs colors_len), 0)
-;;
-
-let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) list * int =
-  let groups = group_by_colors op2col in
-  (*_ let () = print_source (sexp_of_string "\n groups len " :: ([sexp_of_int (List.length groups)])) in  *)
-  (*_ let () = print_source (sexp_of_string "\n groups" :: (List.map groups ~f:sexp_of_another_random_pair_debug)) in  *)
-  (*_ get (Reg, i) list *)
-  let used_regs_with_color =
-    List.filter op2col ~f:(fun l ->
-        match l with
-        | Reg _, _ -> true
-        | _ -> false)
-  in
-  let used_x86regs_with_color =
-    List.map used_regs_with_color ~f:(fun (o, c) ->
-        match o with
-        | Reg x -> x, c
-        | _ -> raise (Failure "non reg in used_regs_with_color"))
-  in
-  let free_regs : AS.reg list =
-    get_free_regs (List.map used_x86regs_with_color ~f:(fun (r, _) -> r))
-  in
-  (*_ let _ = List.length groups in *)
-  let to_be_assigned : color list = get_unassigned_colors groups used_regs_with_color in
-  let rest, mem_cell_count = assign_frees free_regs to_be_assigned in
-  let used = List.map used_x86regs_with_color ~f:(fun (r, c) -> c, X86.Reg r) in
-  List.append used rest, mem_cell_count
-;;
+(* let debug_mode_translate = true *)
 
 let translate_pure get_reg = function
   | AS.PureBinop { op; dest = d; lhs; rhs } ->
@@ -213,10 +77,11 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
       ; X86.BinCommand { op = Mov; dest = Reg AS.ECX; src = rhs_final }
         (* check for the shift >= 32 *)
       ; X86.Cmp { rhs = Reg AS.ECX; lhs = Imm (Int32.of_int_exn 32) }
-      ; X86.Jump { op = Some AS.Jge; label = errLabel } (* pre check end *)
+      ; X86.Jump { op = Some AS.Jge; label = errLabel }
+        (* pre check end *)
         (* check for the shift < 32 *)
       ; X86.Cmp { rhs = Reg AS.ECX; lhs = Imm (Int32.of_int_exn 0) }
-      ; X86.Jump { op = Some AS.Jl; label = errLabel } 
+      ; X86.Jump { op = Some AS.Jl; label = errLabel }
       ; X86.BinCommand
           { op = X86.efkt_to_opr op; dest = X86.__FREE_REG; src = Reg AS.ECX }
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
@@ -233,6 +98,31 @@ let translate_set get_reg = function
     ; X86.BinCommand { op = Mov; src = X86.Reg AS.EAX; dest = get_reg src }
     ]
   | _ -> failwith "Not a set operation on translate_set"
+;;
+
+let translate_call
+    (get_reg : AS.operand -> X86.operand)
+    (fname : string)
+    (stack_args : Temp.t list)
+  =
+  let call = [ X86.Call fname ] in
+  if List.length stack_args = 0
+  then call
+  else (
+    let arg_moves =
+      List.concat_mapi
+        ~f:(fun i t ->
+          let src = get_reg (AS.Temp t) in
+          let d = X86.Mem (i * 8) in
+          match src with
+          | Mem _ ->
+            [ X86.BinCommand { op = Movq; dest = d; src = X86.__FREE_REG }
+            ; X86.BinCommand { op = Movq; dest = X86.__FREE_REG; src }
+            ]
+          | _ -> [ X86.BinCommand { op = Movq; dest = d; src } ])
+        stack_args
+    in
+    call @ arg_moves)
 ;;
 
 let translate_cmp get_reg = function
@@ -286,44 +176,14 @@ let translate_line
   | AS.Set s -> List.rev_append (translate_set get_reg (AS.Set s)) prev_lines
   | AS.Ret _ -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
   (* | AS.App _ -> failwith "app is not allowed :(" *)
-  | _ -> failwith "not implemented"
+  | AS.AssertFail -> [ X86.Call "abort" ]
+  | AS.Call { fname; args_overflow = stack_args } ->
+    translate_call get_reg (Symbol.name fname) stack_args
 ;;
 
-let get_reg_h (op2col, col2operand) o =
-  let get_color_of_operand op2col (o : AS.operand) =
-    (fun (_, c) -> c) (List.find_exn op2col ~f:(fun (o2, _) -> AS.equal_operand o o2))
-  in
-  let get_reg_of_color col2operand (c : color) =
-    (fun (_, r) -> r) (List.find_exn col2operand ~f:(fun (uc, _) -> equal_color uc c))
-  in
-  match o with
-  | AS.Imm n -> X86.Imm n
-  | _ -> get_reg_of_color col2operand (get_color_of_operand op2col o)
-;;
+(* | _ -> failwith "not implemented" *)
 
-let get_callee_regs (col2operand : (color * X86.operand) list) =
-  let operands = List.map col2operand ~f:(fun (_, r) -> r) in
-  let regs = List.filter operands ~f:X86.is_reg in
-  let used = List.filter regs ~f:X86.callee_saved in
-  X86.Reg RBP :: used
-;;
-
-let callee_handle col2operand =
-  let callee_regs = get_callee_regs col2operand in
-  (* save them into stack *)
-  let callee_start =
-    List.map callee_regs ~f:(fun r -> X86.UnCommand { op = X86.Pushq; src = r })
-  in
-  let rsp_to_rbp =
-    [ X86.BinCommand { op = Movq; dest = X86.Reg RBP; src = X86.Reg RSP } ]
-  in
-  let callee_finish =
-    List.map (List.rev callee_regs) ~f:(fun r -> X86.UnCommand { op = X86.Popq; src = r })
-  in
-  callee_start, rsp_to_rbp, callee_finish
-;;
-
-let mem_handle = function
+(* let mem_handle = function
   | 0 -> raise (Failure "can not happen to have 0 count and mem_handle")
   | cnt ->
     let n =
@@ -333,7 +193,7 @@ let mem_handle = function
     in
     ( [ X86.BinCommand { op = X86.Subq; dest = X86.Reg RSP; src = X86.Imm n } ]
     , [ X86.BinCommand { op = X86.Addq; dest = X86.Reg RSP; src = X86.Imm n } ] )
-;;
+;; *)
 
 let get_error_block errLabel =
   [ X86.Lbl errLabel
@@ -344,51 +204,31 @@ let get_error_block errLabel =
   ]
 ;;
 
-let translate_old (program : AS.instr list) : X86.instr list =
-  let errLabel = Label.create () in
-  let retLabel = Label.create () in
-  let op2col : (AS.operand * color) list = __regalloc program in
-  let col2operand, mem_cell_count = assign_colors op2col in
-  let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in
-  let ret_block_lbl, ret_stm = [ X86.Lbl retLabel ], [ X86.Ret ] in
-  let get_reg:(AS.operand -> X86.operand) = Helper.get_reg_h (op2col, col2operand) in
-  let translated : X86.instr list =
-    List.fold
-      program
-      ~init:[]
-      ~f:(translate_line retLabel errLabel get_reg)
-  in
-  (* TODO: optimize appends *)
-  match mem_cell_count with
-  | 0 ->
-    callee_start
-    @ rsp_to_rbp
-    @ List.rev translated
-    @ ret_block_lbl
-    @ callee_finish
-    @ ret_stm
-    @ get_error_block errLabel
-  | _ ->
-    let mem_init, mem_finish = mem_handle mem_cell_count in
-    callee_start
-    @ mem_init
-    @ rsp_to_rbp
-    @ List.rev translated
-    @ ret_block_lbl
-    @ mem_finish
-    @ callee_finish
-    @ ret_stm
-    @ get_error_block errLabel
+let translate_function errLabel (fspace : AS.fspace) : X86.instr list =
+  match fspace with
+  | { fname; fdef; args = __args } ->
+    (* has to be changed to the global one *)
+    let reg_map, mem_cell_count = Helper.reg_alloc fdef in
+    let get_reg o =
+      match o with
+      | AS.Imm n -> X86.Imm n
+      | _ -> AS.Map.find_exn reg_map o
+    in
+    let b, e, retLabel =
+      Helper.get_function_be (fname, __args, fdef) reg_map mem_cell_count
+    in
+    let translated : X86.instr list =
+      List.fold fdef ~init:(List.rev b) ~f:(translate_line retLabel errLabel get_reg)
+    in
+    let full_rev = List.rev_append e translated in
+    List.rev full_rev
 ;;
 
-type fspace =
-  { fname : Symbol.t
-  ; fdef : X86.instr list
-  }
-type program = fspace list
+let translate fs =
+  let errLabel = Label.create () in
+  [ get_error_block errLabel ] @ List.map ~f:(fun f -> translate_function errLabel f) fs
+;;
 
-let translate = 
-  let _:X86.instr list = translate_old [] in 
-  failwith "not imp"
-let pp_fspace = failwith "not imp"
-let pp_program = failwith "not imp"
+(* let pp_fspace l = List.map ~f:(X86.format) l
+let pp_program l = List.concat_map ~f:pp_fspace l *)
+let get_string_list p : X86.instr list = List.concat p
