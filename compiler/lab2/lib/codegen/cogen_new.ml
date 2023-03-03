@@ -124,7 +124,7 @@ let munch_stm = function
      | Some e -> munch_exp (A.Reg A.EAX) e @ [ A.Ret ])
 ;;
 
-let munch_block ({ label; block; jump } : T.block) : A.block =
+(* let munch_block ({ label; block; jump } : T.block) : A.block =
   let ablock = List.concat_map ~f:munch_stm block in
   let ajump =
     match jump with
@@ -134,18 +134,30 @@ let munch_block ({ label; block; jump } : T.block) : A.block =
     | _ -> failwith "impossible"
   in
   { label; block = ablock; jump = ajump }
-;;
+;; *)
 
-let munch_fspace_block ({ fname; args; fdef } : T.fspace_block) : A.fspace_block =
+(* let munch_fspace_block ({ fname; args; fdef } : T.fspace_block) : A.fspace_block =
   { fname; args; fdef_block = List.map ~f:munch_block fdef }
 ;;
 
 let cogen_block (tprog : T.program_block) : A.program_block =
   List.map ~f:munch_fspace_block tprog
-;;
-
+;; *)
 let munch_fspace ({ fname; args; fdef } : T.fspace) : A.fspace =
-  { fname; args; fdef = List.concat_map ~f:munch_stm fdef }
+  let munch_prolog args =
+    let map_args_reg i a =
+      if i < 6
+      then Some (A.Mov { src = A.Temp a; dest = A.Reg (A.arg_i_to_reg i) })
+      else None
+    in
+    let mv_args_reg = List.filter_mapi args ~f:map_args_reg in
+    let args_stack =
+      List.filter_mapi args ~f:(fun i a -> if i < 6 then None else Some a)
+    in
+    mv_args_reg @ [ A.LoadFromStack args_stack ]
+  in
+  let prolog : A.instr list = munch_prolog args in
+  { fname; args; fdef = prolog @ List.concat_map ~f:munch_stm fdef }
 ;;
 
 let cogen (prog : T.program) : A.program = List.map ~f:munch_fspace prog

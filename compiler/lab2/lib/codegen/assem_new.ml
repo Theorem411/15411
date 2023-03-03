@@ -131,6 +131,7 @@ type instr =
   | Cmp of operand * operand
   | AssertFail
   (* this is in the third assem *)
+  | LoadFromStack of Temp.t list
   | Call of
       { fname : Symbol.t
       ; args_overflow : Temp.t list
@@ -235,10 +236,11 @@ let format_instr' = function
       "call %s(%s)"
       (Symbol.name fname)
       (List.map args_overflow ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
-  (* | LoadFromStack ts ->
-    sprintf
-      "load_from_stack(%s)"
-      (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat) *)
+  | LoadFromStack ts -> 
+    sprintf 
+      "loadfromstack {%s}"
+      (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
+
 ;;
 
 let format_instr i = (format_instr' i) ^ "\n"

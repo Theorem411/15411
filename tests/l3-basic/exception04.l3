@@ -1,0 +1,9 @@
+//test return 0
+// call of main function
+
+int main() {
+	int x = 0;
+        if (x > 0)
+          x += main();
+	return x;
+}
