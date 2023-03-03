@@ -18,13 +18,18 @@ type reg =
   | R15D
   | RBP
   | RSP
+  | RCX
+  | RDX
+  | RSI
+  | RDI
+  | RBX
 [@@deriving equal, sexp, compare, enum, hash]
 
 let arg_i_to_reg = function
-  | 0 -> EDI
-  | 1 -> ESI
-  | 2 -> EDX
-  | 3 -> ECX
+  | 0 -> RDI
+  | 1 -> RSI
+  | 2 -> RDX
+  | 3 -> RCX
   | 4 -> R8D
   | 5 -> R9D
   | _ -> failwith "args overflow 6"
@@ -130,7 +135,6 @@ type instr =
       { fname : Symbol.t
       ; args_overflow : Temp.t list
       }
-  | LoadFromStack of Temp.t list
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
@@ -269,3 +273,9 @@ let format_program prog =
   in
   List.map prog ~f:format_fspace |> String.concat
 ;;
+
+module T = struct
+  type t = operand
+  [@@deriving compare, equal, sexp]
+end
+include Comparable.Make(T)

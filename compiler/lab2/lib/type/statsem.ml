@@ -1,4 +1,4 @@
-(* open Core
+open Core
 module T = Ctype
 module SM = Symbol.Map
 module SS = Symbol.Set

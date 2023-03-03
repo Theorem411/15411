@@ -10,10 +10,15 @@ type operand =
 let __format_reg = function
   | AS.EAX -> "%eax"
   | AS.EBX -> "%ebx"
+  | AS.RBX -> "%rbx"
   | AS.ECX -> "%ecx"
+  | AS.RCX -> "%rcx"
   | AS.EDX -> "%edx"
+  | AS.RDX -> "%rdx"
   | AS.ESI -> "%esi"
+  | AS.RSI -> "%rsi"
   | AS.EDI -> "%edi"
+  | AS.RDI -> "%rdi"
   | AS.R8D -> "%r8d"
   | AS.R9D -> "%r9d"
   | AS.R10D -> "%r10d"
@@ -28,11 +33,16 @@ let __format_reg = function
 
 let __format_reg_quad = function
   | AS.EAX -> "%rax"
+  | AS.RBX -> "%rbx"
   | AS.EBX -> "%rbx"
   | AS.ECX -> "%rcx"
+  | AS.RCX -> "%rcx"
   | AS.EDX -> "%rdx"
+  | AS.RDX -> "%rdx"
   | AS.ESI -> "%rsi"
+  | AS.RSI -> "%rsi"
   | AS.EDI -> "%rdi"
+  | AS.RDI -> "%rdi"
   | AS.R8D -> "%r8"
   | AS.R9D -> "%r9"
   | AS.R10D -> "%r10"
@@ -256,13 +266,13 @@ let caller_saved oper =
 let all_available_regs =
   [ (* AS.EAX *)
     (* AS.EDX *)
-    AS.EDI
+    (* AS.EDI
   ; AS.ESI (* ; AS.ECX removed for now because of shift operators *)
   ; AS.R8D
   ; AS.R9D
   ; AS.R10D
-  ; AS.EBX
-  ; AS.R12D
+  ; AS.EBX *)
+    AS.R12D
   ; AS.R13D
   ; AS.R14D
   ; AS.R15D

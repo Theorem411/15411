@@ -1,3 +1,4 @@
+open Core
 type reg =
   | EAX
   | EDX
@@ -15,6 +16,11 @@ type reg =
   | R15D
   | RBP
   | RSP
+  | RCX
+  | RDX
+  | RSI
+  | RDI
+  | RBX
 [@@deriving equal, sexp, compare, enum, hash]
 
 type operand =
@@ -117,7 +123,6 @@ type instr =
       { fname : Symbol.t
       ; args_overflow : Temp.t list
       }
-  (* | LoadFromStack of Temp.t list *)
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
@@ -158,3 +163,5 @@ val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program_block : program_block -> string
 val format_program : program -> string
+
+include Comparable.S with type t := operand
