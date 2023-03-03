@@ -255,55 +255,62 @@ let args_tag =
 ;;
 
 let break_into_blocks (stms : T.stm list) : T.block list =
-  let is_jmp s = match s with
+  let is_jmp s =
+    match s with
     | T.If _ -> true
     | T.Return _ -> true
     | T.Goto _ -> true
-    | _ -> false in
-  let is_label s = match s with
-  | T.Label _ -> true
-  | _ -> false in
-  let break l break_l break_r = 
+    | _ -> false
+  in
+  let is_label s =
+    match s with
+    | T.Label _ -> true
+    | _ -> false
+  in
+  let break l break_l break_r =
     let gap_r = List.group ~break:break_r l in
     let map_f ss = List.group ~break:break_l ss in
     let gap_l = List.map ~f:map_f gap_r |> List.concat in
-      List.filter ~f:(fun ss -> if List.length ss > 0 then true else false) gap_l
+    List.filter ~f:(fun ss -> if List.length ss > 0 then true else false) gap_l
   in
   let break_by_jmp s _ = is_jmp s in
   let break_by_lab _ s = is_label s in
-  let pass1 = break stms break_by_lab break_by_jmp in 
+  let pass1 = break stms break_by_lab break_by_jmp in
   let prelab sl =
     let hd = List.hd_exn sl in
-    if is_label hd then sl else let l = Label.create () in (T.Label l) :: sl
+    if is_label hd
+    then sl
+    else (
+      let l = Label.create () in
+      T.Label l :: sl)
   in
-  let pass1_prelab = List.map pass1 ~f:prelab in 
-  let endjmp sl = 
-    let tl = List.last_exn sl in 
+  let pass1_prelab = List.map pass1 ~f:prelab in
+  let endjmp sl =
+    let tl = List.last_exn sl in
     let sl_opt = List.map sl ~f:(fun a -> Some a) in
-    if is_jmp tl then sl_opt else sl_opt @ [None]
+    if is_jmp tl then sl_opt else sl_opt @ [ None ]
   in
   let pass1_endjmp = List.map pass1_prelab ~f:endjmp |> List.concat in
-  let rec borrow stm_opt_list = 
-    match stm_opt_list with 
+  let rec borrow stm_opt_list =
+    match stm_opt_list with
     | [] -> []
     | Some s :: rest -> s :: borrow rest
-    | None :: rest -> (
-      match rest with 
-      | Some (T.Label l) :: _ -> T.Goto l :: borrow rest
-      | _ -> failwith "impossible in break_into_blocks!"
-    )
+    | None :: rest ->
+      (match rest with
+       | Some (T.Label l) :: _ -> T.Goto l :: borrow rest
+       | _ -> failwith "impossible in break_into_blocks!")
   in
   let pass1_borrow = borrow pass1_endjmp in
   let pass2 = break pass1_borrow break_by_lab break_by_jmp in
   let map_sblock_block (sblock : T.stm list) : T.block =
     let get_label_exn = function
-    | T.Label l -> l
-    | _ -> failwith "impossible in break_into_blocks"
-    in  
+      | T.Label l -> l
+      | _ -> failwith "impossible in break_into_blocks"
+    in
     let hd = List.hd_exn sblock in
     let label = get_label_exn hd in
     let tl = List.last_exn sblock in
-    { label; block=sblock; jump=tl; }
+    { label; block = sblock; jump = tl }
   in
   List.map pass2 ~f:map_sblock_block
 ;;
@@ -311,14 +318,15 @@ let break_into_blocks (stms : T.stm list) : T.block list =
 let tr_glob (glob : A.mglob) (global_env : Symbol.Set.t) =
   match Mark.data glob with
   | A.Typedef _ -> None, global_env
-  | A.Fundecl {f; _} ->
+  | A.Fundecl { f; _ } ->
     let global_env' = Symbol.Set.add global_env f in
     None, global_env'
-  | A.Fundef {f; args; fdef; _} ->
+  | A.Fundef { f; args; fdef; _ } ->
     let args_lst, args_env = args_tag args in
     let global_env' = Symbol.Set.add global_env f in
-    let fdef = tr_stm global_env' args_env fdef |> break_into_blocks in
-    Some ({ fname=f; args = args_lst; fdef } : T.fspace), global_env'
+    let fdef = tr_stm global_env' args_env fdef in
+    (*_ |> break_into_blocks *)
+    Some ({ fname = f; args = args_lst; fdef } : T.fspace), global_env'
 ;;
 
 let translate (prog : A.program) : T.program =
@@ -330,4 +338,11 @@ let translate (prog : A.program) : T.program =
   in
   let tprog, _ = List.fold prog ~init:([], Symbol.Set.empty) ~f:foldf in
   tprog
+;;
+
+let translate_block (tprog : T.program) : T.program_block =
+  let map_f ({ fname; args; fdef } : T.fspace) : T.fspace_block =
+    { fname; args; fdef = break_into_blocks fdef }
+  in
+  List.map tprog ~f:map_f
 ;;

@@ -85,10 +85,17 @@ type block =
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
+  ; fdef : stm list
+  }
+
+type fspace_block =
+  { fname : Symbol.t
+  ; args : Temp.t list
   ; fdef : block list
   }
 
 type program = fspace list
+type program_block = fspace_block list
 
 module type PRINT = sig
   val pp_pexp : pexp -> string
@@ -171,20 +178,33 @@ module Print : PRINT = struct
     (* let pp_lab label_opt = (match label_opt with 
     | None -> "<nil>"
     | Some l -> Label.name l) in *)
-    let mapf {label;block;jump;} = 
+    let mapf { label; block; jump } =
       sprintf "\n%s:\n%s\n%s\n" (Label.name label) (pp_stms block) (pp_stm jump)
     in
     List.map blocks ~f:mapf |> String.concat
   ;;
+
   let rec pp_program (prog : program) =
     match prog with
     | [] -> ""
     | { fname; args; fdef } :: prog' ->
       Printf.sprintf
-        "%s(%s):\n%s\n----\n%s"
+        "%s(%s):\n%s\n----\n\n%s"
+        (Symbol.name fname)
+        (List.map args ~f:(fun a -> Temp.name a) |> String.concat)
+        (pp_stms fdef)
+        (pp_program prog')
+  ;;
+(* 
+  let rec pp_program_block (prog : program_block) =
+    match prog with
+    | [] -> ""
+    | { fname; args; fdef } :: prog' ->
+      Printf.sprintf
+        "%s(%s):\n%s\n----\n\n%s"
         (Symbol.name fname)
         (List.map args ~f:(fun a -> Temp.name a) |> String.concat)
         (pp_blocks fdef)
-        (pp_program prog')
-  ;;
+        (pp_program_block prog')
+  ;; *)
 end

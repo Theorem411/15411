@@ -114,7 +114,7 @@ type instr =
       { typ : set_t
       ; src : operand
       }
-  | Ret of operand
+  | Ret
   | Lab of Label.t
   | Cmp of operand * operand
   | AssertFail

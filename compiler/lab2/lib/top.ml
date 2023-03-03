@@ -234,8 +234,9 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
-  let assem_blocks = Cogen.cogen_block ir in
-  let assem = Cogen.cogen assem_blocks in
+  (* let assem_blocks = Cogen.cogen_block ir in
+  let assem = Cogen.cogen assem_blocks in *)
+  let assem = Cogen.cogen ir in
   (* say_if cmd.dump_assem (fun () -> List.to_string ~f:AssemM.format assem); *)
   match cmd.emit with
   (* Output: abstract 3-address assem *)
