@@ -220,15 +220,15 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
   (* Elaborate *)
   (* let elab_h, elab = elaboration_step (ast, ast_h) cmd in *)
-  let _, elab = elaboration_step (ast, ast_h) cmd in
-  (*(* if cmd.dump_ast then ignore ((exit 0): unit); *)
+  let elab_h, elab = elaboration_step (ast, ast_h) cmd in
+  (*if cmd.dump_ast then ignore ((exit 0): unit); *)
   say_if cmd.verbose (fun () -> "doing type Checking...");
-  let (() : unit) = Statsem.static_semantic elab in
+  let (() : unit) = Statsem.static_semantic ~hdr:elab_h ~src:elab in
   let (() : unit) = Return.ret_checker elab in
   (* Typecheck *)
   (* Typechecker.typecheck ast; *)
   if cmd.typecheck_only then exit 0;
-  (* Translate *) *)
+  (* Translate *)
   say_if cmd.verbose (fun () -> "Translating...");
   let ir = TranslationM.translate elab in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);

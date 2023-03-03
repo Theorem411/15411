@@ -214,7 +214,7 @@ let format = function
   | UnCommand unop ->
     sprintf "\t%s\t%s" (format_operation unop.op) (format_operand unop.src)
   | ZeroCommand z -> sprintf "\t%s" (format_operation z.op)
-  | Directive dir -> sprintf "\t%s" dir
+  | Directive dir -> sprintf "%s" dir
   | Comment comment -> sprintf "/* %s */" comment
   | FunName s -> sprintf "%s:" s
   | Ret -> sprintf "\t%s" "ret"

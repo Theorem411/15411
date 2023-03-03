@@ -218,10 +218,10 @@ let translate_function errLabel (fspace : AS.fspace) : X86.instr list =
       Helper.get_function_be (fname, __args, fdef) reg_map mem_cell_count
     in
     let translated : X86.instr list =
-      List.fold fdef ~init:(List.rev b) ~f:(translate_line retLabel errLabel get_reg)
+      List.fold fdef ~init:[] ~f:(translate_line retLabel errLabel get_reg)
     in
     let full_rev = List.rev_append e translated in
-    List.rev full_rev
+    b @ (List.rev full_rev)
 ;;
 
 let translate fs =
