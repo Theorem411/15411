@@ -4,6 +4,5 @@
 // the libc spec ensures that rand() always returns a positive integer
 
 int main() {
-   srand(15411);
    return 1;
 }

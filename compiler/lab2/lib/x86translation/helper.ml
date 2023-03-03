@@ -229,7 +229,8 @@ let get_function_be (fname, __args, fdef) reg_map mem_cell_count =
   let ret_label = Label.create () in
   (* function labels *)
   let enter =
-    [ X86.Directive (sprintf "globl %s" (Symbol.name fname))
+    [ X86.Directive (sprintf ".globl %s" (Symbol.name fname))
+    ; X86.Directive (sprintf ".type	%s, @function" (Symbol.name fname))
     ; X86.FunName (Symbol.name fname)
     ; X86.UnCommand { op = X86.Pushq; src = X86.Reg AS.RBP }
     ; X86.BinCommand { op = Movq; dest = X86.Reg AS.RBP; src = X86.Reg AS.RSP }
