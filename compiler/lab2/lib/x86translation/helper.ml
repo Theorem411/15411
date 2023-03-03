@@ -244,7 +244,7 @@ let get_function_be (fname, __args, fdef) reg_map mem_cell_count =
     ; X86.BinCommand { op = X86.Addq; dest = X86.Reg AS.RSP; src = X86.Imm sub_count }
     ]
     @ cee_finish
-    @ [ X86.UnCommand { op = X86.Pushq; src = X86.Reg AS.RBP }; X86.Ret ]
+    @ [ X86.UnCommand { op = X86.Popq; src = X86.Reg AS.RBP }; X86.Ret ]
   in
   enter, exit, ret_label
 ;;
