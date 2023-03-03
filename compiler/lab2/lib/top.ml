@@ -219,7 +219,8 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
 
   (* Elaborate *)
-  let elab_h, elab = elaboration_step (ast, ast_h) cmd in
+  (* let elab_h, elab = elaboration_step (ast, ast_h) cmd in *)
+  let _, elab = elaboration_step (ast, ast_h) cmd in
   
   (*(* if cmd.dump_ast then ignore ((exit 0): unit); *)
   say_if cmd.verbose (fun () -> "doing type Checking...");
@@ -228,13 +229,14 @@ let compile (cmd : cmd_line_args) : unit =
   (* Typecheck *)
   (* Typechecker.typecheck ast; *)
   if cmd.typecheck_only then exit 0;
-  (* Translate *)
+  (* Translate *) *)
   say_if cmd.verbose (fun () -> "Translating...");
   let ir = TranslationM.translate elab in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
-  let assem = Cogen.cogen ir in
+  let assem_blocks = Cogen.cogen_block ir in
+  let assem = Cogen.cogen assem_blocks in
   (* say_if cmd.dump_assem (fun () -> List.to_string ~f:AssemM.format assem); *)
   match cmd.emit with
   (* Output: abstract 3-address assem *)
@@ -242,11 +244,12 @@ let compile (cmd : cmd_line_args) : unit =
     let file = cmd.filename ^ ".abs" in
     say_if cmd.verbose (fun () -> sprintf "Writing abstract assem to %s..." file);
     Out_channel.with_file file ~f:(fun out ->
-        let output_instr instr = Out_channel.fprintf out "\t%s\n" (AssemM.format instr) in
+        (* let output_instr instr = Out_channel.fprintf out "\t%s\n" (AssemM.format instr) in
         output_instr (AssemM.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_instr (AssemM.Directive ".function\tmain()");
         List.iter ~f:output_instr assem;
-        output_instr (AssemM.Directive ".ident\t\"15-411 L1 reference compiler\""))
+        output_instr (AssemM.Directive ".ident\t\"15-411 L1 reference compiler\"")) *)
+        Out_channel.fprintf out "%s" (AssemM.format_program assem))
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
@@ -255,11 +258,8 @@ let compile (cmd : cmd_line_args) : unit =
         let translated = Translate.translate assem in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");
-        output_x86_instr (X86.Directive ".globl\t_c0_main");
-        output_x86_instr (X86.Directive ".type\t_c0_main, @function");
-        output_x86_instr (X86.FunName "_c0_main:");
-        List.iter ~f:output_x86_instr translated;
-        output_x86_instr (X86.Directive ".ident\t\"15-411 L1 JavaWay compiler\"")) *)
+        Out_channel.fprintf out "%s\n" (Translate.pp_program translated)
+        )
 ;;
 
 let run (cmd : cmd_line_args) : unit =

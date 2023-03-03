@@ -3,7 +3,7 @@ module AS = Assem_new
 
 type operand =
   | Imm of Int32.t
-  | X86Reg of AS.reg
+  | Reg of AS.reg
   | Mem of int
 [@@deriving equal, compare, sexp]
 

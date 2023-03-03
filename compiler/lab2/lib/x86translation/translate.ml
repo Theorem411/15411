@@ -4,17 +4,9 @@ module V = Graph.Vertex
 
 (* TODO: ADD SUPPORT FOR CALLEE SAVED REGISTERS: 	%esp, %ebx, %ebp, %r12d, %r13d, %r14d, %r15d *)
 
-type __operand =
-  | Temp of Temp.t
-  | Reg of AS.reg
-[@@deriving equal]
-
 type color = int [@@deriving compare, equal, sexp]
 
 (*_ DEBUGGING STAFF  *)
-
-type random_pair_debug = (color * X86.operand) list [@@deriving sexp]
-type another_random_pair_debug = (AS.operand * color) list [@@deriving sexp]
 
 let debug_mode_translate = true
 
@@ -94,7 +86,6 @@ let get_free_regs (used_regs : AS.reg list) =
 
 let group_by_colors (colors : (AS.operand * color) list) =
   let sorted = List.sort colors ~compare:(fun (_, a) (_, b) -> __compare_color b a) in
-  (*_ let () = print_source (sexp_of_string "\n sorted" :: ([sexp_of_another_random_pair_debug sorted])) in   *)
   List.group sorted ~break:(fun (_, a) (_, b) -> not (__equal_color a b))
 ;;
 
@@ -107,7 +98,6 @@ let get_unassigned_colors groups used_regs_with_color =
         | (_, color) :: _ -> color
         | [] -> raise (Failure "Group can not be empty"))
   in
-  (*_ let () = print_source (sexp_of_string "\nALL_COL" :: (List.map all_colors ~f:sexp_of_color)) in *)
   List.filter all_colors ~f:(fun c ->
       not (List.exists used_regs_with_color ~f:(fun (_, uc) -> equal_color c uc)))
 ;;
@@ -121,10 +111,10 @@ let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
   then (
     let memcell_count = colors_len - available_len in
     let memcells = List.map (List.range 1 (memcell_count + 1)) ~f:(fun i -> X86.Mem i) in
-    let free_regs = List.map free_regs ~f:(fun x -> X86.X86Reg x) in
+    let free_regs = List.map free_regs ~f:(fun x -> X86.Reg x) in
     List.zip_exn to_be_assigned (free_regs @ memcells), memcell_count)
   else (
-    let free_regs = List.map free_regs ~f:(fun x -> X86.X86Reg x) in
+    let free_regs = List.map free_regs ~f:(fun x -> X86.Reg x) in
     List.zip_exn to_be_assigned (List.take free_regs colors_len), 0)
 ;;
 
@@ -151,7 +141,7 @@ let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) l
   (*_ let _ = List.length groups in *)
   let to_be_assigned : color list = get_unassigned_colors groups used_regs_with_color in
   let rest, mem_cell_count = assign_frees free_regs to_be_assigned in
-  let used = List.map used_x86regs_with_color ~f:(fun (r, c) -> c, X86.X86Reg r) in
+  let used = List.map used_x86regs_with_color ~f:(fun (r, c) -> c, X86.Reg r) in
   List.append used rest, mem_cell_count
 ;;
 
@@ -161,7 +151,7 @@ let translate_pure get_reg = function
     let lhs_final = get_reg lhs in
     let rhs_final = get_reg rhs in
     (match d_final with
-    | X86.X86Reg _ ->
+    | X86.Reg _ ->
       [ X86.BinCommand { op = Mov; dest = d_final; src = lhs_final }
       ; X86.BinCommand { op = X86.pure_to_opr op; dest = d_final; src = rhs_final }
       ]
@@ -183,7 +173,7 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
     let right_commands =
       match rhs_final with
       | X86.Imm n ->
-        [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
+        [ X86.BinCommand { op = Mov; dest = Reg EAX; src = lhs_final }
         ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = X86.Imm n }
         ; X86.ZeroCommand { op = X86.Cltd }
         ; X86.UnCommand { op = IDiv; src = X86.__FREE_REG }
@@ -192,13 +182,13 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
             ; dest = d_final
             ; src =
                 (match op with
-                | Div -> X86Reg EAX
-                | Mod -> X86Reg EDX
+                | Div -> Reg EAX
+                | Mod -> Reg EDX
                 | _ -> raise (Failure "it is only Div/Mod case"))
             }
         ]
       | _ ->
-        [ X86.BinCommand { op = Mov; dest = X86Reg EAX; src = lhs_final }
+        [ X86.BinCommand { op = Mov; dest = Reg EAX; src = lhs_final }
         ; X86.ZeroCommand { op = X86.Cltd }
         ; X86.UnCommand { op = IDiv; src = rhs_final }
         ; X86.BinCommand
@@ -206,8 +196,8 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
             ; dest = d_final
             ; src =
                 (match op with
-                | Div -> X86Reg EAX
-                | Mod -> X86Reg EDX
+                | Div -> Reg EAX
+                | Mod -> Reg EDX
                 | _ -> raise (Failure "it is only Div/Mod case"))
             }
         ]
@@ -220,15 +210,15 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
     let rhs_final = get_reg rhs in
     let right_commands =
       [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final }
-      ; X86.BinCommand { op = Mov; dest = X86Reg AS.ECX; src = rhs_final }
+      ; X86.BinCommand { op = Mov; dest = Reg AS.ECX; src = rhs_final }
         (* check for the shift >= 32 *)
-      ; X86.Cmp { rhs = X86Reg AS.ECX; lhs = Imm (Int32.of_int_exn 32) }
+      ; X86.Cmp { rhs = Reg AS.ECX; lhs = Imm (Int32.of_int_exn 32) }
       ; X86.Jump { op = Some AS.Jge; label = errLabel } (* pre check end *)
         (* check for the shift < 32 *)
-      ; X86.Cmp { rhs = X86Reg AS.ECX; lhs = Imm (Int32.of_int_exn 0) }
+      ; X86.Cmp { rhs = Reg AS.ECX; lhs = Imm (Int32.of_int_exn 0) }
       ; X86.Jump { op = Some AS.Jl; label = errLabel } 
       ; X86.BinCommand
-          { op = X86.efkt_to_opr op; dest = X86.__FREE_REG; src = X86Reg AS.ECX }
+          { op = X86.efkt_to_opr op; dest = X86.__FREE_REG; src = Reg AS.ECX }
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
       ]
     in
@@ -238,9 +228,9 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
 
 let translate_set get_reg = function
   | AS.Set { typ; src } ->
-    [ X86.Set { op = typ; src = X86.X86Reg AS.EAX }
-    ; X86.BinCommand { op = Movzx; src = X86.X86Reg AS.EAX; dest = X86.X86Reg AS.EAX }
-    ; X86.BinCommand { op = Mov; src = X86.X86Reg AS.EAX; dest = get_reg src }
+    [ X86.Set { op = typ; src = X86.Reg AS.EAX }
+    ; X86.BinCommand { op = Movzx; src = X86.Reg AS.EAX; dest = X86.Reg AS.EAX }
+    ; X86.BinCommand { op = Mov; src = X86.Reg AS.EAX; dest = get_reg src }
     ]
   | _ -> failwith "Not a set operation on translate_set"
 ;;
@@ -315,7 +305,7 @@ let get_callee_regs (col2operand : (color * X86.operand) list) =
   let operands = List.map col2operand ~f:(fun (_, r) -> r) in
   let regs = List.filter operands ~f:X86.is_reg in
   let used = List.filter regs ~f:X86.callee_saved in
-  X86.X86Reg RBP :: used
+  X86.Reg RBP :: used
 ;;
 
 let callee_handle col2operand =
@@ -325,7 +315,7 @@ let callee_handle col2operand =
     List.map callee_regs ~f:(fun r -> X86.UnCommand { op = X86.Pushq; src = r })
   in
   let rsp_to_rbp =
-    [ X86.BinCommand { op = Movq; dest = X86.X86Reg RBP; src = X86.X86Reg RSP } ]
+    [ X86.BinCommand { op = Movq; dest = X86.Reg RBP; src = X86.Reg RSP } ]
   in
   let callee_finish =
     List.map (List.rev callee_regs) ~f:(fun r -> X86.UnCommand { op = X86.Popq; src = r })
@@ -341,31 +331,32 @@ let mem_handle = function
       | Some x -> x
       | None -> raise (Failure "Unexpected None")
     in
-    ( [ X86.BinCommand { op = X86.Subq; dest = X86.X86Reg RSP; src = X86.Imm n } ]
-    , [ X86.BinCommand { op = X86.Addq; dest = X86.X86Reg RSP; src = X86.Imm n } ] )
+    ( [ X86.BinCommand { op = X86.Subq; dest = X86.Reg RSP; src = X86.Imm n } ]
+    , [ X86.BinCommand { op = X86.Addq; dest = X86.Reg RSP; src = X86.Imm n } ] )
 ;;
 
 let get_error_block errLabel =
   [ X86.Lbl errLabel
-  ; X86.BinCommand { op = X86.Mov; dest = X86.X86Reg AS.EAX; src = X86.Imm Int32.one }
-  ; X86.BinCommand { op = X86.Mov; dest = X86.X86Reg AS.ECX; src = X86.Imm Int32.zero }
+  ; X86.BinCommand { op = X86.Mov; dest = X86.Reg AS.EAX; src = X86.Imm Int32.one }
+  ; X86.BinCommand { op = X86.Mov; dest = X86.Reg AS.ECX; src = X86.Imm Int32.zero }
   ; X86.ZeroCommand { op = X86.Cltd }
-  ; X86.UnCommand { op = X86.IDiv; src = X86.X86Reg AS.ECX }
+  ; X86.UnCommand { op = X86.IDiv; src = X86.Reg AS.ECX }
   ]
 ;;
 
-let translate (program : AS.instr list) : X86.instr list =
+let translate_old (program : AS.instr list) : X86.instr list =
   let errLabel = Label.create () in
   let retLabel = Label.create () in
   let op2col : (AS.operand * color) list = __regalloc program in
   let col2operand, mem_cell_count = assign_colors op2col in
   let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in
   let ret_block_lbl, ret_stm = [ X86.Lbl retLabel ], [ X86.Ret ] in
+  let get_reg:(AS.operand -> X86.operand) = Helper.get_reg_h (op2col, col2operand) in
   let translated : X86.instr list =
     List.fold
       program
       ~init:[]
-      ~f:(translate_line retLabel errLabel (get_reg_h (op2col, col2operand)))
+      ~f:(translate_line retLabel errLabel get_reg)
   in
   (* TODO: optimize appends *)
   match mem_cell_count with
@@ -389,3 +380,15 @@ let translate (program : AS.instr list) : X86.instr list =
     @ ret_stm
     @ get_error_block errLabel
 ;;
+
+type fspace =
+  { fname : Symbol.t
+  ; fdef : X86.instr list
+  }
+type program = fspace list
+
+let translate = 
+  let _:X86.instr list = translate_old [] in 
+  failwith "not imp"
+let pp_fspace = failwith "not imp"
+let pp_program = failwith "not imp"

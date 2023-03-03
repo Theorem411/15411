@@ -3,7 +3,7 @@ module AS = Assem_new
 
 type operand =
   | Imm of Int32.t
-  | X86Reg of AS.reg
+  | Reg of AS.reg
   | Mem of int
 [@@deriving equal, compare, sexp]
 
@@ -54,7 +54,7 @@ let __format_reg_word = function
 (* Mem n means that the varialbe is in -n(%rbp) *)
 let format_operand ?(quad = false) ?(word = false) = function
   | Imm n -> "$" ^ Int32.to_string n
-  | X86Reg r ->
+  | Reg r ->
     (match quad, word with
     | true, false -> __format_reg_quad r
     | false, true -> __format_reg_word r
@@ -235,22 +235,22 @@ let unary_to_opr = function
 
 let callee_saved oper =
   match oper with
-  | X86Reg r ->
+  | Reg r ->
     (match r with
     | AS.EBX | AS.RSP | AS.RBP -> true
     | AS.R12D | AS.R13D | AS.R14D | AS.R15D -> true
     | _ -> false)
-  | _ -> raise (Failure "callee_saved can be applied only on X86Reg reg")
+  | _ -> raise (Failure "callee_saved can be applied only on Reg reg")
 ;;
 
 let caller_saved oper =
   match oper with
-  | X86Reg r ->
+  | Reg r ->
     (match r with
     | AS.EAX | AS.EDI | AS.ESI | AS.EDX -> true
     | AS.ECX | AS.R8D | AS.R9D | AS.R10D | AS.R11D -> true
     | _ -> false)
-  | _ -> raise (Failure "caller_saved can be applied only on X86Reg reg")
+  | _ -> raise (Failure "caller_saved can be applied only on Reg reg")
 ;;
 
 let all_available_regs =
@@ -270,8 +270,8 @@ let all_available_regs =
 ;;
 
 let is_reg = function
-  | X86Reg _ -> true
+  | Reg _ -> true
   | _ -> false
 ;;
 
-let __FREE_REG = X86Reg AS.R11D
+let __FREE_REG = Reg AS.R11D
