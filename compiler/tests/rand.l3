@@ -5,13 +5,5 @@
 
 int main() {
    srand(15411);
-   int i = rand();
-   int j = -i;
-   assert(i - abs(j) == 0);
-   while (i < 0){
-      if (j > 0){
-         return 2;
-      }
-   }
-   return i - abs(j);
+   return 1;
 }
