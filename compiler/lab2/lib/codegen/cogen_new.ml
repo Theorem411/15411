@@ -120,8 +120,8 @@ let munch_stm = function
   | T.Return eopt ->
     (* return e is implemented as %eax <- e *)
     (match eopt with
-     | None -> []
-     | Some e -> munch_exp (A.Reg A.EAX) e @ [ A.Ret (A.Reg A.EAX) ])
+     | None -> [A.Ret]
+     | Some e -> munch_exp (A.Reg A.EAX) e @ [ A.Ret ])
 ;;
 
 let munch_block ({ label; block; jump } : T.block) : A.block =

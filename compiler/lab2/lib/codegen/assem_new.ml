@@ -121,7 +121,7 @@ type instr =
       { typ : set_t
       ; src : operand
       }
-  | Ret of operand
+  | Ret
   | Lab of Label.t
   | Cmp of operand * operand
   | AssertFail
@@ -220,7 +220,7 @@ let format_instr = function
   | Jmp l -> "jump" ^ Label.name l
   | Cjmp c -> sprintf "%s %s" (c.typ |> sexp_of_jump_t |> string_of_sexp) (Label.name c.l)
   | Lab l -> "\n.Label " ^ Label.name l
-  | Ret r -> sprintf "ret %s" (format_operand r)
+  | Ret -> "ret"
   | Set c ->
     sprintf "%s %s" (c.typ |> sexp_of_set_t |> string_of_sexp) (format_operand c.src)
   | Cmp (l, r) -> sprintf "cmp %s, %s" (format_operand l) (format_operand r)
