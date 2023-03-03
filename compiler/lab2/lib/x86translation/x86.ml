@@ -106,7 +106,8 @@ let format_operation = function
   | Subq -> "subq"
   | Mul -> "imull"
   | IDiv -> "idivl"
-  | Mov -> "movl"
+  (* | Mov -> "movl" *)
+  | Mov -> "mov"
   | Cltd -> "cltd"
   | Pushq -> "pushq"
   | Popq -> "popq"

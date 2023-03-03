@@ -26,10 +26,10 @@ type reg =
 [@@deriving equal, sexp, compare, enum, hash]
 
 let arg_i_to_reg = function
-  | 0 -> RDI
-  | 1 -> RSI
-  | 2 -> RDX
-  | 3 -> RCX
+  | 0 -> EDI
+  | 1 -> ESI
+  | 2 -> EDX
+  | 3 -> ECX
   | 4 -> R8D
   | 5 -> R9D
   | _ -> failwith "args overflow 6"

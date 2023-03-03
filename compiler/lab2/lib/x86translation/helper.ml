@@ -196,13 +196,13 @@ let do_arg_moves (reg_map : X86.operand AS.Map.t) (args : AS.operand list) total
   let reg_moves =
     let srcs = List.mapi reg_args ~f:(fun i _ -> X86.Reg (AS.arg_i_to_reg i)) in
     let dests = List.map reg_args ~f:(AS.Map.find_exn reg_map) in
-    let create d s = X86.BinCommand { op = Movq; dest = d; src = s } in
+    let create d s = X86.BinCommand { op = Mov; dest = d; src = s } in
     List.map2_exn dests srcs ~f:create
   in
   let stack_refs =
     List.mapi stack_args ~f:(fun i t ->
         X86.BinCommand
-          { op = Movq
+          { op = Mov
           ; dest = AS.Map.find_exn reg_map t
           ; src = X86.Mem (total_size + 16 + (8 * i))
           })

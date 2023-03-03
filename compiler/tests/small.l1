@@ -1,11 +1,10 @@
-
-int test(int i, int j) {
-    int x = 2;
-    int y = 3;
-    return x + y + i + j;
+int sub(int i, int j) {
+    return i - j;
 }
 
 int main () {
-    int x = 300;
-    return test(1, 10);
+    int x = 1;
+    int y = 2;
+    int z = sub(x, y);
+    return
 }
