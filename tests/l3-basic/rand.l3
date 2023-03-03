@@ -1,0 +1,11 @@
+//test return 0
+
+// This works (regardless of how the PRNG is implemented) because
+// the libc spec ensures that rand() always returns a positive integer
+
+int main() {
+   srand(15411);
+   int i = rand();
+   int j = -i;
+   return i - abs(j);
+}

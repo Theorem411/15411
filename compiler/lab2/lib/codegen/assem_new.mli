@@ -119,6 +119,7 @@ type instr =
   | Cmp of operand * operand
   | AssertFail
   (* this is in the third assem *)
+  | LoadFromStack of Temp.t list
   | Call of
       { fname : Symbol.t
       ; args_overflow : Temp.t list
