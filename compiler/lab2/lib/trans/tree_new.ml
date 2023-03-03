@@ -195,7 +195,7 @@ module Print : PRINT = struct
         (pp_stms fdef)
         (pp_program prog')
   ;;
-
+(* 
   let rec pp_program_block (prog : program_block) =
     match prog with
     | [] -> ""
@@ -206,5 +206,5 @@ module Print : PRINT = struct
         (List.map args ~f:(fun a -> Temp.name a) |> String.concat)
         (pp_blocks fdef)
         (pp_program_block prog')
-  ;;
+  ;; *)
 end

@@ -107,5 +107,5 @@ module Print : sig
   val pp_pexp : pexp -> string
   val pp_stm : stm -> string
   val pp_program : program -> string
-  val pp_program_block : program_block -> string
+  (* val pp_program_block : program_block -> string *)
 end
