@@ -293,7 +293,12 @@ let all_func_used (prog : A.program) : SS.t =
     check whether this used set is all defined 
     *)
 let static_semantic ~(hdr : A.program) ~(src : A.program) =
-  let global_ctx_init = { fdef = SS.empty; fdec = SM.empty; tdef = TM.empty } in
+  let tdef_init =
+    TM.empty
+    |> TM.add_exn ~key:(T.RealTyp T.Int) ~data:T.Int
+    |> TM.add_exn ~key:(T.RealTyp T.Bool) ~data:T.Bool
+  in
+  let global_ctx_init = { fdef = SS.empty; fdec = SM.empty; tdef = tdef_init } in
   let fold_f global_ctx mglob = static_semantic_gdecl mglob global_ctx in
   let global_ctx_hdr = List.fold hdr ~init:global_ctx_init ~f:fold_f in
   let () = if SS.length global_ctx_hdr.fdef = 0 then () else raise TypeError in
