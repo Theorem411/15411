@@ -185,6 +185,7 @@ let translate_line
   | AS.AssertFail -> [ X86.Call "abort" ]
   | AS.Call { fname; args_overflow = stack_args } ->
     (translate_call get_reg (Symbol.name fname) stack_args)  @ prev_lines
+  | AS.LoadFromStack _ -> []
 ;;
 
 (* | _ -> failwith "not implemented" *)

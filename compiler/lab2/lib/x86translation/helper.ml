@@ -14,7 +14,7 @@ let get_all_addressable_line instr =
     | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
     | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
     | Unop u -> [ u.dest ]
-    | Jmp _ | Cjmp _ | Lab _ | AssertFail | AS.Directive _ | AS.Comment _ | Ret -> []
+    | Jmp _ | Cjmp _ | Lab _ | AssertFail | AS.Directive _ | AS.Comment _ | Ret | LoadFromStack _-> []
     | Cmp (l, r) -> [ l; r ]
     | Set { src; _ } -> [ src; AS.Reg EAX ]
     | Call { args_overflow; _ } -> templist_to_operand args_overflow
