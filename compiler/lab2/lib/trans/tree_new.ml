@@ -174,7 +174,7 @@ module Print : PRINT = struct
     List.fold ~init:"" ~f:(fun acc s -> acc ^ pp_stm s ^ "\n") stms
   ;;
 
-  let pp_blocks (blocks : block list) =
+  (* let pp_blocks (blocks : block list) =
     (* let pp_lab label_opt = (match label_opt with 
     | None -> "<nil>"
     | Some l -> Label.name l) in *)
@@ -182,7 +182,7 @@ module Print : PRINT = struct
       sprintf "\n%s:\n%s\n%s\n" (Label.name label) (pp_stms block) (pp_stm jump)
     in
     List.map blocks ~f:mapf |> String.concat
-  ;;
+  ;; *)
 
   let rec pp_program (prog : program) =
     match prog with

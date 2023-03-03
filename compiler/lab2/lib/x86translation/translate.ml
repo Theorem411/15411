@@ -174,7 +174,7 @@ let translate_line
   | AS.Comment d -> Comment d :: prev_lines
   | AS.Directive d -> Directive d :: prev_lines
   | AS.Set s -> List.rev_append (translate_set get_reg (AS.Set s)) prev_lines
-  | AS.Ret _ -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
+  | AS.Ret -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
   (* | AS.App _ -> failwith "app is not allowed :(" *)
   | AS.AssertFail -> [ X86.Call "abort" ]
   | AS.Call { fname; args_overflow = stack_args } ->

@@ -14,7 +14,7 @@ let get_all_addressable_line instr =
     | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
     | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
     | Unop u -> [ u.dest ]
-    | Jmp _ | Cjmp _ | Lab _ | AssertFail | AS.Directive _ | AS.Comment _ | Ret _ -> []
+    | Jmp _ | Cjmp _ | Lab _ | AssertFail | AS.Directive _ | AS.Comment _ | Ret -> []
     | Cmp (l, r) -> [ l; r ]
     | Set { src; _ } -> [ src; AS.Reg EAX ]
     | Call { args_overflow; _ } -> templist_to_operand args_overflow
@@ -230,7 +230,7 @@ let get_function_be (fname, __args, fdef) reg_map mem_cell_count =
   (* function labels *)
   let enter =
     [ X86.Directive (sprintf ".globl %s" (Symbol.name fname))
-    ; X86.Directive (sprintf ".type	%s, @function" (Symbol.name fname))
+    ; X86.Directive (sprintf ".type\t%s, @function" (Symbol.name fname))
     ; X86.FunName (Symbol.name fname)
     ; X86.UnCommand { op = X86.Pushq; src = X86.Reg AS.RBP }
     ; X86.BinCommand { op = Movq; dest = X86.Reg AS.RBP; src = X86.Reg AS.RSP }
@@ -240,7 +240,8 @@ let get_function_be (fname, __args, fdef) reg_map mem_cell_count =
     @ locals
   in
   let exit =
-    [ X86.Lbl ret_label
+    [ X86.Comment ("return label of " ^ Symbol.name fname)
+    ; X86.Lbl ret_label
     ; X86.BinCommand { op = X86.Addq; dest = X86.Reg AS.RSP; src = X86.Imm sub_count }
     ]
     @ cee_finish
