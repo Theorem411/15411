@@ -1,16 +1,13 @@
-int sum(int i, int j) {
-  int sum = 0;
-  for (; i <= j; i+=1)
-    sum += i;
-  return sum;
+//test return 24
+
+int fac(int n){
+    if (n <= 1){
+        return 1;
+    }
+    return fac(n - 1) * n;
 }
 
 int main () {
-  int n;
-  int x;
-  int y;
-  n = 100;
-  x = sum(1,100);
-  y = n*(n+1)/2;
-  return x - y;
+    int n = 4;
+    return fac(4);
 }
