@@ -23,7 +23,7 @@ let rec rename_mexpr (ctx : Symbol.Set.t) (mexp : AstElab.mexp) : AstElab.mexp =
     AstElab.Unop { op; operand = f operand } |> copy_mark mexp
   | AstElab.Call { name; args } ->
     if lookup ctx name
-    then mexp
+    then AstElab.Call { name; args = List.map ~f args } |> copy_mark mexp
     else (
       let newname = Symbol.symbol ("_c0_" ^ Symbol.name name) in
       AstElab.Call { name = newname; args = List.map ~f args } |> copy_mark mexp)
@@ -47,7 +47,7 @@ and rename_mstm (ctx : Symbol.Set.t) (mstm : AstElab.mstm) : AstElab.mstm =
   | AstElab.NakedExpr e -> AstElab.NakedExpr (f e) |> copy_mark mstm
   | AstElab.NakedCall { name; args } ->
     if lookup ctx name
-    then mstm
+    then AstElab.NakedCall { name; args = List.map ~f args } |> copy_mark mstm
     else (
       let newname = Symbol.symbol ("_c0_" ^ Symbol.name name) in
       AstElab.NakedCall { name = newname; args = List.map ~f args } |> copy_mark mstm)
