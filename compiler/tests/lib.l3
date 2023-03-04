@@ -1,9 +1,20 @@
-//test return 2139095040
-/* print and return +infinity in floating point */
+//test return 0
+/* Simple function call to sum up numbers */
+
+
+int sum(int i, int j) {
+  int sum = 0;
+  for (; i <= j; i+=1)
+    sum += i;
+  return sum;
+}
 
 int main () {
-  fpt x = fdiv(itof(1), itof(0));
-  print_fpt(x);
-  print_hex(x);
-  return x;
+  int n;
+  int x;
+  int y;
+  n = 100;
+  x = sum(1,100);
+  y = n*(n+1)/2;
+  return x-y;
 }

@@ -76,7 +76,7 @@ let rec tr_exp_rev (genv : Symbol.Set.t) (env : Temp.t S.t) (exp : A.mexp) : tr_
         ~init:([], [])
     in
     let cmdlist = List.concat cmdllist in
-    T.MovFuncApp { dest = Some t; fname; args = explist } :: cmdlist, T.Temp t
+    T.MovFuncApp { dest = Some t; fname; args =  List.rev explist } :: cmdlist, T.Temp t
 
 and tr_exp_ternary genv env e1 e2 e3 =
   let t = Temp.create () in
@@ -171,7 +171,7 @@ let rec tr_stm_rev (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
         ~init:([], [])
     in
     let cmdlist = List.concat cmdllist in
-    T.MovFuncApp { dest = None; fname; args = explist } :: cmdlist
+    T.MovFuncApp { dest = None; fname; args = List.rev explist } :: cmdlist
 
 and tr_stm_if genv env (cond : A.mexp) (s1 : A.mstm) (s2 : A.mstm) =
   let normal_case (env : Temp.t S.t) cond s1 s2 =
