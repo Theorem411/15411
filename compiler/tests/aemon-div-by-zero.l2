@@ -1,8 +1,0 @@
-//test div-by-zero
-
-int main()
-{
-	int x = 10;
-	for (; x >= 0; x--) {}
-	return 5 << x;
-}

@@ -1,8 +1,0 @@
-//test return 0
-
-// This works (regardless of how the PRNG is implemented) because
-// the libc spec ensures that rand() always returns a positive integer
-
-int main() {
-   return 1;
-}

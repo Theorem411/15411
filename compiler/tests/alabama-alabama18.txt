@@ -1,4 +1,0 @@
-timeout reason: 
-although this should be an infinite loop, the loop body eventually will have 
-shift amount out of range error (div-by-zero). Which is eventually be fixed by 
-x86 translate
