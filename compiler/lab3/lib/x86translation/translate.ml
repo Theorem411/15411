@@ -182,10 +182,10 @@ let translate_line
   | AS.Set s -> List.rev_append (translate_set get_reg (AS.Set s)) prev_lines
   | AS.Ret -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
   (* | AS.App _ -> failwith "app is not allowed :(" *)
-  | AS.AssertFail -> [ X86.Call "abort" ]
+  | AS.AssertFail -> [ X86.Call "abort" ] @ prev_lines
   | AS.Call { fname; args_overflow = stack_args } ->
     (translate_call get_reg (Symbol.name fname) stack_args)  @ prev_lines
-  | AS.LoadFromStack _ -> []
+  | AS.LoadFromStack _ -> [] @ prev_lines
 ;;
 
 (* | _ -> failwith "not implemented" *)
