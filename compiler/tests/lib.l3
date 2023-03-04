@@ -1,8 +1,9 @@
-//test error
-// correctly handle function name shadowing
-int foo (int x, int y);
-int foo (int x, int y) {return x;}
+//test return 2139095040
+/* print and return +infinity in floating point */
+
 int main () {
-    int foo;
-    return foo (0, 0);
+  fpt x = fdiv(itof(1), itof(0));
+  print_fpt(x);
+  print_hex(x);
+  return x;
 }
