@@ -191,7 +191,7 @@ module Print : PRINT = struct
       Printf.sprintf
         "%s(%s):\n%s\n----\n\n%s"
         (Symbol.name fname)
-        (List.map args ~f:(fun a -> Temp.name a ^ ", ") |> String.concat)
+        (List.map args ~f:(fun a -> Temp.name a) |> String.concat ~sep:", ")
         (pp_stms fdef)
         (pp_program prog')
   ;;

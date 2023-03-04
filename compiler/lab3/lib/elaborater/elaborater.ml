@@ -264,11 +264,10 @@ and elab_assert m_s =
   let s = Mark.data m_s in
   match s with
   | Ast.Assert e ->
-    let c = elab_mexp e in
     AstElab.If
-      { cond = copy_mark c (AstElab.Unop { operand = c; op = AstElab.LogNot })
-      ; rb = copy_mark m_s AstElab.Nop
-      ; lb = copy_mark m_s AstElab.AssertFail
+      { cond = elab_mexp e
+      ; lb = copy_mark m_s AstElab.Nop
+      ; rb = copy_mark m_s AstElab.AssertFail
       }
   | _ -> failwith "elab_assert recieved not an assert"
 
