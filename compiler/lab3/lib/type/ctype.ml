@@ -39,3 +39,14 @@ let _fsig_tostring ((argtyps, ret) : fsig) : string =
   let argstyp = List.map argtyps ~f:argsstr |> String.concat in
   "(" ^ argstyp ^ ") -> " ^ rettyp
 ;;
+
+let _fsig_real_tostring ((argtyps, ret) : fsig_real) : string =
+  let rettyp =
+    match ret with
+    | None -> "void"
+    | Some t -> _t_tostring t
+  in
+  let argsstr t = Printf.sprintf "%s, " (_t_tostring t) in
+  let argstyp = List.map argtyps ~f:argsstr |> String.concat in
+  "(" ^ argstyp ^ ") -> " ^ rettyp
+;;

@@ -117,10 +117,7 @@ type mglob = glob Mark.t
 type program = mglob list
 
 module Print = struct
-  let repeat s n =
-    List.map ~f:(fun _ -> s) (List.range 0 n) |> String.concat
-  ;;
-
+  let repeat s n = List.map ~f:(fun _ -> s) (List.range 0 n) |> String.concat
   let tabs = repeat ""
 
   let pp_binop_pure = function
@@ -182,7 +179,7 @@ module Print = struct
       sprintf
         "(%s (%s))"
         (Symbol.name name)
-        (List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mexp e))
+        (List.map args ~f:(fun e -> pp_mexp e ^ ", ") |> String.concat)
 
   and pp_mexp e = pp_exp (Mark.data e)
 
@@ -223,7 +220,10 @@ module Print = struct
       | Nop -> "nop;"
       | AssertFail -> "__assert_fail;"
       | NakedCall { name; args } ->
-        sprintf "%s(%s);" (Symbol.name name) (List.map args ~f:pp_mexp |> String.concat)
+        sprintf
+          "%s(%s);"
+          (Symbol.name name)
+          (List.map args ~f:(fun e -> pp_mexp e ^ ", ") |> String.concat)
     in
     tabs n ^ f ~n stm
 

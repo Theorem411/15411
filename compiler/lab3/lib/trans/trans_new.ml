@@ -163,9 +163,9 @@ let rec tr_stm_rev (genv : Symbol.Set.t) (env : Temp.t S.t) (stm : A.mstm) =
   | A.NakedCall { name; args } ->
     let fname = Symbol.Set.find_exn genv ~f:(fun s -> Symbol.equal s name) in
     let cmdllist, explist =
-      List.fold_right
+      List.fold
         args
-        ~f:(fun arg (cll, el) ->
+        ~f:(fun (cll, el) arg ->
           let cmd, e = tr_exp_rev genv env arg in
           cmd :: cll, e :: el)
         ~init:([], [])

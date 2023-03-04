@@ -18,3 +18,4 @@ include Comparable.S with type t := tau
 val _t_tostring : t -> string
 val _tau_tostring : tau -> string
 val _fsig_tostring : fsig -> string
+val _fsig_real_tostring : fsig_real -> string
