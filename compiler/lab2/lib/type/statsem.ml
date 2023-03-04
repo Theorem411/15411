@@ -222,7 +222,7 @@ let static_semantic_gdecl (gdecl : A.mglob) ({ fdef; fdec; tdef } : global_ctx)
       | None -> ()
       | Some _ -> raise TypeError
     in
-    let () = if f_defined fdef f then () else () in
+    let () = if f_defined fdef f then raise TypeError else () in
     let fdef' = SS.add fdef f in
     let fdec' =
       match SM.add fdec ~key:f ~data:fsig_real with
