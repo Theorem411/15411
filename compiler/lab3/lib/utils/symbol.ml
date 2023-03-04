@@ -35,3 +35,11 @@ let symbol (name : string) : t =
 let name : t -> string = fun x -> x.name
 
 include Comparable.Make (T)
+
+let pp_sm m ~(f : 'a -> string) =
+  Map.to_alist m
+  |> List.map ~f:(fun (s, v) -> sprintf "(%s:%s) " (name s) (f v))
+  |> String.concat
+;;
+
+let pp_ss ss = Set.to_list ss |> List.map ~f:(fun s -> name s ^ ", ") |> String.concat
