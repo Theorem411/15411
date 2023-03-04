@@ -199,11 +199,7 @@ let elaboration_step (ast, ast_h) cmd =
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
-  say_if cmd.verbose (fun () -> "renaming what is necc...");
-  let elab = Preprocess.rename elab_h elab_raw in
-  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
-  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab);
-  elab_h, elab
+  (elab_h, elab_raw)
 ;;
 
 (* The main driver for the compiler: runs each phase. *)
@@ -220,11 +216,15 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
   (* Elaborate *)
   (* let elab_h, elab = elaboration_step (ast, ast_h) cmd in *)
-  let elab_h, elab = elaboration_step (ast, ast_h) cmd in
+  let elab_h, elab_raw = elaboration_step (ast, ast_h) cmd in
   (*if cmd.dump_ast then ignore ((exit 0): unit); *)
   say_if cmd.verbose (fun () -> "doing type Checking...");
-  let (() : unit) = Statsem.static_semantic ~hdr:elab_h ~src:elab in
-  let (() : unit) = Return.ret_checker elab in
+  let (() : unit) = Statsem.static_semantic ~hdr:elab_h ~src:elab_raw in
+  let (() : unit) = Return.ret_checker elab_raw in
+  say_if cmd.verbose (fun () -> "renaming what is necc...");
+  let elab = Preprocess.rename elab_h elab_raw in
+  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
+  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab);
   (* Typecheck *)
   (* Typechecker.typecheck ast; *)
   if cmd.typecheck_only then exit 0;
