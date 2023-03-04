@@ -204,7 +204,8 @@ let static_semantic_gdecl (gdecl : A.mglob) ({ fdef; fdec; tdef } : global_ctx)
     else { fdef; fdec; tdef = TM.add_exn tdef ~key:tnew ~data:t }
   | A.Fundecl { f; fsig; _ } ->
     let fsig_real = resolve_fsig tdef fsig in
-    let () = print_string (T._fsig_real_tostring (fsig_real) ^ "\n") in
+    (* let () = printf "%s\n\n" (Symbol.pp_sm fdec ~f:T._fsig_real_tostring) in *)
+    (* let () = print_string (T._fsig_real_tostring (fsig_real) ^ "\n") in *)
     (match f_declared fdec f with
      | None ->
        let () =
