@@ -97,8 +97,8 @@ let rec static_semantic_exp_syn (mexp : A.mexp) ({ fdec; vdef; vdec } : exp_ctx)
        T.Int)
   | A.Call { name; args } ->
     let () = if SM.mem vdec name then raise TypeError else () in
-    let () = print_string (Symbol.name name ^ "\n") in
-    let () = print_string (Symbol.pp_sm vdec ~f:(T._t_tostring) ^ "\n") in
+    (* let () = print_string (Symbol.name name ^ "\n") in
+    let () = print_string (Symbol.pp_sm vdec ~f:(T._t_tostring) ^ "\n") in *)
     let tlist, rettyp = SM.find_exn fdec name in
     let checklist = List.zip_exn args tlist in
     let checkfun (e, t) = static_semantic_exp_chk e { fdec; vdef; vdec } t in
