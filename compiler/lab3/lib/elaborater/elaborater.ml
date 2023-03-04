@@ -120,7 +120,8 @@ let rec elab_mexp (m_e : Ast.mexp) : AstElab.mexp =
   | Ternary { cond; first; second } ->
     copy_mark
       m_e
-      (AstElab.Ternary { cond = elab_mexp cond; lb = elab_mexp first; rb = elab_mexp second })
+      (AstElab.Ternary
+         { cond = elab_mexp cond; lb = elab_mexp first; rb = elab_mexp second })
   (* turning logical ops to ternary*)
   | Binop { op = Ast.L_and; lhs; rhs } ->
     elab_mexp
@@ -326,7 +327,8 @@ and elaborate' (s : Ast.mgdecl) : AstElab.mglob =
     | Ast.Typedef { old_name; new_name } ->
       AstElab.Typedef { told = old_name; tnew = new_name }
     | Ast.FunDec { name; ret_type; params } ->
-      AstElab.Fundecl { fsig = to_fsig params ret_type; f = name; args = to_arg_list params }
+      AstElab.Fundecl
+        { fsig = to_fsig params ret_type; f = name; args = to_arg_list params }
     | Ast.FunDef { name; ret_type; params; body } ->
       AstElab.Fundef
         { fsig = to_fsig params ret_type
@@ -338,3 +340,14 @@ and elaborate' (s : Ast.mgdecl) : AstElab.mglob =
   copy_mark s res
 
 and elaborate p : AstElab.program = List.map ~f:elaborate' p
+
+let add_main p : AstElab.program =
+  [ Mark.naked
+      (AstElab.Fundecl
+         { fsig = to_fsig [] (Some (Typ.RealTyp Typ.Int))
+         ; f = Symbol.symbol "main"
+         ; args = []
+         })
+  ]
+  @ p
+;;

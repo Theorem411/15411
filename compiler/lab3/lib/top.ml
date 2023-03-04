@@ -195,7 +195,8 @@ let regalloc (cmd : cmd_line_args) =
 let elaboration_step (ast, ast_h) cmd =
   say_if cmd.verbose (fun () -> "doing elaborating...");
   let elab_h : Aste.program = Elaborater.elaborate ast_h in
-  let elab_raw : Aste.program = Elaborater.elaborate ast in
+  let _elab_raw : Aste.program = Elaborater.elaborate ast in
+  let elab_raw: Aste.program = Elaborater.add_main _elab_raw in
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
