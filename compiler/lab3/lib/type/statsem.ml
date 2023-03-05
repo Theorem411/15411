@@ -36,6 +36,13 @@ let t_defined tdef (t : T.tau) = TM.find tdef t
 (* let v_declared vdec (v : Temp.t) : T.t option = Temp.Map.find vdec v
 let v_defined vdef (v : Temp.t) : bool = Temp.Set.mem vdef v *)
 
+let validate_args tdef (args : Symbol.t list) : unit =
+  let arg_f arg = if TM.mem tdef (T.FakeTyp arg) then raise TypeError else () in
+  let args_set = SS.of_list args in
+  if Int.equal (SS.length args_set) (List.length args) then () else raise TypeError;
+  List.iter args ~f:arg_f
+;;
+
 let resolve (omega : T.t TM.t) (tau : T.tau) : T.t =
   match TM.find omega tau with
   | None -> raise TypeError
@@ -202,8 +209,9 @@ let static_semantic_gdecl (gdecl : A.mglob) ({ fdef; fdec; tdef } : global_ctx)
     else if TM.mem tdef tnew
     then raise TypeError
     else { fdef; fdec; tdef = TM.add_exn tdef ~key:tnew ~data:t }
-  | A.Fundecl { f; fsig; _ } ->
+  | A.Fundecl { f; fsig; args } ->
     let fsig_real = resolve_fsig tdef fsig in
+    let () = validate_args tdef args in
     (match f_declared fdec f with
      | None ->
        let () =
@@ -231,6 +239,7 @@ let static_semantic_gdecl (gdecl : A.mglob) ({ fdef; fdec; tdef } : global_ctx)
       | None -> ()
       | Some _ -> raise TypeError
     in
+    let () = validate_args tdef args in
     let () = if f_defined fdef f then raise TypeError else () in
     let () =
       match SM.find fdec f with
@@ -331,7 +340,9 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) =
   (* let fold_f global_ctx mglob = static_semantic_gdecl mglob global_ctx in *)
   let global_ctx_src = List.fold src ~init:global_ctx_init' ~f:fold_f in
   (*_ main function is defined *)
-  let () = if SS.mem global_ctx_src.fdef (Symbol.symbol "main") then () else raise TypeError in 
+  let () =
+    if SS.mem global_ctx_src.fdef (Symbol.symbol "main") then () else raise TypeError
+  in
   (*_ all used functions are declared *)
   let used_funcs = all_func_used src in
   let () =
