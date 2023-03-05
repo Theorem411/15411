@@ -14,7 +14,14 @@ let get_all_addressable_line instr =
     | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
     | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
     | Unop u -> [ u.dest ]
-    | Jmp _ | Cjmp _ | Lab _ | AssertFail | AS.Directive _ | AS.Comment _ | Ret | LoadFromStack _-> []
+    | Jmp _
+    | Cjmp _
+    | Lab _
+    | AssertFail
+    | AS.Directive _
+    | AS.Comment _
+    | Ret -> []
+    | LoadFromStack t -> templist_to_operand t
     | Cmp (l, r) -> [ l; r ]
     | Set { src; _ } -> [ src; AS.Reg EAX ]
     | Call { args_overflow; _ } -> templist_to_operand args_overflow
@@ -66,8 +73,9 @@ let coloring_adapter : V.t * color -> AS.operand * color = function
   | V.R AS.EAX, color -> AS.Reg AS.EAX, color
   | V.R AS.EDX, color -> AS.Reg AS.EDX, color
   | V.R r, color -> AS.Reg r, color
-  (* | _ -> raise (Failure "Not now, brah (coloring adapter getting not eax or edx)") *)
 ;;
+
+(* | _ -> raise (Failure "Not now, brah (coloring adapter getting not eax or edx)") *)
 
 let __regalloc (l : AS.instr list) : (AS.operand * color) list =
   List.map (__coloring l) ~f:coloring_adapter
@@ -200,12 +208,22 @@ let do_arg_moves (reg_map : X86.operand AS.Map.t) (args : AS.operand list) total
     List.map2_exn dests srcs ~f:create
   in
   let stack_refs =
-    List.mapi stack_args ~f:(fun i t ->
-        X86.BinCommand
-          { op = Mov
-          ; dest = AS.Map.find_exn reg_map t
-          ; src = X86.Mem (total_size + 16 + (8 * i))
-          })
+    List.concat_mapi stack_args ~f:(fun i t ->
+        let d = AS.Map.find_exn reg_map t in
+        match d with
+        | X86.Reg _ ->
+          [ X86.BinCommand
+              { op = Mov; dest = d; src = X86.Mem (total_size + 16 + (8 * i)) }
+          ]
+        | X86.Imm _ -> failwith "dest is Imm"
+        | X86.Mem _ ->
+          [ X86.BinCommand
+              { op = Mov
+              ; dest = X86.__FREE_REG
+              ; src = X86.Mem (total_size + 16 + (8 * i))
+              }
+          ; X86.BinCommand { op = Mov; dest = d; src = X86.__FREE_REG }
+          ])
   in
   reg_moves @ stack_refs
 ;;

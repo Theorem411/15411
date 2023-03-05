@@ -109,20 +109,25 @@ let translate_call
   if List.length stack_args = 0
   then call
   else (
+    let jump_int = List.length stack_args * 8 in
+    let jump_size = Int32.of_int_exn jump_int in
     let arg_moves =
       List.concat_mapi
         ~f:(fun i t ->
           let src = get_reg (AS.Temp t) in
           let d = X86.Mem (i * 8) in
           match src with
-          | Mem _ ->
-            [ X86.BinCommand { op = Mov; dest = d; src = X86.__FREE_REG }
-            ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src }
+          | Mem mem_i ->
+            [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = X86.Mem (mem_i + jump_int) }
+            ; X86.BinCommand { op = Mov; dest = d; src = X86.__FREE_REG }
             ]
           | _ -> [ X86.BinCommand { op = Mov; dest = d; src } ])
         stack_args
     in
-    call @ arg_moves)
+    [ X86.BinCommand { op = X86.Addq; dest = X86.Reg AS.RSP; src = X86.Imm jump_size } ]
+    @ call
+    @ List.rev arg_moves
+    @ [ X86.BinCommand { op = X86.Subq; dest = X86.Reg AS.RSP; src = X86.Imm jump_size } ])
 ;;
 
 let translate_cmp get_reg = function
@@ -158,12 +163,12 @@ let translate_line
       ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = src_final }
       ]
       @ prev_lines
-      | Mem _, _ ->
-        (* mov mem, mem *)
-        [ X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
-        ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = src_final }
-        ]
-        @ prev_lines
+    | Mem _, _ ->
+      (* mov mem, mem *)
+      [ X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
+      ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = src_final }
+      ]
+      @ prev_lines
     | _ -> X86.BinCommand { op = Mov; dest = d_final; src = src_final } :: prev_lines)
   (* Translating pure operations *)
   | AS.PureBinop e -> List.rev_append (translate_pure get_reg (AS.PureBinop e)) prev_lines
@@ -184,7 +189,7 @@ let translate_line
   (* | AS.App _ -> failwith "app is not allowed :(" *)
   | AS.AssertFail -> [ X86.Call "abort" ] @ prev_lines
   | AS.Call { fname; args_overflow = stack_args } ->
-    (translate_call get_reg (Symbol.name fname) stack_args)  @ prev_lines
+    translate_call get_reg (Symbol.name fname) stack_args @ prev_lines
   | AS.LoadFromStack _ -> [] @ prev_lines
 ;;
 
@@ -228,7 +233,7 @@ let translate_function errLabel (fspace : AS.fspace) : X86.instr list =
       List.fold fdef ~init:[] ~f:(translate_line retLabel errLabel get_reg)
     in
     let full_rev = List.rev_append e translated in
-    b @ (List.rev full_rev)
+    b @ List.rev full_rev
 ;;
 
 let translate fs =
