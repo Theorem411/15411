@@ -1,8 +1,8 @@
 module A = Assem_new
 
 type block_label_t =
-  | Label of Label.t
-  | FunName of Symbol.t
+  | BlockLabel of Label.t
+  | FunName of (Symbol.t * Temp.t list)
 
 type jump_tag_t =
   | JRet
@@ -26,4 +26,5 @@ type fspace_block =
 
 type block_program = fspace_block list
 
-val block_former : A.program-> block_program
+val blocks_former : A.program -> block_program
+val pp_all_blocks : fspace_block list -> string
