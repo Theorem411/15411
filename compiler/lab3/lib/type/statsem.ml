@@ -204,13 +204,6 @@ let static_semantic_gdecl (gdecl : A.mglob) ({ fdef; fdec; tdef } : global_ctx)
     else { fdef; fdec; tdef = TM.add_exn tdef ~key:tnew ~data:t }
   | A.Fundecl { f; fsig; _ } ->
     let fsig_real = resolve_fsig tdef fsig in
-    (* let () =
-      printf
-        "%s:%s while ctx being %s\n"
-        (Symbol.name f)
-        (T._fsig_real_tostring fsig_real)
-        (Symbol.pp_sm fdec ~f:T._fsig_real_tostring)
-    in *)
     (match f_declared fdec f with
      | None ->
        let () =
@@ -238,7 +231,7 @@ let static_semantic_gdecl (gdecl : A.mglob) ({ fdef; fdec; tdef } : global_ctx)
       | None -> ()
       | Some _ -> raise TypeError
     in
-    let () = if f_defined fdef f then () else () in
+    let () = if f_defined fdef f then raise TypeError else () in
     let () =
       match SM.find fdec f with
       | None -> ()
@@ -337,6 +330,9 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) =
   (* let () = printf "wtf---------" in *)
   (* let fold_f global_ctx mglob = static_semantic_gdecl mglob global_ctx in *)
   let global_ctx_src = List.fold src ~init:global_ctx_init' ~f:fold_f in
+  (*_ main function is defined *)
+  let () = if SS.mem global_ctx_src.fdef (Symbol.symbol "main") then () else raise TypeError in 
+  (*_ all used functions are declared *)
   let used_funcs = all_func_used src in
   let () =
     if SS.is_subset used_funcs ~of_:global_ctx_src.fdef then () else raise TypeError
