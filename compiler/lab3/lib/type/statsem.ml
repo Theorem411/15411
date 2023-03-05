@@ -206,6 +206,8 @@ let static_semantic_gdecl (gdecl : A.mglob) ({ fdef; fdec; tdef } : global_ctx)
     let t = resolve tdef told in
     if SS.mem fdef tnew_sym
     then raise TypeError
+    else if SM.mem fdec tnew_sym
+    then raise TypeError
     else if TM.mem tdef tnew
     then raise TypeError
     else { fdef; fdec; tdef = TM.add_exn tdef ~key:tnew ~data:t }
