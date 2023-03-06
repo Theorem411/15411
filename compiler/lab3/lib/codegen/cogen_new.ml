@@ -98,9 +98,11 @@ let munch_stm = function
       else None
     in
     let args_mv = List.mapi ops ~f:args_mv_f |> List.filter_opt in
+    let args_in_regs_f i _ = if i < 6 then Some (A.arg_i_to_reg i) else None in
+    let args_in_regs = List.filter_mapi ops ~f:args_in_regs_f in
     let args_overflow_f i op = if i >= 6 then Some op else None in
-    let args_overflow = List.mapi ops ~f:args_overflow_f |> List.filter_opt in
-    let call = A.Call { fname; args_overflow } in
+    let args_overflow = List.filter_mapi ops ~f:args_overflow_f in
+    let call = A.Call { fname; args_in_regs; args_overflow } in
     (match dest with
      | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
      | Some d ->

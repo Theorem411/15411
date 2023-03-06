@@ -122,6 +122,7 @@ type instr =
   | LoadFromStack of Temp.t list
   | Call of
       { fname : Symbol.t
+      ; args_in_regs : reg list
       ; args_overflow : Temp.t list
       }
   (* Assembly directive. *)

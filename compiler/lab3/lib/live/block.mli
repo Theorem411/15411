@@ -3,6 +3,7 @@ module A = Assem_new
 type block_label_t =
   | Label of Label.t
   | FunName of Symbol.t
+  [@@deriving compare, equal, sexp, hash]
 
 type jump_tag_t =
   | JRet
