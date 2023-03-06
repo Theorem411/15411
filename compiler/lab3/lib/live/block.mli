@@ -15,7 +15,7 @@ type jump_tag_t =
 
 type block =
   { label : block_label_t
-  ; block : A.instr list
+  ; block : (int * A.instr) list
   ; jump : jump_tag_t
   }
 
