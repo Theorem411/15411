@@ -134,6 +134,7 @@ type instr =
   | LoadFromStack of Temp.t list
   | Call of
       { fname : Symbol.t
+      ; args_in_regs : reg list
       ; args_overflow : Temp.t list
       }
   (* Assembly directive. *)
@@ -231,19 +232,19 @@ let format_instr' = function
     sprintf "%s %s" (c.typ |> sexp_of_set_t |> string_of_sexp) (format_operand c.src)
   | Cmp (l, r) -> sprintf "cmp %s, %s" (format_operand l) (format_operand r)
   | AssertFail -> "call __assert_fail"
-  | Call { fname; args_overflow } ->
+  | Call { fname; args_in_regs; args_overflow } ->
     sprintf
-      "call %s(%s)"
+      "call %s(%s|%s)"
       (Symbol.name fname)
-      (List.map args_overflow ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
-  | LoadFromStack ts -> 
-    sprintf 
+      (List.map args_in_regs ~f:format_reg |> String.concat ~sep:", ")
+      (List.map args_overflow ~f:Temp.name |> String.concat ~sep:", ")
+  | LoadFromStack ts ->
+    sprintf
       "loadfromstack {%s}"
       (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
-
 ;;
 
-let format_instr i = (format_instr' i) ^ "\n"
+let format_instr i = format_instr' i ^ "\n"
 
 let format_jump_tag = function
   | JRet -> "ret"
@@ -258,15 +259,18 @@ let format_block ({ label; block; jump } : block) : string =
     (List.map block ~f:format_instr |> String.concat)
     (format_jump_tag jump)
 ;;
-let format_program_block (prog_block) =
-  let format_fspace_block { fname; args; fdef_block; } = 
-    sprintf "%s(%s): \n%s"
-    (Symbol.name fname)
-    (List.map args ~f:Temp.name |> String.concat)
-    (List.map fdef_block ~f:format_block |> String.concat)
+
+let format_program_block prog_block =
+  let format_fspace_block { fname; args; fdef_block } =
+    sprintf
+      "%s(%s): \n%s"
+      (Symbol.name fname)
+      (List.map args ~f:Temp.name |> String.concat)
+      (List.map fdef_block ~f:format_block |> String.concat)
   in
   List.map prog_block ~f:format_fspace_block |> String.concat
 ;;
+
 let format_program prog =
   let format_fspace fspace =
     sprintf
@@ -279,7 +283,7 @@ let format_program prog =
 ;;
 
 module T = struct
-  type t = operand
-  [@@deriving compare, equal, sexp]
+  type t = operand [@@deriving compare, equal, sexp]
 end
-include Comparable.Make(T)
+
+include Comparable.Make (T)

@@ -6,6 +6,7 @@ let format_args args = List.map ~f:Temp.name args |> String.concat ~sep:","
 type block_label_t =
   | BlockLabel of Label.t
   | FunName of (Symbol.t * Temp.t list)
+  [@@deriving compare, sexp, equal, hash]
 
 let format_block_label_t = function
   | BlockLabel l -> sprintf "BlockLbl(%s):" (Label.name l)
