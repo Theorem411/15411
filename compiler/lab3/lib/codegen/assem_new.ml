@@ -226,7 +226,7 @@ let format_instr' = function
   | Comment comment -> sprintf "/* %s */" comment
   | Jmp l -> "jump" ^ Label.name l
   | Cjmp c -> sprintf "%s %s" (c.typ |> sexp_of_jump_t |> string_of_sexp) (Label.name c.l)
-  | Lab l -> "\n.Label " ^ Label.name l
+  | Lab l -> ".Label " ^ Label.name l
   | Ret -> "ret"
   | Set c ->
     sprintf "%s %s" (c.typ |> sexp_of_set_t |> string_of_sexp) (format_operand c.src)
@@ -276,7 +276,7 @@ let format_program prog =
     sprintf
       "%s(%s): \n%s"
       (Symbol.name fspace.fname)
-      (List.map fspace.args ~f:Temp.name |> String.concat ~sep:", ")
+      (List.map fspace.args ~f:Temp.name |> String.concat ~sep:",")
       (List.map fspace.fdef ~f:format_instr |> String.concat)
   in
   List.map prog ~f:format_fspace |> String.concat

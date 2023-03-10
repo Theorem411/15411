@@ -196,11 +196,11 @@ let elaboration_step (ast, ast_h) cmd =
   say_if cmd.verbose (fun () -> "doing elaborating...");
   let elab_h : Aste.program = Elaborater.elaborate ast_h in
   let _elab_raw : Aste.program = Elaborater.elaborate ast in
-  let elab_raw: Aste.program = Elaborater.add_main _elab_raw in
+  let elab_raw : Aste.program = Elaborater.add_main _elab_raw in
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
-  (elab_h, elab_raw)
+  elab_h, elab_raw
 ;;
 
 (* The main driver for the compiler: runs each phase. *)
@@ -239,6 +239,10 @@ let compile (cmd : cmd_line_args) : unit =
   let assem = Cogen.cogen assem_blocks in *)
   let assem = Cogen.cogen ir in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
+  (* Testing blocks *)
+  say_if cmd.dump_assem (fun () ->
+  Block.pp_all_blocks (Block.blocks_former assem));
+  (* Testing blocks *)
   match cmd.emit with
   (* Output: abstract 3-address assem *)
   | Abstract_assem ->

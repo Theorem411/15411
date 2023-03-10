@@ -1,10 +1,17 @@
 open Core
 module A = Assem_new
 
+let format_args args = List.map ~f:Temp.name args |> String.concat ~sep:","
+
 type block_label_t =
-  | Label of Label.t
+  | BlockLabel of Label.t
   | FunName of (Symbol.t * Temp.t list)
   [@@deriving compare, sexp, equal, hash]
+
+let format_block_label_t = function
+  | BlockLabel l -> sprintf "BlockLbl(%s):" (Label.name l)
+  | FunName (f, args) -> sprintf "FunLbl %s(%s):" (Symbol.name f) (format_args args)
+;;
 
 type jump_tag_t =
   | JRet
@@ -14,11 +21,25 @@ type jump_tag_t =
       }
   | JUncon of Label.t
 
+let format_jump_tag_t = function
+  | JRet -> "ret"
+  | JUncon l -> "jump -> " ^ Label.name l
+  | JCon j -> "jump -> " ^ Label.name j.jt ^ " or " ^ Label.name j.jf
+;;
+
 type block =
   { label : block_label_t
   ; block : A.instr list
   ; jump : jump_tag_t
   }
+
+let format_block f =
+  sprintf
+    "[\n%s\n|\n  %s|\n%s\n]\n\n"
+    (format_block_label_t f.label)
+    (List.map ~f:A.format_instr f.block |> String.concat ~sep:"  ")
+    (format_jump_tag_t f.jump)
+;;
 
 type fspace_block =
   { fname : Symbol.t
@@ -26,35 +47,72 @@ type fspace_block =
   ; fdef_block : block list
   }
 
+let format_fspace_block fb =
+  sprintf
+    "%s(%s){\n%s}\n\n"
+    (Symbol.name fb.fname)
+    (format_args fb.args)
+    (List.map ~f:format_block fb.fdef_block |> String.concat)
+;;
+
 type block_program = fspace_block list
 
-let is_jump (i : A.instr) : bool =
-  match i with
-  | A.Ret | A.Jmp _ | A.Cjmp _ -> true
+let is_jump (f : A.instr) (s : A.instr) : bool =
+  match f with
+  | A.Ret | A.Jmp _ -> true
+  | A.Cjmp _ ->
+    (match s with
+    | A.Jmp _ -> false
+    | _ -> failwith "after cjmp, you do not have jmp")
   | _ -> false
 ;;
 
-let rec helper (a : A.instr list list) (rest : A.instr list) =
-  match rest with
-  | [] -> a
+(* given instruction list and label, finds the correct ending / raises an exception *)
+let get_ending_with_label b bl =
+  let n = List.length b in
+  let last_jmp_instr = List.nth_exn b (n - 1) in
+  match last_jmp_instr with
+  | A.Ret -> { label = bl; jump = JRet; block = b }
+  | A.Jmp goto_l ->
+    if n <= 2
+    then
+      (* do not have to check if block has a conditional jump *)
+      { label = bl; jump = JUncon goto_l; block = b }
+    else (
+      (* have to check if the block has a conditional jump *)
+      match List.nth_exn b (n - 2) with
+      (* conditional jump *)
+      | A.Cjmp cjmp -> { label = bl; jump = JCon { jt = cjmp.l; jf = goto_l }; block = b }
+      (* not conditional *)
+      | _ -> { label = bl; jump = JUncon goto_l; block = b })
   | _ ->
-    let block = List.take_while rest ~f:(fun i -> i |> is_jump) in
-    let rest' = List.drop rest (List.length block) in
-    if List.length block = 0 then failwith "empty?";
-    let () =
-      printf "[%s]\n" (List.map block ~f:A.format_instr |> String.concat ~sep:"\n")
-    in
-    helper (block :: a) rest'
+    failwith
+      (sprintf "the last instruction is not jump: [%s]" (A.format_instr last_jmp_instr))
 ;;
 
-let test (f : A.fspace) : unit =
-  let () = printf "%s:" (Symbol.name f.fname) in 
-  let (_ : A.instr list list) = helper [] f.fdef in
-  ()
+let to_block (b : A.instr list) : block =
+  let label_instr = List.nth_exn b 0 in
+  let l =
+    match label_instr with
+    | A.Lab l -> l
+    | _ -> failwith (sprintf "BLOCK\n{%s} is not a label" (A.format_instr label_instr))
+  in
+  get_ending_with_label b (BlockLabel l)
 ;;
 
-let of_block (_ : A.fspace) : fspace_block = failwith "not imp"
+let of_block (f : A.fspace) : fspace_block =
+  let () = printf "ntss %s:" (Symbol.name f.fname) in
+  let blocks = List.group ~break:is_jump f.fdef in
+  let first_block =
+    get_ending_with_label (List.nth_exn blocks 0) (FunName (f.fname, f.args))
+  in
+  let rest_blocks = List.map ~f:to_block (List.drop blocks 1) in
+  { fname = f.fname; args = f.args; fdef_block = first_block :: rest_blocks }
+;;
 
-let block_former (funcs : A.fspace list) : block_program = 
-  let () = List.iter funcs ~f:test in
-  List.map ~f:of_block funcs
+let blocks_former (funcs : A.fspace list) = List.map ~f:of_block funcs
+
+let pp_fspace (b : fspace_block) : string = format_fspace_block b
+
+let pp_all_blocks (blocks : fspace_block list):string
+= "---Blocks---\n\n" ^ (List.map ~f:pp_fspace blocks |> String.concat ~sep:";\n\n\n")

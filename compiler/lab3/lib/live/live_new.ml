@@ -39,24 +39,24 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
 ;;
 
 type qcell =
-  { livein: V.Set.t
+  { livein : V.Set.t
   ; liveout : V.Set.t
   }
 
-type line_aug = {
-  line: AS.instr
+type line_aug =
+  { line : AS.instr
   ; def : V.Set.t
   ; use : V.Set.t
-}
+  }
 
 type mcell =
   { code_aug : line_aug list
   ; preds : B.block_label_t list
   }
 
-module T = struct 
-  type t = B.block_label_t
-  [@@deriving compare, equal, sexp, hash]
+module T = struct
+  type t = B.block_label_t [@@deriving compare, equal, sexp, hash]
 end
-module LM = Map.Make(T)
-module LT = Hashtbl.Make(T) 
+
+module LM = Map.Make (T)
+module LT = Hashtbl.Make (T)
