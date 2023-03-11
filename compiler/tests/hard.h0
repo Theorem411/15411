@@ -1,0 +1,7 @@
+typedef int INT;
+typedef int DWORD;
+typedef int QWORD;
+typedef QWORD whatever_the_fancy_word_this_is;
+typedef whatever_the_fancy_word_this_is A;
+
+whatever_the_fancy_word_this_is fun(whatever_the_fancy_word_this_is i);

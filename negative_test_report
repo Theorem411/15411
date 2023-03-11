@@ -1,0 +1,5 @@
+tin-error05.l3 negative useless same as greedo-l3-typedef-1.l3
+newspeak-header2copy.l3 negative useless same as other dup params
+caterpie-test_typecheck_error.l3 negative useless same as other dup params
+manganese-error05.l3 positive always could be missed
+greedo-l3-typedef.l3 negative same as manganese-error05.l3 but in header
