@@ -1,4 +1,4 @@
-module A = Assem_new
+module A = Assem
 
 type block_label_t =
   | BlockLabel of Label.t

@@ -1,4 +1,4 @@
-module AS = Assem_new
+module AS = Assem
 module V = Graph.Vertex
 
 type color = (int[@deriving sexp, equal, compare])
