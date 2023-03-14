@@ -54,12 +54,12 @@ Other distinctions:
 ## trans: 
 code in: Javaway/compiler/lab3/lib/trans/trans.ml</br>
 Trans takes in a elaborated ast and turn it into an IR tree. The trans function works differently at different syntactic levels. For expression
-$$tr(e) = \langle\hat{e}, \check{e}\rangle$$ the trans function outputs both the commands/statements that compute and store the results in temps ($\hat{e}$), and the result in pure expression ($\check{e}$).<\br>
+$$tr(e) = \langle\hat{e}, \check{e}\rangle$$ the trans function outputs both the commands/statements that compute and store the results in temps ($\hat{e}$), and the result in pure expression ($\check{e}$).</br>
 
 Trans on statement will simply outputs sequence of commands that further breaks down the semantic meaning. 
 
 ## assem (aka. 3-address abstract assembly)
-Intermediate representation: Javaway/compiler/lab3/lib/codegen/assem.ml <\br>
+Intermediate representation: Javaway/compiler/lab3/lib/codegen/assem.ml </br>
 Three address abstract assembly differs from IR tree in the following ways: 
 * The instructions no longer has recursive structures. 
 * All the variables (only temps before) now become either temps, register, or constant (collectively called operands). 
@@ -67,22 +67,22 @@ Three address abstract assembly differs from IR tree in the following ways:
 * Boolean expression are turned into patterns of *Cmp*'s and *Set*'s. 
 
 ## cogen: 
-code: Javaway/compiler/lab3/lib/codegen/cogen.ml<\br>
-Our cogen function employs the top-down version of maximal munch. <\br>
+code: Javaway/compiler/lab3/lib/codegen/cogen.ml</br>
+Our cogen function employs the top-down version of maximal munch. </br>
 A few highlights:
 * Calling convention: At the start of each *fspace*, move data from (at most) six registers specifically reserved for holding argument values; for arguments more than six, insert *LoadFromStack(list of temps)*; Each function call before (either $NakedCall$ or $MovFuncApp$) is now expanded by first cogening the arguments into temps, and moving the temps into registers correponding to which registers as per the calling convention; arguments more than six will be kept in *Assem.Call.args_overflow*. 
 
 # Backend
 ## Liveness analysis and register allocation
 ### Basic blocks
-code in: Javaway/compiler/lab3/lib/live/block.ml <\br>
+code in: Javaway/compiler/lab3/lib/live/block.ml </br>
 Each basic block must begins with a label, and ends with a jump type instruction (return, conditional jump, or unconditional jump).
 
 ### Liveness analysis
-For each *fspace* that corresponds to a function definition, we do liveness analysis independently. <\br> 
-Each function definition, which is currently a sequence of *Assem.instr*'s, we break them into basic blocks, and do liveness analysis on two levels: <\br>
-**single pass**<\br>
-code in: Javaway/compiler/lab3/lib/live/singlepass.ml<\br>
+For each *fspace* that corresponds to a function definition, we do liveness analysis independently. </br> 
+Each function definition, which is currently a sequence of *Assem.instr*'s, we break them into basic blocks, and do liveness analysis on two levels: </br>
+**single pass**</br>
+code in: Javaway/compiler/lab3/lib/live/singlepass.ml</br>
 For each line of the abstract assembly, singlepass will analyze the following data:
   * def: the temp or register that is defined on this line. None if nothing applicable
   * uses: the set of temps or registers that are used on this line
@@ -91,12 +91,12 @@ For each line of the abstract assembly, singlepass will analyze the following da
 The liveness info of each line is gathered from back to front, using update rules
 introduced in lecture notes and recitation handouts. 
 * Note: to avoid precoloring conflicts, for each line involving a DIV/MOD operater,
- we add %eax and %edx to uses, and for each line involing a SHIFT_LEFT/SHIFT_RIGHT operator, we add %ecx to uses.<\br>
-**General passing**<\br>
-code in: Javaway/compiler/lab3/lib/live/live.ml<\br>
+ we add %eax and %edx to uses, and for each line involing a SHIFT_LEFT/SHIFT_RIGHT operator, we add %ecx to uses.</br>
+**General passing**</br>
+code in: Javaway/compiler/lab3/lib/live/live.ml</br>
 At this level, we use liveness info produced from each basic block by *singlepass* to derive full liveness info for the entire control-flow graph. 
 
-We maintain two *Hashtbl*'s: one maps basic blocks to *liveout* sets of its successor, which is accumulating by set union; the other maps basic blocks to the last *liveout* set produced by *singlepass* in past iteration. The first one is used as input for *singlepass*, i.e. the initial liveness info for the last line of the input basic block. The second one is used as criteria for determining whether this basic block's liveness info has converged. <\br>
+We maintain two *Hashtbl*'s: one maps basic blocks to *liveout* sets of its successor, which is accumulating by set union; the other maps basic blocks to the last *liveout* set produced by *singlepass* in past iteration. The first one is used as input for *singlepass*, i.e. the initial liveness info for the last line of the input basic block. The second one is used as criteria for determining whether this basic block's liveness info has converged. </br>
 The general algorithm deploys a work queue containing basic blocks. It was first initialized by all the basic blocks in the program in reverse to their original order. When each basic block is popped off the queue, run *singlepass* on it, and if and only if the liveness info gets changed (determined by checking with second hashtbl) do we push its predecessor blocks (predecessor in the control-flow graph) back onto the queue. The algorithm will eventually terminates when the queue is empty, indicating that all basic blocks has converged. 
 
 ### Build interference graph
