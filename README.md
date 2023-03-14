@@ -21,6 +21,11 @@ The back end contains:
 
 # Frontend
 ## Lexing and Parsing
+**Lexer**: JavaWay/compiler/lab3/lib/parse/c0_lexer.mll
+The lexer, implemented using the *ocamllex* tool, is responsible for scanning the source code and breaking it up into a stream of tokens, which are the basic units of meaning in the programming language. The lexer works by defining a set of regular expressions and rules that match the various types of tokens in the language, such as identifiers, keywords, and literals. When it encounters a matching sequence of characters in the source code, it generates a token and passes it to the parser. Until support of pointers, we do not have any logic except ignoring comments.
+
+**Parser**: JavaWay/compiler/lab3/lib/parse/c0_parser.mly
+The parser, implemented using the *Menhir* tool, takes the stream of tokens produced by the lexer and uses it to build a tree-like structure known abstract syntax tree (AST). We have modified the provided grammar to solve the "hanging else" problem, we have added a new precedence level else_hack_1 to handle the ambiguity between if and else statements that ensures that the else keyword is associated with the nearest if statement that does not already have an else keyword associated with it.
 
 ## Elaborater
 intermediate representation: JavaWay/compiler/lab3/lib/elaborater/aste.ml
@@ -145,10 +150,13 @@ For groups that do not have a register, we will first check for any unused
 registers. If there are none, we will spill them onto the stack. 
 
 ## x86 generation
-Intermediate representation: Javaway/compiler/lab3/lib/x86translate/x86.ml</br>
-code in: Javaway/compiler/lab3/lib/x86translate/translate.ml</br>
-We iterate through the input 3-addr abstract assembly looking for lines like this:
-  dst <- op (lhs, rhs)
-and translate into this format:
-  dst <- lhs
-  dst <- op (dst, rhs)
+*Intermediate representation*: Javaway/compiler/lab3/lib/x86translate/x86.ml</br>
+*Helper* functions: Javaway/compiler/lab3/lib/x86translate/helper.ml</br>
+*Code* in: Javaway/compiler/lab3/lib/x86translate/translate.ml</br>
+
+We iterate over the functions and translate each of them separately. First we do the register allocation using `Helper.reg_alloc` of the function and use that information to generate function's begin (that includes appropriate argument register moves, storing the used callee-saved registers, storing `%rbp` into the stack) and end (that includes a return label that restores the state of calle-saved registers and pops `%rbp`) using `Helper.get_function_be`. 
+
+After we are done with the begin and end of the functions, we translate each line of the abstract assembly separately using `Translate.translate_line` function, it basically cases on the given instruction and translates it to `X86` representation.
+
+## Main
+In the `JavaWay/compiler/lab3/lib/top.ml` file, we handle the command line arguments and glue all the methods above. As the last step we print the ready `X86` code to output by mapping through function with `X86.format`.
