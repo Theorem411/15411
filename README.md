@@ -59,7 +59,13 @@ code in: Javaway/compiler/lab3/lib/trans/trans.ml</br>
 Trans takes in a elaborated ast and turn it into an IR tree. The trans function works differently at different syntactic levels. For expression
 $$tr(e) = \langle\hat{e}, \check{e}\rangle$$ the trans function outputs both the commands/statements that compute and store the results in temps ($\hat{e}$), and the result in pure expression ($\check{e}$).</br>
 
-Trans on statement will simply outputs sequence of commands that further breaks down the semantic meaning. 
+Trans on statement will simply outputs sequence of commands that further breaks down the semantic meaning. Every statement's transformation is straightforward enough, except *If* and *while*. When translating the conditional expression, we deploy the following optimization: 
+* any double negation will be removed
+* If the conditional is a logical not, transform the branch statements but reverse their labels. 
+* if the conditional is just a True/False, just translate to "Goto $l_t$/$l_f$".
+* If the conditional is a comparison binop ($e_1 ? e_2$), transform $e_1$ and $e_2$ into separate sequence of commands, prepends them before the resultant *if* statement, then put the result pure expression $\check{e_1}?\check{e_2}$ as the if conditional.
+
+Same works for *while*. 
 
 ## assem (aka. 3-address abstract assembly)
 Intermediate representation: Javaway/compiler/lab3/lib/codegen/assem.ml </br>
@@ -100,11 +106,11 @@ introduced in lecture notes and recitation handouts.
 code in: Javaway/compiler/lab3/lib/live/live.ml</br>
 At this level, we use liveness info produced from each basic block by *singlepass* to derive full liveness info for the entire control-flow graph. 
 
-We maintain two *Hashtbl*'s: one maps basic blocks to *liveout* sets of its successor, which is accumulating by set union; the other maps basic blocks to the last *liveout* set produced by *singlepass* in past iteration. The first one is used as input for *singlepass*, i.e. the initial liveness info for the last line of the input basic block. The second one is used as criteria for determining whether this basic block's liveness info has converged. </br>
-The general algorithm deploys a work queue containing basic blocks. It was first initialized by all the basic blocks in the program in reverse to their original order. When each basic block is popped off the queue, run *singlepass* on it, and if and only if the liveness info gets changed (determined by checking with second hashtbl) do we push its predecessor blocks (predecessor in the control-flow graph) back onto the queue. The algorithm will eventually terminates when the queue is empty, indicating that all basic blocks has converged. 
+We maintain two *Hashtbl*'s: one maps basic blocks to *liveout* sets of its successor blocks, which is accumulating by set union; the other maps basic blocks to the last *liveout* set produced by *singlepass* in past iteration. The first one is used as input for *singlepass*, i.e. the initial liveness info for the last line of the input basic block. The second one is used as criteria for determining whether this basic block's liveness info has converged. </br>
+The general algorithm deploys a work queue containing basic blocks. It was first initialized by all the basic blocks in the program in reverse to their original program order. When each basic block is popped off the queue, run *singlepass* on it, and push its predecessor blocks (predecessor in the control-flow graph) back onto the queue if and only if the liveness info gets changed (determined by checking with second hashtbl). The algorithm will eventually terminate when the queue is empty, indicating that all basic blocks has converged. 
 
 ### Build interference graph
-code in: Javaway/compiler/lab3/lib/live/live.ml
+code in: Javaway/compiler/lab3/lib/live/live.ml</br>
 The vertex is an abstract type that can be either a temp or a register
 The interference graph adopts an adjacency list representation, and is implemented
 as a Map from vertex to a vertex set.
