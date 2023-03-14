@@ -43,15 +43,28 @@ Check whether a function's definition properly returns. Note: functions with voi
 # Middle End
 ## IR Tree: 
 Intermediate representation: Javaway/compiler/lab3/lib/trans/tree.ml</br>
-IR tree differs from elaborated Ast fundamentally. 
-At global level, typedefs and function declarations are removed, leaving function definition as the only parts of the original program that has semantic meanings (now called *fspace*). The program is just a list of *fspace*s. 
-
-
-
+IR tree differs from elaborated Ast fundamentally. </br>
+At global level, typedefs and function declarations are removed, leaving function definition as the only parts of the original program that has semantic meanings (now called *fspace*). The program is just a list of *fspace*s. </br>
+Other distinctions: 
+* *If* conditional only accepts comparisons, which are in the form of $e_1 ? e_2$; the branches, which are statements before, now becomes labels that lead to statements where the branch codes are transformed. 
+* *While* loop is transformed into if conditionals with back jump
+* Pure expressions are distinguished from Effectful expression at the syntactic level.
+The trans function 
+$$tr(e) = <\hat{e}, \check{e}>$$
 
 ## trans: 
 code in: Javaway/compiler/lab3/lib/trans/trans.ml</br>
 Trans takes in a elaborated ast and turn it into an IR tree. 
+
+## assem (aka. 3-address abstract assembly)
+Three address abstract assembly differs from IR tree in the following ways: 
+
+Intermediate representation: Javaway/compiler/lab3/lib/codegen/assem.ml
+
+
+## cogen: 
+code: Javaway/compiler/lab3/lib/codegen/cogen.ml
+
 
 # Register Allocation design 
 ## Liveness analysis
@@ -81,7 +94,7 @@ order that are guaranteed to produce a simplicial elimination ordering on Chorda
 interference graph (see theorem in lecture note). It is also guaranteed that on 
 Chordal graph such ordering will produce the optimal coloring. 
 
-Note: the weights are initialized such each vertex is assigned the number of 
+**Note**: the weights are initialized such each vertex is assigned the number of 
 neighbor vertices that are already registers.
 
 * Greedy graph coloring
