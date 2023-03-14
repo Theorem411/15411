@@ -38,6 +38,7 @@ Type checking is done differently at different synatic levels
 * expression: synthesize or check types based on their operators. 
 
 ### Return Checking
+code in: Javaway/compiler/lab3/lib/live/ml
 Check whether a function's definition properly returns. Note: functions with void return type are ignored. 
 
 # Middle End
@@ -92,6 +93,7 @@ The liveness info of each line is gathered from back to front, using update rule
 introduced in lecture notes and recitation handouts. 
 * Note: to avoid precoloring conflicts, for each line involving a DIV/MOD operater,
  we add %eax and %edx to uses, and for each line involing a SHIFT_LEFT/SHIFT_RIGHT operator, we add %ecx to uses.</br>
+
 **General passing**</br>
 code in: Javaway/compiler/lab3/lib/live/live.ml</br>
 At this level, we use liveness info produced from each basic block by *singlepass* to derive full liveness info for the entire control-flow graph. 
@@ -100,6 +102,7 @@ We maintain two *Hashtbl*'s: one maps basic blocks to *liveout* sets of its succ
 The general algorithm deploys a work queue containing basic blocks. It was first initialized by all the basic blocks in the program in reverse to their original order. When each basic block is popped off the queue, run *singlepass* on it, and if and only if the liveness info gets changed (determined by checking with second hashtbl) do we push its predecessor blocks (predecessor in the control-flow graph) back onto the queue. The algorithm will eventually terminates when the queue is empty, indicating that all basic blocks has converged. 
 
 ### Build interference graph
+code in: Javaway/compiler/lab3/lib/live/live.ml
 The vertex is an abstract type that can be either a temp or a register
 The interference graph adopts an adjacency list representation, and is implemented
 as a Map from vertex to a vertex set.
@@ -135,6 +138,8 @@ For groups that do not have a register, we will first check for any unused
 registers. If there are none, we will spill them onto the stack. 
 
 ## x86 generation
+Intermediate representation: Javaway/compiler/lab3/lib/x86translate/x86.ml</br>
+code in: Javaway/compiler/lab3/lib/x86translate/translate.ml</br>
 We iterate through the input 3-addr abstract assembly looking for lines like this:
   dst <- op (lhs, rhs)
 and translate into this format:
