@@ -44,26 +44,33 @@ Check whether a function's definition properly returns. Note: functions with voi
 ## IR Tree: 
 Intermediate representation: Javaway/compiler/lab3/lib/trans/tree.ml</br>
 IR tree differs from elaborated Ast fundamentally. </br>
-At global level, typedefs and function declarations are removed, leaving function definition as the only parts of the original program that has semantic meanings (now called *fspace*). The program is just a list of *fspace*s. </br>
+* At global level, typedefs and function declarations are removed, leaving function definition as the only parts of the original program that has semantic meanings (now called *fspace*). The program is just a list of *fspace*s. 
 Other distinctions: 
+* Symbols are now replaced by Temps.
 * *If* conditional only accepts comparisons, which are in the form of $e_1 ? e_2$; the branches, which are statements before, now becomes labels that lead to statements where the branch codes are transformed. 
 * *While* loop is transformed into if conditionals with back jump
 * Pure expressions are distinguished from Effectful expression at the syntactic level.
-The trans function 
-$$tr(e) = <\hat{e}, \check{e}>$$
 
 ## trans: 
 code in: Javaway/compiler/lab3/lib/trans/trans.ml</br>
-Trans takes in a elaborated ast and turn it into an IR tree. 
+Trans takes in a elaborated ast and turn it into an IR tree. The trans function works differently at different syntactic levels. For expression
+$$tr(e) = \langle\hat{e}, \check{e}\rangle$$ the trans function outputs both the commands/statements that compute and store the results in temps ($\hat{e}$), and the result in pure expression ($\check{e}$).<\br>
+
+Trans on statement will simply outputs sequence of commands that further breaks down the semantic meaning. 
 
 ## assem (aka. 3-address abstract assembly)
+Intermediate representation: Javaway/compiler/lab3/lib/codegen/assem.ml <\br>
 Three address abstract assembly differs from IR tree in the following ways: 
-
-Intermediate representation: Javaway/compiler/lab3/lib/codegen/assem.ml
-
+* The instructions no longer has recursive structures. 
+* All the variables (only temps before) now become either temps, register, or constant (collectively called operands). 
+* *If* is further broke down into patterns of *Cmp*'s and *Cjmp*'s. 
+* Boolean expression are turned into patterns of *Cmp*'s and *Set*'s. 
 
 ## cogen: 
-code: Javaway/compiler/lab3/lib/codegen/cogen.ml
+code: Javaway/compiler/lab3/lib/codegen/cogen.ml<\br>
+Our cogen function employs the top-down version of maximal munch. <\br>
+A few highlights:
+* Calling convention: At the start of each *fspace*, move data from (at most) six registers specifically reserved for holding argument values; for arguments more than six, insert *LoadFromStack(list of temps)*; Each function call before (either $NakedCall$ or $MovFuncApp$) is now expanded by first cogening the arguments into temps, and moving the temps into registers correponding to which registers as per the calling convention; arguments more than six will be kept in *Assem.Call.args_overflow*. 
 
 
 # Register Allocation design 
@@ -85,7 +92,7 @@ The interference graph adopts an adjacency list representation, and is implement
 as a Map from vertex to a vertex set.
 The edges are collected in liveness_analysis. After each line's liveout is updated
 the edges are collected according to the rules in the lecture notes. 
-# Note: for mv operation, if the src is also a temp or a register (i.e., a vertex)
+**Note**: for mv operation, if the src is also a temp or a register (i.e., a vertex)
 the def will not interfere with it. 
 
 * Simplicial elimination ordering to determine vertex ordering
