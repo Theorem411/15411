@@ -9,10 +9,12 @@ The frontend contains:
 * lexer and parser
 * elaborator
 * static semantics
+
 The middle end contains:
 * trans (into IR tree)
 * cogen (into Assem, i.e., 3-addr abstract assembly)
 * liveness analysis
+
 The back end contains: 
 * register allocation
 * x86 assembly generation
