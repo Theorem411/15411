@@ -72,21 +72,34 @@ Our cogen function employs the top-down version of maximal munch. <\br>
 A few highlights:
 * Calling convention: At the start of each *fspace*, move data from (at most) six registers specifically reserved for holding argument values; for arguments more than six, insert *LoadFromStack(list of temps)*; Each function call before (either $NakedCall$ or $MovFuncApp$) is now expanded by first cogening the arguments into temps, and moving the temps into registers correponding to which registers as per the calling convention; arguments more than six will be kept in *Assem.Call.args_overflow*. 
 
+# Backend
+## Liveness analysis and register allocation
+### Basic blocks
+code in: Javaway/compiler/lab3/lib/live/block.ml <\br>
+Each basic block must begins with a label, and ends with a jump type instruction (return, conditional jump, or unconditional jump).
 
-# Register Allocation design 
-## Liveness analysis
-For each line of the abstract assembly, live_analysis will analyze the following
-data:
-  def: the temp or register that is defined on this line. None if nothing applicable
-  uses: the set of temps or registers that are used on this line
-  livein: the set of temps or registers that are live before this line of code
-  liveout: the set of temps or registers that are live after this line of code 
+### Liveness analysis
+For each *fspace* that corresponds to a function definition, we do liveness analysis independently. <\br> 
+Each function definition, which is currently a sequence of *Assem.instr*'s, we break them into basic blocks, and do liveness analysis on two levels: <\br>
+**single pass**<\br>
+code in: Javaway/compiler/lab3/lib/live/singlepass.ml<\br>
+For each line of the abstract assembly, singlepass will analyze the following data:
+  * def: the temp or register that is defined on this line. None if nothing applicable
+  * uses: the set of temps or registers that are used on this line
+  * livein: the set of temps or registers that are live before this line of code
+  * liveout: the set of temps or registers that are live after this line of code 
 The liveness info of each line is gathered from back to front, using update rules
 introduced in lecture notes and recitation handouts. 
-* Note: to avoid precoloring conflicts, for each line involving a DIV operater,
- we add %eax and %edx to uses. 
+* Note: to avoid precoloring conflicts, for each line involving a DIV/MOD operater,
+ we add %eax and %edx to uses, and for each line involing a SHIFT_LEFT/SHIFT_RIGHT operator, we add %ecx to uses.<\br>
+**General passing**<\br>
+code in: Javaway/compiler/lab3/lib/live/live.ml<\br>
+At this level, we use liveness info produced from each basic block by *singlepass* to derive full liveness info for the entire control-flow graph. 
 
-## Build interference graph
+We maintain two *Hashtbl*'s: one maps basic blocks to *liveout* sets of its successor, which is accumulating by set union; the other maps basic blocks to the last *liveout* set produced by *singlepass* in past iteration. The first one is used as input for *singlepass*, i.e. the initial liveness info for the last line of the input basic block. The second one is used as criteria for determining whether this basic block's liveness info has converged. <\br>
+The general algorithm deploys a work queue containing basic blocks. It was first initialized by all the basic blocks in the program in reverse to their original order. When each basic block is popped off the queue, run *singlepass* on it, and if and only if the liveness info gets changed (determined by checking with second hashtbl) do we push its predecessor blocks (predecessor in the control-flow graph) back onto the queue. The algorithm will eventually terminates when the queue is empty, indicating that all basic blocks has converged. 
+
+### Build interference graph
 The vertex is an abstract type that can be either a temp or a register
 The interference graph adopts an adjacency list representation, and is implemented
 as a Map from vertex to a vertex set.
@@ -111,9 +124,7 @@ graph; then for each uncolored vertex in the simplicial elimination ordering, we
 find the minimum unused color in its neighborhood and to color this vertex with
 it.
 
-
-# Backend
-## register allocation
+### Register Allocator
 After building an interference graph and produces a coloring (i.e. map from vertex
 to color), we group the vertex by colors. For a group of vertices of the same color
 we first determine if there is a register among them. If there is, we will assign 
@@ -129,6 +140,3 @@ We iterate through the input 3-addr abstract assembly looking for lines like thi
 and translate into this format:
   dst <- lhs
   dst <- op (dst, rhs)
-
-- cogen function 
-we uses a top-down approach. 
