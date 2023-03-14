@@ -232,7 +232,7 @@ module Print = struct
              (Symbol.name var)
              (pp_mexp e)
              (pp_mstm ~n body))
-      | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
+      | Assign { dest; exp } -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp)
       | If { cond; lb; rb } ->
         sprintf
           "if (%s) {%s\n%s\n%s}\n%selse {\n%s%s\n%s}"
