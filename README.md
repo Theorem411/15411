@@ -110,7 +110,8 @@ We maintain two *Hashtbl*'s: one maps basic blocks to *liveout* sets of its succ
 The general algorithm deploys a work queue containing basic blocks. It was first initialized by all the basic blocks in the program in reverse to their original program order. When each basic block is popped off the queue, run *singlepass* on it, and push its predecessor blocks (predecessor in the control-flow graph) back onto the queue if and only if the liveness info gets changed (determined by checking with second hashtbl). The algorithm will eventually terminate when the queue is empty, indicating that all basic blocks has converged. 
 
 ### Build interference graph
-code in: Javaway/compiler/lab3/lib/live/live.ml</br>
+*mk_graph_fspace*: Javaway/compiler/lab3/lib/live/live.ml</br>
+*get_edges_vertices*: Javaway/compiler/lab3/lib/live/singlepass.ml </br>
 The vertex is an abstract type that can be either a temp or a register
 The interference graph adopts an adjacency list representation, and is implemented
 as a Map from vertex to a vertex set.
@@ -119,6 +120,7 @@ the edges are collected according to the rules in the lecture notes.
 **Note**: for mv operation, if the src is also a temp or a register (i.e., a vertex)
 the def will not interfere with it. 
 
+### Register Allocator
 * Simplicial elimination ordering to determine vertex ordering
 After the graph is built, we use Maximum Capacity Search to determine a coloring 
 order that are guaranteed to produce a simplicial elimination ordering on Chordal
@@ -127,15 +129,12 @@ Chordal graph such ordering will produce the optimal coloring.
 
 **Note**: the weights are initialized such each vertex is assigned the number of 
 neighbor vertices that are already registers.
-
 * Greedy graph coloring
-We define color simply as the int type
+We define color simply as the int type.
 We first do precoloring by coloring all the registers that are already in the 
 graph; then for each uncolored vertex in the simplicial elimination ordering, we
 find the minimum unused color in its neighborhood and to color this vertex with
 it.
-
-### Register Allocator
 After building an interference graph and produces a coloring (i.e. map from vertex
 to color), we group the vertex by colors. For a group of vertices of the same color
 we first determine if there is a register among them. If there is, we will assign 
