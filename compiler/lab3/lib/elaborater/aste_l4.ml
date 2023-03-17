@@ -1,5 +1,5 @@
 open Core
-module Typ = Ctype
+module Typ = Ctype_l4
 
 type binop_pure =
   | Plus
@@ -90,8 +90,18 @@ type stm =
       ; assign : mexp option
       ; body : mstm
       }
-  | Assign of
+  | AssignToSymbol of
+      { var : Symbol.t
+      ; exp : mexp
+      }
+  | AssignToMemPure of
       { dest : mexp
+      ; op : binop_pure option
+      ; exp : mexp
+      }
+  | AssignToMemEfkt of
+      { dest : mexp
+      ; op : binop_efkt option
       ; exp : mexp
       }
   | If of
@@ -111,6 +121,11 @@ type stm =
   | NakedCall of
       { name : Symbol.t
       ; args : mexp list
+      }
+  | StructDecl of Symbol.t
+  | StructDef of
+      { name : Symbol.t
+      ; ssig : Typ.ssig
       }
 
 and mstm = stm Mark.t
@@ -232,7 +247,15 @@ module Print = struct
              (Symbol.name var)
              (pp_mexp e)
              (pp_mstm ~n body))
-      | Assign { dest; exp } -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp)
+      | AssignToSymbol { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
+      | AssignToMemPure { dest; op; exp } ->
+        (match op with
+         | Some o -> sprintf "%s %s= %s;" (pp_mexp dest) (pp_binop_pure o) (pp_mexp exp)
+         | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
+      | AssignToMemEfkt { dest; op; exp } ->
+        (match op with
+         | Some o -> sprintf "%s %s= %s;" (pp_mexp dest) (pp_binop_efkt o) (pp_mexp exp)
+         | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
       | If { cond; lb; rb } ->
         sprintf
           "if (%s) {%s\n%s\n%s}\n%selse {\n%s%s\n%s}"

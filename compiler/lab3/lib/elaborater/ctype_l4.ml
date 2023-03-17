@@ -5,10 +5,7 @@ type t =
   | Bool
   | Star of t
   | Array of t
-  | Struct of
-      { sname : Symbol.t
-      ; ssig : (Symbol.t * t) list
-      }
+  | Struct of Symbol.t
   | Any (*_ only for Null pointer only *)
 [@@deriving equal, compare, sexp]
 
@@ -17,14 +14,13 @@ type tau =
   | FakeTyp of Symbol.t
   | Star of tau
   | Array of tau
-  | Struct of
-      { sname : Symbol.t
-      ; ssig : (Symbol.t * tau) list
-      }
+  | Struct of Symbol.t
 [@@deriving equal, compare, sexp]
 
 type fsig_real = t list * t option [@@deriving equal, compare, sexp]
 type fsig = tau list * tau option [@@deriving equal, compare, sexp]
+type ssig_real = (Symbol.t * t) list [@@deriving equal, compare, sexp]
+type ssig = (Symbol.t * tau) list [@@deriving equal, compare, sexp]
 
 module T = struct
   type t = tau [@@deriving compare, equal, sexp]
@@ -38,12 +34,7 @@ let rec _t_tostring = function
   | Bool -> "bool"
   | Star t -> sprintf "%s*" (_t_tostring t)
   | Array t -> sprintf "%s[]" (_t_tostring t)
-  | Struct { sname; ssig } ->
-    sprintf
-      "struct %s {%s}"
-      (Symbol.name sname)
-      (List.map ssig ~f:(fun (f, t) -> sprintf "%s:%s\n" (Symbol.name f) (_t_tostring t))
-      |> String.concat ~sep:", ")
+  | Struct s -> sprintf "struct %s" (Symbol.name s)
   | Any -> "any"
 ;;
 
@@ -52,12 +43,7 @@ let rec _tau_tostring = function
   | FakeTyp s -> Symbol.name s
   | Star tau -> sprintf "%s*" (_tau_tostring tau)
   | Array tau -> sprintf "%s[]" (_tau_tostring tau)
-  | Struct { sname; ssig } ->
-    sprintf
-      "struct %s {%s}"
-      (Symbol.name sname)
-      (List.map ssig ~f:(fun (f, tau) -> sprintf "%s:%s" (Symbol.name f) (_tau_tostring tau))
-      |> String.concat ~sep:", ")
+  | Struct s -> sprintf "struct %s" (Symbol.name s)
 ;;
 
 let _fsig_tostring ((argtyps, ret) : fsig) : string =

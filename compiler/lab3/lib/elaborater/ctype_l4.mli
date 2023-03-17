@@ -5,10 +5,7 @@ type t =
   | Bool
   | Star of t
   | Array of t
-  | Struct of
-      { sname : Symbol.t
-      ; ssig : (Symbol.t * t) list
-      }
+  | Struct of Symbol.t
   | Any (*_ only for Null pointer only *)
 [@@deriving equal, compare, sexp]
 
@@ -17,14 +14,13 @@ type tau =
   | FakeTyp of Symbol.t
   | Star of tau
   | Array of tau
-  | Struct of
-      { sname : Symbol.t
-      ; ssig : (Symbol.t * tau) list
-      }
+  | Struct of Symbol.t
 [@@deriving equal, compare, sexp]
 
-type fsig = tau list * tau option [@@deriving equal, compare, sexp]
 type fsig_real = t list * t option [@@deriving equal, compare, sexp]
+type fsig = tau list * tau option [@@deriving equal, compare, sexp]
+type ssig_real = (Symbol.t * t) list [@@deriving equal, compare, sexp]
+type ssig = (Symbol.t * tau) list [@@deriving equal, compare, sexp]
 
 include Comparable.S with type t := tau
 

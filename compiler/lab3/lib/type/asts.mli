@@ -1,7 +1,5 @@
 open Core
-module Typ = Ctype_l4
-
-type binop_pure =
+type intop_pure =
   | Plus
   | Minus
   | Times
@@ -9,7 +7,7 @@ type binop_pure =
   | BitOr
   | BitXor
 
-type binop_cmp =
+type intop_cmp =
   | Leq
   | Less
   | Geq
@@ -17,7 +15,7 @@ type binop_cmp =
   | Eq
   | Neq
 
-type binop_efkt =
+type intop_efkt =
   | Divided_by
   | Modulo
   | ShiftL
@@ -31,7 +29,10 @@ type unop =
 type exp =
   | True
   | False
-  | Var of Symbol.t
+  | Var of
+      { var : Symbol.t
+      ; type_size : int
+      }
   | Const of Int32.t
   | Ternary of
       { cond : mexp
@@ -39,17 +40,17 @@ type exp =
       ; rb : mexp
       }
   | PureBinop of
-      { op : binop_pure
+      { op : intop_pure
       ; lhs : mexp
       ; rhs : mexp
       }
   | EfktBinop of
-      { op : binop_efkt
+      { op : intop_efkt
       ; lhs : mexp
       ; rhs : mexp
       }
   | CmpBinop of
-      { op : binop_cmp
+      { op : intop_cmp
       ; lhs : mexp
       ; rhs : mexp
       }
@@ -62,31 +63,25 @@ type exp =
       ; args : mexp list
       }
   | Null
-  | Deref of mexp
-  | ArrAccess of
-      { arr : mexp
-      ; idx : mexp
-      }
-  | StructDot of
-      { str : mexp
-      ; field : Symbol.t
-      }
-  | StructArr of
-      { str : mexp
-      ; field : Symbol.t
-      }
-  | Alloc of Typ.tau
+  | Deref of address
+  | ArrayAccess of address
+  | StructAccess of address
+  | Alloc of int
   | Alloc_array of
-      { typ : Typ.tau
+      { type_size : int
       ; len : mexp
       }
 
-and mexp = exp Mark.t
+and mexp = exp * int
+
+and address =
+  { ptr : mexp
+  ; off : int
+  }
 
 type stm =
   | Declare of
       { var : Symbol.t
-      ; typ : Typ.tau
       ; assign : mexp option
       ; body : mstm
       }
@@ -94,14 +89,14 @@ type stm =
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignToMemPure of
-      { dest : mexp
-      ; op : binop_pure option
+  | AsopMemPure of
+      { addr : address
+      ; op : intop_pure option
       ; exp : mexp
       }
-  | AssignToMemEfkt of
-      { dest : mexp
-      ; op : binop_efkt option
+  | AsopMemEfkt of
+      { addr : address
+      ; op : intop_efkt option
       ; exp : mexp
       }
   | If of
@@ -122,35 +117,14 @@ type stm =
       { name : Symbol.t
       ; args : mexp list
       }
-  | StructDecl of Symbol.t
-  | StructDef of
-      { name : Symbol.t
-      ; ssig : Typ.ssig
-      }
 
-and mstm = stm Mark.t
+and mstm = stm * int
 
 type glob =
-  | Typedef of
-      { told : Typ.tau
-      ; tnew : Typ.tau
-      }
-  | Fundecl of
-      { f : Symbol.t
-      ; args : Symbol.t list
-      ; fsig : Typ.fsig
-      }
-  | Fundef of
-      { f : Symbol.t
-      ; args : Symbol.t list
-      ; fsig : Typ.fsig
-      ; fdef : mstm
-      }
-  | Sdecl of Symbol.t
-  | Sdef of
-      { sname : Symbol.t
-      ; ssig : (Symbol.t * Typ.tau) list
-      }
+  { f : Symbol.t
+  ; args : (Symbol.t * int) list
+  ; fdef : mstm
+  }
 
 type mglob = glob Mark.t
 type program = mglob list
@@ -158,9 +132,9 @@ type program = mglob list
 module Print : sig
   val pp_exp : exp -> string
   val pp_mexp : mexp -> string
-  val pp_stm : ?n:int -> stm -> string
-  val pp_mstm : ?n:int -> mstm -> string
-  val pp_glob : ?n:int -> glob -> string
-  val pp_mglob : ?n:int -> mglob -> string
+  val pp_stm : stm -> string
+  val pp_mstm : mstm -> string
+  val pp_glob : glob -> string
+  val pp_mglob : mglob -> string
   val print_all : program -> string
 end
