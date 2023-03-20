@@ -33,10 +33,13 @@ let mark
 %token <Int32.t> Dec_const
 %token <Int32.t> Hex_const
 %token <Symbol.t> Ident
+%token <Symbol.t> TypeIdent
 %token Return
 %token Int Bool
 %token True False
-// %token Mains
+%token Struct
+%token NULL Alloc Alloc_array
+%token L_square R_square Dot Arrow
 %token If Else While For
 %token Plus Minus Star Slash Percent
 %token Assign Plus_eq Minus_eq Star_eq Slash_eq Percent_eq 
@@ -50,7 +53,8 @@ let mark
 %token BAnd_eq Bor_eq BXor_eq
 %token Minus_minus Plus_plus
 %token QuestionMark Colon
-%token Void Comma Assert Typedef
+%token Void Comma Assert 
+%token <Symbol.t * Symbol.t> Typedef
 
 (* Unary is a dummy terminal.
  * We need dummy terminals if we wish to assign a precedence
@@ -187,17 +191,44 @@ exp :
       { Ast.Const c }
   | True; { Ast.True }
   | False; { Ast.False }
-//   | Main;
-//       { Ast.Var (Symbol.symbol "main") }
+  | NULL; { Ast.NULL }
   | ident = Ident;
       { Ast.Var ident }
   | ident = Ident; args = arg_list;
       { Ast.Call {name = ident; args = args} }
   | u = unop; { u }
+  | e = m(exp);
+    Dot;
+    ident = Ident;
+    { Ast.Dot {field = ident; lhs = e} }
+  | e = m(exp);
+    Arrow;
+    ident = Ident;
+    { Ast.Arrow {field = ident; lhs = e} }
   | lhs = m(exp);
     op = binop;
     rhs = m(exp);
       { Ast.Binop { op; lhs; rhs; } }
+  | Alloc;
+    L_paren;
+    t = type_;
+    R_paren;
+    { Ast.Alloc {t} }
+  | Alloc_array;
+    L_paren;
+    t = type_;
+    Comma;
+    e = m(exp);
+    R_paren;
+    { Ast.AllocArray {t; e} }
+  | lhs = m(exp);
+    L_square;
+    rhs = m(exp);
+    R_square;
+    { Ast.AccessArray {lhs; rhs} }
+  | Star;
+    e = m(exp);
+    { Ast.Deref e }
   | cond = m(exp); 
     QuestionMark; 
     f = m(exp);
@@ -281,8 +312,8 @@ control :
         {Ast.Assert e}
 
 typedef : 
-    | Typedef; t = type_ ; ident = Ident; Semicolon; {
-        Ast.Typedef {old_name = t; new_name = Ast.T.FakeTyp (ident)}
+    | typedef_object = Typedef; Semicolon; {
+        Ast.TypedefTest typedef_object
     } 
 
 param : 
