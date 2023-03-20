@@ -187,3 +187,5 @@ let get_edges_vertices t b =
   let v = get_all_vertices b in
   v, e
 ;;
+
+let block_defs_uses : t -> B.block -> V.Set.t * V.Set.t = failwith "not implemented"

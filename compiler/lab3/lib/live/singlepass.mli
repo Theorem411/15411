@@ -12,3 +12,6 @@ val singlepass : t -> B.block -> V.Set.t -> V.Set.t
 
 (* returns the vertex set and edge list of the given block *)
 val get_edges_vertices : t -> B.fspace_block -> V.Set.t * (V.t * V.t) list
+
+(* preprocess block-level defs and uses *)
+val block_defs_uses : t -> B.block -> V.Set.t * V.Set.t

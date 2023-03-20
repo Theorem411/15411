@@ -23,6 +23,7 @@ type binop_efkt =
   | ShiftL
   | ShiftR
 
+type binop = Pure of binop_pure | Efkt of binop_efkt
 type unop =
   | BitNot (*bitwise not*)
   | LogNot (*!*)
@@ -90,18 +91,13 @@ type stm =
       ; assign : mexp option
       ; body : mstm
       }
-  | AssignToSymbol of
+  | Assign of
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignToMemPure of
+  | Asop of
       { dest : mexp
-      ; op : binop_pure option
-      ; exp : mexp
-      }
-  | AssignToMemEfkt of
-      { dest : mexp
-      ; op : binop_efkt option
+      ; op : binop option
       ; exp : mexp
       }
   | If of
@@ -121,11 +117,6 @@ type stm =
   | NakedCall of
       { name : Symbol.t
       ; args : mexp list
-      }
-  | StructDecl of Symbol.t
-  | StructDef of
-      { name : Symbol.t
-      ; ssig : Typ.ssig
       }
 
 and mstm = stm Mark.t

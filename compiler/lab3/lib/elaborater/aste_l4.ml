@@ -23,6 +23,8 @@ type binop_efkt =
   | ShiftL
   | ShiftR
 
+type binop = Pure of binop_pure | Efkt of binop_efkt
+
 type unop =
   | BitNot (*bitwise not*)
   | LogNot (*!*)
@@ -90,18 +92,13 @@ type stm =
       ; assign : mexp option
       ; body : mstm
       }
-  | AssignToSymbol of
+  | Assign of
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignToMemPure of
+  | Asop of
       { dest : mexp
-      ; op : binop_pure option
-      ; exp : mexp
-      }
-  | AssignToMemEfkt of
-      { dest : mexp
-      ; op : binop_efkt option
+      ; op : binop option
       ; exp : mexp
       }
   | If of
@@ -121,11 +118,6 @@ type stm =
   | NakedCall of
       { name : Symbol.t
       ; args : mexp list
-      }
-  | StructDecl of Symbol.t
-  | StructDef of
-      { name : Symbol.t
-      ; ssig : Typ.ssig
       }
 
 and mstm = stm Mark.t
@@ -184,6 +176,10 @@ module Print = struct
     | ShiftR -> ">>"
   ;;
 
+  let pp_binop = function 
+    | Pure o -> pp_binop_pure o
+    | Efkt o -> pp_binop_efkt o
+;;
   let pp_unop = function
     | BitNot -> "~"
     | LogNot -> "!"
@@ -247,14 +243,10 @@ module Print = struct
              (Symbol.name var)
              (pp_mexp e)
              (pp_mstm ~n body))
-      | AssignToSymbol { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
-      | AssignToMemPure { dest; op; exp } ->
+      | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
+      | Asop { dest; op; exp } ->
         (match op with
-         | Some o -> sprintf "%s %s= %s;" (pp_mexp dest) (pp_binop_pure o) (pp_mexp exp)
-         | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
-      | AssignToMemEfkt { dest; op; exp } ->
-        (match op with
-         | Some o -> sprintf "%s %s= %s;" (pp_mexp dest) (pp_binop_efkt o) (pp_mexp exp)
+         | Some o -> sprintf "%s %s= %s;" (pp_mexp dest) (pp_binop o) (pp_mexp exp)
          | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
       | If { cond; lb; rb } ->
         sprintf
