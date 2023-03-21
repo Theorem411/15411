@@ -132,6 +132,7 @@ type param =
       }
 
 type gdecl =
+  | TypedefTest of (Symbol.t * Symbol.t)
   | Typedef of
       { old_name : T.tau
       ; new_name : T.tau

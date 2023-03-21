@@ -335,6 +335,7 @@ and elaborate' (s : Ast.mgdecl) : AstElab.mglob =
         ; args = to_arg_list params
         ; fdef = elaborate_stmts [ body ]
         }
+    | _ -> failwith "not implemented"
   in
   copy_mark s res
 

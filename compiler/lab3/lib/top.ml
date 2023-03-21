@@ -209,12 +209,17 @@ let compile (cmd : cmd_line_args) : unit =
   (* Parse *)
   say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
   let ast_h = Parse.parse cmd.header_filename in
+  
   (* TODO check that ast_h has the only fdecl or typedef *)
   (* TODO rename functions in ast_h *)
   let ast = Parse.parse cmd.filename in
+  say_if cmd.dump_parsing (fun () -> " dump_parsing... ");
+
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
+
+  if cmd.dump_parsing then exit 0;
   (* Elaborate *)
   (* let elab_h, elab = elaboration_step (ast, ast_h) cmd in *)
   let elab_h, elab_raw = elaboration_step (ast, ast_h) cmd in

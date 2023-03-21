@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module AS = Assem_new
 module B = Block
 module V = Graph.Vertex
@@ -59,4 +59,4 @@ module T = struct
   [@@deriving compare, equal, sexp, hash]
 end
 module LM = Map.Make(T)
-module LT = Hashtbl.Make(T) 
+module LT = Hashtbl.Make(T)  *)
