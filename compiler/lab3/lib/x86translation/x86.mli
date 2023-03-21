@@ -1,5 +1,5 @@
 open Core
-module AS = Assem_new
+module AS = Assem
 
 type operand =
   | Imm of Int32.t

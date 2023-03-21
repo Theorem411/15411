@@ -1,7 +1,7 @@
 open Core
 module B = Block
 module V = Graph.Vertex
-module AS = Assem_new
+module AS = Assem
 module IntTable = Hashtbl.Make (Int)
 
 type ht_entry =

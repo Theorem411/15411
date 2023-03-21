@@ -1,5 +1,5 @@
 open Core
-module Tree = Tree_new
+module Tree = Tree
 
 type reg =
   | EAX

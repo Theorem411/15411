@@ -1,5 +1,5 @@
 open Core
-module T = Tree_new
+module T = Tree
 module Typ = Ctype
 module A = Aste
 module S = Symbol.Map

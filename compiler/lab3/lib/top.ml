@@ -14,10 +14,10 @@
  *)
 
 open Core
-module TranslationM = Trans_new
-module AssemM = Assem_new
-module Cogen = Cogen_new
-module TreeM = Tree_new
+module TranslationM = Trans
+module AssemM = Assem
+module Cogen = Cogen
+module TreeM = Tree
 module Statsem = Statsem
 
 (* Command line arguments *)

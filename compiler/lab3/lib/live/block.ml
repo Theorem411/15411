@@ -1,5 +1,5 @@
 open Core
-module A = Assem_new
+module A = Assem
 
 let format_args args = List.map ~f:Temp.name args |> String.concat ~sep:","
 

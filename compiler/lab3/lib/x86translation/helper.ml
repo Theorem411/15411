@@ -1,5 +1,5 @@
 open Core
-module AS = Assem_new
+module AS = Assem
 module V = Graph.Vertex
 
 let default_val = true
