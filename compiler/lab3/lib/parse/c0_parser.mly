@@ -130,8 +130,17 @@ m(x) :
 type_ :
   | Int { Ast.T.RealTyp Int }
   | Bool { Ast.T.RealTyp Bool}
-  | ident = Ident;
-    { Ast.T.FakeTyp (ident) }
+  | typeident = TypeIdent;
+    { Ast.T.FakeTyp (typeident) }
+  | t = type_; Star;
+    {Ast.T.Star t} 
+  | t = type_; L_square; R_square;
+    {Ast.T.Array t} 
+  | Struct; ident = Ident
+    {Ast.T.Struct ident} 
+  (* not sure may be I will remove it *)
+  | Struct; ident = TypeIdent
+    {Ast.T.Struct ident} 
   ;
 
 ret_type : 
@@ -200,11 +209,11 @@ exp :
   | e = m(exp);
     Dot;
     ident = Ident;
-    { Ast.Dot {field = ident; lhs = e} }
+    { Ast.StructDot {field = ident; str = e} }
   | e = m(exp);
     Arrow;
     ident = Ident;
-    { Ast.Arrow {field = ident; lhs = e} }
+    { Ast.StructArr {field = ident; str = e} }
   | lhs = m(exp);
     op = binop;
     rhs = m(exp);
@@ -220,12 +229,12 @@ exp :
     Comma;
     e = m(exp);
     R_paren;
-    { Ast.AllocArray {t; e} }
+    { Ast.AllocArray {t; len = e} }
   | lhs = m(exp);
     L_square;
     rhs = m(exp);
     R_square;
-    { Ast.AccessArray {lhs; rhs} }
+    { Ast.ArrAccess {arr = lhs; idx = rhs} }
   | Star;
     e = m(exp);
     { Ast.Deref e }
@@ -321,6 +330,17 @@ param :
         Ast.Param {t = t; name = ident}
     }
 
+field :
+    | t = type_ ; ident = Ident; Semicolon {
+      (t; ident)
+    }
+
+field_list :
+  | (* empty *)
+    { [] }
+  | f = field; fs = field_list;
+    {f :: fs}
+
 param_follow :
   | (* empty *)
       { [] }
@@ -332,7 +352,21 @@ param_list:
     | L_paren; R_paren; {[]}
     | L_paren; p = param; ps = param_follow  ; R_paren; {
         p :: ps
-    }   
+    }
+
+sdecl : 
+  | Struct; ident = Ident; Semicolon;
+    {Ast.Sdecl ident}   
+  (*not sure*)
+  | Struct; ident = TypeIdent; Semicolon;
+    {Ast.Sdecl ident}   
+
+sdef : 
+  | Struct; ident = Ident; L_brace; lst = field_list ; R_brace; Semicolon;
+    {Ast.Sdef {sname = ident; ssig lst}}   
+  (*not sure*)
+  | Struct; ident = TypeIdent; L_brace; lst = field_list ; R_brace; Semicolon;
+    {Ast.Sdef {sname = ident; ssig lst}}   
 
 fdecl: 
     | r_opt = ret_type; ident = Ident; params = param_list; Semicolon
@@ -346,6 +380,8 @@ gdecl:
     | fundec = m(fdecl)  {fundec}
     | fundef = m(fdefn)  {fundef}
     | tdef = m(typedef)  {tdef}
+    | sdefx = m(sdef)  {sdefx}
+    | sdeclx = m(sdecl)  {sdeclx}
 
 (* See the menhir documentation for %inline.
  * This allows us to factor out binary operators while still

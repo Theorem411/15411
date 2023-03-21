@@ -1,4 +1,4 @@
-open Core
+(* open Core
 type intop_pure =
   | Plus
   | Minus
@@ -137,4 +137,4 @@ module Print : sig
   val pp_glob : glob -> string
   val pp_mglob : mglob -> string
   val print_all : program -> string
-end
+end *)

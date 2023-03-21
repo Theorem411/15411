@@ -1,4 +1,4 @@
-open Core
+(* open Core
 
 type intop_pure =
   | Plus
@@ -255,4 +255,4 @@ module Print = struct
   let pp_mglob mglob = pp_glob (Mark.data mglob) ^ "\n"
   let pp_program prog = List.fold prog ~init:"" ~f:(fun s g -> s ^ pp_mglob g)
   let print_all prog = "\n\n" ^ pp_program prog ^ "\n"
-end
+end *)

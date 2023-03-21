@@ -23,6 +23,10 @@ type binop_efkt =
   | ShiftL
   | ShiftR
 
+type binop =
+  | Pure of binop_pure
+  | Efkt of binop_efkt
+
 type unop =
   | BitNot (*bitwise not*)
   | LogNot (*!*)
@@ -94,14 +98,9 @@ type stm =
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignToMemPure of
+  | Assign of
       { dest : mexp
-      ; op : binop_pure option
-      ; exp : mexp
-      }
-  | AssignToMemEfkt of
-      { dest : mexp
-      ; op : binop_efkt option
+      ; op : binop option
       ; exp : mexp
       }
   | If of
@@ -121,11 +120,6 @@ type stm =
   | NakedCall of
       { name : Symbol.t
       ; args : mexp list
-      }
-  | StructDecl of Symbol.t
-  | StructDef of
-      { name : Symbol.t
-      ; ssig : Typ.ssig
       }
 
 and mstm = stm Mark.t
@@ -234,28 +228,27 @@ module Print = struct
     let f ~n = function
       | Declare { var; typ; assign; body } ->
         (match assign with
-         | None ->
-           sprintf
-             "%s %s;\n%s"
-             (Typ._tau_tostring typ)
-             (Symbol.name var)
-             (pp_mstm ~n body)
-         | Some e ->
-           sprintf
-             "%s %s=%s;\n%s"
-             (Typ._tau_tostring typ)
-             (Symbol.name var)
-             (pp_mexp e)
-             (pp_mstm ~n body))
+        | None ->
+          sprintf "%s %s;\n%s" (Typ._tau_tostring typ) (Symbol.name var) (pp_mstm ~n body)
+        | Some e ->
+          sprintf
+            "%s %s=%s;\n%s"
+            (Typ._tau_tostring typ)
+            (Symbol.name var)
+            (pp_mexp e)
+            (pp_mstm ~n body))
       | AssignToSymbol { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
-      | AssignToMemPure { dest; op; exp } ->
+      | Assign { dest; op; exp } ->
         (match op with
-         | Some o -> sprintf "%s %s= %s;" (pp_mexp dest) (pp_binop_pure o) (pp_mexp exp)
-         | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
-      | AssignToMemEfkt { dest; op; exp } ->
-        (match op with
-         | Some o -> sprintf "%s %s= %s;" (pp_mexp dest) (pp_binop_efkt o) (pp_mexp exp)
-         | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
+        | Some o ->
+          sprintf
+            "%s %s= %s;"
+            (pp_mexp dest)
+            (match o with
+            | Pure p -> pp_binop_pure p
+            | Efkt e -> pp_binop_efkt e)
+            (pp_mexp exp)
+        | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
       | If { cond; lb; rb } ->
         sprintf
           "if (%s) {%s\n%s\n%s}\n%selse {\n%s%s\n%s}"
@@ -306,7 +299,7 @@ module Print = struct
         "struct %s {%s}"
         (Symbol.name sname)
         (List.map ssig ~f:(fun (f, tau) ->
-           sprintf "%s:%s" (Symbol.name f) (Typ._tau_tostring tau))
+             sprintf "%s:%s" (Symbol.name f) (Typ._tau_tostring tau))
         |> String.concat ~sep:",\n")
   ;;
 

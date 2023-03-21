@@ -11,7 +11,7 @@
  *)
 
 open Core
-module T = Ctype
+module T = Ctype_l4
 
 type binop =
   | Plus
@@ -82,6 +82,25 @@ type exp =
       { name : Symbol.t
       ; args : mexp list
       }
+  | Null
+  | Deref of mexp
+  | ArrAccess of
+      { arr : mexp
+      ; idx : mexp
+      }
+  | StructDot of
+      { str : mexp
+      ; field : Symbol.t
+      }
+  | StructArr of
+      { str : mexp
+      ; field : Symbol.t
+      }
+  | Alloc of T.tau
+  | Alloc_array of
+      { typ : T.tau
+      ; len : mexp
+      }
 
 and mexp = exp Mark.t
 
@@ -148,6 +167,11 @@ type gdecl =
       ; params : param list
       ; body : mstm (* Block of mstm list *)
       }
+  | Sdecl of Symbol.t
+  | Sdef of
+      { sname : Symbol.t
+      ; ssig : (Symbol.t * T.tau) list
+      }
 
 and mgdecl = gdecl Mark.t
 
@@ -196,6 +220,14 @@ module Print = struct
         (String.concat ~sep:"," (List.map args ~f:pp_mexp))
     | Ternary t ->
       sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.first) (pp_mexp t.second)
+    | Null -> "null"
+    | Deref p -> sprintf "*%s" (pp_mexp p)
+    | ArrAccess { arr; idx } -> sprintf "%s[%s]" (pp_mexp arr) (pp_mexp idx)
+    | StructDot { str; field } -> sprintf "%s.%s" (pp_mexp str) (Symbol.name field)
+    | StructArr { str; field } -> sprintf "%s->%s" (pp_mexp str) (Symbol.name field)
+    | Alloc tau -> sprintf "alloc(%s)" (T._tau_tostring tau)
+    | Alloc_array { typ; len } ->
+      sprintf "calloc(%s, %s)" (T._tau_tostring typ) (pp_mexp len)
 
   and pp_mexp e = pp_exp (Mark.data e)
 
@@ -268,7 +300,17 @@ module Print = struct
         ; params : param list
         ; body : mstm (* Block of mstm list *)
         } -> sprintf "%s %s;" (pp_fundec name ret_type params) (pp_mstm body)
-    | TypedefTest (old, n) -> sprintf "typedeftest old:%s new:%s" (Symbol.name old) (Symbol.name n)
+    | TypedefTest (old, n) ->
+      sprintf "typedeftest old:%s new:%s" (Symbol.name old) (Symbol.name n)
+    | Sdecl s -> sprintf "declare struct %s " (Symbol.name s)
+    | Sdef { sname; ssig } ->
+      sprintf
+        "struct %s [%s]"
+        (Symbol.name sname)
+        (String.concat
+           ~sep:","
+           (List.map ssig ~f:(fun (name, t) ->
+                sprintf "%s %s" (T._tau_tostring t) (Symbol.name name))))
 
   (* and pp_gdecl gdecls = String.concat ~sep:"\n" (List.map gdecls ~f:pp_gdecl_single) *)
   and pp_mgdecl gd = pp_gdecl_single (Mark.data gd)

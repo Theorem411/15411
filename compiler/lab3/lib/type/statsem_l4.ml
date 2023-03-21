@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module T = Ctype_l4
 module SM = Symbol.Map
 module SS = Symbol.Set
@@ -93,4 +93,4 @@ let static_semantic_gdecl
 ;;
 
 let static_all_func_used (prog : A.program) : SS.t = failwith "not implemented"
-let static_semantic ~(hdr : A.program) ~(src : A.program) = failwith "not implemented"
+let static_semantic ~(hdr : A.program) ~(src : A.program) = failwith "not implemented" *)
