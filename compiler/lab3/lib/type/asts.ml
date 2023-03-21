@@ -1,5 +1,4 @@
 open Core
-
 type intop_pure =
   | Plus
   | Minus
@@ -22,6 +21,8 @@ type intop_efkt =
   | ShiftL
   | ShiftR
 
+type intop = Pure of intop_pure | Efkt of intop_efkt
+
 type unop =
   | BitNot (*bitwise not*)
   | LogNot (*!*)
@@ -36,87 +37,93 @@ type exp =
       }
   | Const of Int32.t
   | Ternary of
-      { cond : mexp
-      ; lb : mexp
-      ; rb : mexp
+      { cond : exp
+      ; lb : exp
+      ; rb : exp
       }
   | PureBinop of
       { op : intop_pure
-      ; lhs : mexp
-      ; rhs : mexp
+      ; lhs : exp
+      ; rhs : exp
       }
   | EfktBinop of
       { op : intop_efkt
-      ; lhs : mexp
-      ; rhs : mexp
+      ; lhs : exp
+      ; rhs : exp
       }
   | CmpBinop of
       { op : intop_cmp
-      ; lhs : mexp
-      ; rhs : mexp
+      ; size : int
+      ; lhs : exp
+      ; rhs : exp
       }
   | Unop of
       { op : unop
-      ; operand : mexp
+      ; operand : exp
       }
   | Call of
       { name : Symbol.t
-      ; args : mexp list
+      ; args : exp list
       }
   | Null
-  | Deref of address
-  | ArrayAccess of address
-  | StructAccess of address
+  | Deref of ptraddr
+  | ArrayAccess of arraddr
+  | StructAccess of ptraddr
   | Alloc of int
   | Alloc_array of
       { type_size : int
-      ; len : mexp
+      ; len : exp
       }
-
-and mexp = exp * int
-
-and address =
-  { ptr : mexp
-  ; off : int
+  | Address of ptraddr
+  | ArrayIdx of arraddr
+and ptraddr = {
+    start : exp
+    ; off : int
+  } 
+and arraddr = {
+    head : exp
+    ; idx : exp
+    ; size : int
   }
+
+type address = Ptr of ptraddr | Arr of arraddr
 
 type stm =
   | Declare of
       { var : Symbol.t
-      ; assign : mexp option
+      ; size : int
+      ; assign : exp option
       ; body : mstm
       }
-  | AssignToSymbol of
+  | Assign of
       { var : Symbol.t
-      ; exp : mexp
+      ; size : int
+      ; exp : exp
       }
-  | AsopMemPure of
+  | Asop of
       { addr : address
-      ; op : intop_pure option
-      ; exp : mexp
-      }
-  | AsopMemEfkt of
-      { addr : address
-      ; op : intop_efkt option
-      ; exp : mexp
+      ; size : int
+      ; op : intop option
+      ; exp : exp
       }
   | If of
-      { cond : mexp
+      { cond : exp
       ; lb : mstm
       ; rb : mstm
       }
   | While of
-      { cond : mexp
+      { cond : exp
       ; body : mstm
       }
-  | Return of mexp option
+  | Return of (exp * int) option
   | Nop
   | Seq of mstm * mstm
-  | NakedExpr of mexp
+  | NakedExpr of (exp * int)
   | AssertFail
   | NakedCall of
       { name : Symbol.t
-      ; args : mexp list
+      ; args : (exp * int) list
+      ; ret_size : int
       }
 
 and mstm = stm Mark.t
@@ -201,6 +208,8 @@ module Print = struct
   | Alloc i -> sprintf "alloc(%s)" (Int.to_string i)
   | Alloc_array { type_size; len } ->
     sprintf "calloc(%s, %s)" (Int.to_string type_size) (pp_mexp len)
+  | Address p -> 
+    
 
   and pp_addr { ptr; off } = sprintf "%s{+%s}" (pp_mexp ptr) (Int.to_string off)
   and pp_mexp (e, _) = pp_exp e
