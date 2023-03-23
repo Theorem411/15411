@@ -72,25 +72,30 @@ let hex_constant s lexbuf =
   in
   T.Hex_const i32
 
-module StringSet = Set.Make(String)
+module StringSet = Set.Make (String)
+
 let type_names = ref StringSet.empty
 let is_typename id = StringSet.mem !type_names id
-let add_type id = type_names := StringSet.add !type_names id;;
-
+let add_type id = type_names := StringSet.add !type_names id
 let last_ident = ref ""
 let update_last_ident name = last_ident := name
-let get_last_ident () = if (String.equal !last_ident "") then ("dalb") else !last_ident
+
+let get_last_ident () =
+  if String.equal !last_ident "" then "" else !last_ident
+;;
 
 let in_typedef = ref false
 let is_in_typedef () = !in_typedef
 let set_in_typedef v = in_typedef := v
 
-let handle_semicolon () = 
-  if not (is_in_typedef ()) then ()
-  else 
+let handle_semicolon () =
+  if is_in_typedef ()
+  then (
     set_in_typedef false;
     let name = get_last_ident () in
-    add_type name;;
+    add_type name)
+  else update_last_ident ""
+;;
 
 }
 
