@@ -1,6 +1,7 @@
 open Core
 module AS = Assem
 module V = Graph.Vertex
+module Helper = TranslateUtils
 
 (*_ DEBUGGING STAFF  *)
 
@@ -220,7 +221,7 @@ let translate_function errLabel (fspace : AS.fspace) : X86.instr list =
   match fspace with
   | { fname; fdef; args = __args } ->
     (* has to be changed to the global one *)
-    let reg_map, mem_cell_count = Helper.reg_alloc fdef in
+    let reg_map, mem_cell_count = Helper.reg_alloc fspace in
     let get_reg o =
       match o with
       | AS.Imm n -> X86.Imm n
