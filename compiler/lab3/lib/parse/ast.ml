@@ -151,7 +151,6 @@ type param =
       }
 
 type gdecl =
-  | TypedefTest of (Symbol.t * Symbol.t)
   | Typedef of
       { old_name : T.tau
       ; new_name : T.tau
@@ -300,8 +299,6 @@ module Print = struct
         ; params : param list
         ; body : mstm (* Block of mstm list *)
         } -> sprintf "%s %s;" (pp_fundec name ret_type params) (pp_mstm body)
-    | TypedefTest (old, n) ->
-      sprintf "typedeftest old:%s new:%s" (Symbol.name old) (Symbol.name n)
     | Sdecl s -> sprintf "declare struct %s " (Symbol.name s)
     | Sdef { sname; ssig } ->
       sprintf

@@ -15,6 +15,7 @@
 
 open Core
 module TranslationM = Trans
+module Aste = Aste_l4
 module AssemM = Assem
 module Cogen = Cogen
 module TreeM = Tree
@@ -192,7 +193,7 @@ let regalloc (cmd : cmd_line_args) =
           (output |> Lab1_checkpoint.json_of_allocations |> Yojson.Basic.to_string))
 ;;
 
-(* let elaboration_step (ast, ast_h) cmd =
+let elaboration_step (ast, ast_h) cmd =
   say_if cmd.verbose (fun () -> "doing elaborating...");
   let elab_h : Aste.program = Elaborater.elaborate ast_h in
   let _elab_raw : Aste.program = Elaborater.elaborate ast in
@@ -201,7 +202,7 @@ let regalloc (cmd : cmd_line_args) =
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
   elab_h, elab_raw
-;; *)
+;;
 
 (* The main driver for the compiler: runs each phase. *)
 let compile (cmd : cmd_line_args) : unit =
@@ -209,22 +210,24 @@ let compile (cmd : cmd_line_args) : unit =
   (* Parse *)
   say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
   let ast_h = Parse.parse cmd.header_filename in
-  
   (* TODO check that ast_h has the only fdecl or typedef *)
   (* TODO rename functions in ast_h *)
   let ast = Parse.parse cmd.filename in
   say_if cmd.dump_parsing (fun () -> " dump_parsing... ");
-
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
-
-  if cmd.dump_parsing then exit 0;
-  (* Elaborate
-  (* let elab_h, elab = elaboration_step (ast, ast_h) cmd in *)
+  (* if cmd.dump_parsing then exit 0; *)
+  (* Elaborate *)
   let elab_h, elab_raw = elaboration_step (ast, ast_h) cmd in
-  (*if cmd.dump_ast then ignore ((exit 0): unit); *)
-  say_if cmd.verbose (fun () -> "doing type Checking...");
+  if cmd.dump_ast then ignore (exit 0 : unit);
+  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
+  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
+  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
+  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw)
+;;
+
+(* say_if cmd.verbose (fun () -> "doing type Checking...");
   let (() : unit) = Statsem.static_semantic ~hdr:elab_h ~src:elab_raw in
   let (() : unit) = Return.ret_checker elab_raw in
   say_if cmd.verbose (fun () -> "renaming what is necc...");
@@ -270,7 +273,6 @@ let compile (cmd : cmd_line_args) : unit =
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");
         List.iter ~f:output_x86_instr union) *)
-;;
 
 let run (cmd : cmd_line_args) : unit =
   try if cmd.regalloc_only then regalloc cmd else compile cmd with
@@ -293,3 +295,4 @@ let main () =
   | Ok `Help -> Stdlib.exit Cmd.Exit.ok
   | Error _ -> Stdlib.exit Cmd.Exit.cli_error
 ;;
+
