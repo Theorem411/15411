@@ -54,7 +54,7 @@ let mark
 %token Minus_minus Plus_plus
 %token QuestionMark Colon
 %token Void Comma Assert 
-%token <Symbol.t * Symbol.t> Typedef
+%token Typedef
 
 (* Unary is a dummy terminal.
  * We need dummy terminals if we wish to assign a precedence
@@ -78,6 +78,7 @@ let mark
 %left Plus Minus
 %left Star Slash Percent
 %right Unary
+%nonassoc Dot Arrow L_square
 
 %nonassoc else_hack_1
 %nonassoc Else
@@ -200,7 +201,7 @@ exp :
       { Ast.Const c }
   | True; { Ast.True }
   | False; { Ast.False }
-  | NULL; { Ast.NULL }
+  | NULL; { Ast.Null }
   | ident = Ident;
       { Ast.Var ident }
   | ident = Ident; args = arg_list;
@@ -208,11 +209,11 @@ exp :
   | u = unop; { u }
   | e = m(exp);
     Dot;
-    ident = Ident;
+    ident = Ident; 
     { Ast.StructDot {field = ident; str = e} }
   | e = m(exp);
     Arrow;
-    ident = Ident;
+    ident = Ident; 
     { Ast.StructArr {field = ident; str = e} }
   | lhs = m(exp);
     op = binop;
@@ -222,21 +223,21 @@ exp :
     L_paren;
     t = type_;
     R_paren;
-    { Ast.Alloc {t} }
+    { Ast.Alloc t }
   | Alloc_array;
     L_paren;
-    t = type_;
+    typ = type_;
     Comma;
     e = m(exp);
     R_paren;
-    { Ast.AllocArray {t; len = e} }
+    { Ast.Alloc_array {typ; len = e} }
   | lhs = m(exp);
     L_square;
     rhs = m(exp);
-    R_square;
+    R_square; 
     { Ast.ArrAccess {arr = lhs; idx = rhs} }
   | Star;
-    e = m(exp);
+    e = m(exp); %prec Unary
     { Ast.Deref e }
   | cond = m(exp); 
     QuestionMark; 
@@ -321,8 +322,8 @@ control :
         {Ast.Assert e}
 
 typedef : 
-    | typedef_object = Typedef; Semicolon; {
-        Ast.TypedefTest typedef_object
+    | Typedef; t = type_ ; ident = Ident; Semicolon; {
+        Ast.Typedef {old_name = t; new_name = Ast.T.FakeTyp (ident)}
     } 
 
 param : 
@@ -332,7 +333,7 @@ param :
 
 field :
     | t = type_ ; ident = Ident; Semicolon {
-      (t; ident)
+      (ident, t)
     }
 
 field_list :
@@ -363,10 +364,10 @@ sdecl :
 
 sdef : 
   | Struct; ident = Ident; L_brace; lst = field_list ; R_brace; Semicolon;
-    {Ast.Sdef {sname = ident; ssig lst}}   
+    {Ast.Sdef {sname = ident; ssig = lst}}   
   (*not sure*)
   | Struct; ident = TypeIdent; L_brace; lst = field_list ; R_brace; Semicolon;
-    {Ast.Sdef {sname = ident; ssig lst}}   
+    {Ast.Sdef {sname = ident; ssig = lst}}   
 
 fdecl: 
     | r_opt = ret_type; ident = Ident; params = param_list; Semicolon

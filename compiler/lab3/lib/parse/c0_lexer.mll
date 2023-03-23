@@ -73,10 +73,24 @@ let hex_constant s lexbuf =
   T.Hex_const i32
 
 module StringSet = Set.Make(String)
-
 let type_names = ref StringSet.empty
 let is_typename id = StringSet.mem !type_names id
-let add_type id = match StringSet.add !type_names id with _ -> ();;
+let add_type id = type_names := StringSet.add !type_names id;;
+
+let last_ident = ref ""
+let update_last_ident name = last_ident := name
+let get_last_ident () = if (String.equal !last_ident "") then ("dalb") else !last_ident
+
+let in_typedef = ref false
+let is_in_typedef () = !in_typedef
+let set_in_typedef v = in_typedef := v
+
+let handle_semicolon () = 
+  if not (is_in_typedef ()) then ()
+  else 
+    set_in_typedef false;
+    let name = get_last_ident () in
+    add_type name;;
 
 }
 
@@ -99,7 +113,7 @@ rule initial = parse
   | '[' { T.L_square }
   | ']' { T.R_square }
 
-  | ';' { T.Semicolon }
+  | ';' { handle_semicolon (); T.Semicolon }
   | ',' { T.Comma }
   | '.' { T.Dot }
   | "->" { T.Arrow }
@@ -153,7 +167,7 @@ rule initial = parse
   | "int"     { T.Int }
   | "void"    { T.Void }
   | "struct"  { T.Struct }
-  | "typedef" { typedef_expect_old lexbuf }
+  | "typedef" { set_in_typedef true; T.Typedef }
 
   | "if"    { T.If}
   | "else"  { T.Else }
@@ -175,6 +189,7 @@ rule initial = parse
   | hex_num as n { hex_constant n lexbuf }
 
   | ident as name { 
+    update_last_ident name;
     if is_typename name 
     then T.TypeIdent (Symbol.symbol name) 
     else T.Ident (Symbol.symbol name)
@@ -216,31 +231,5 @@ and comment_line = parse
          }
   | _    { comment_line lexbuf }
 
-and typedef_expect_old = parse
-  | ident as oldname 
-         { 
-          typedef_expect_new oldname lexbuf
-         }
-  | ws+  { typedef_expect_old lexbuf }
-  | eof  { error lexbuf ~msg:"Reached EOF in typdef.";
-           T.Eof
-         }
-  | _    { error lexbuf
-           ~msg:(sprintf "Illegal character '%s' as the old typename" (text lexbuf));
-         initial lexbuf }
-
-and typedef_expect_new oldname = parse
-  | ident as newname 
-         { 
-           add_type newname;
-           T.Typedef (Symbol.symbol oldname, Symbol.symbol newname)
-         }
-  | ws+  { typedef_expect_new oldname lexbuf }
-  | eof  { error lexbuf ~msg:"Reached EOF in typdef.";
-           T.Eof
-         }
-  | _    { error lexbuf
-           ~msg:(sprintf "Illegal character '%s' as the new typename" (text lexbuf));
-         initial lexbuf }
 
 {}

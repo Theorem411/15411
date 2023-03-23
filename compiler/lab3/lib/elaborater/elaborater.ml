@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module Typ = Ast.T
 module Ast = Ast
 module AstElab = Aste
@@ -350,4 +350,4 @@ let add_main p : AstElab.program =
          })
   ]
   @ p
-;;
+;; *)

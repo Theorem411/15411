@@ -192,7 +192,7 @@ let regalloc (cmd : cmd_line_args) =
           (output |> Lab1_checkpoint.json_of_allocations |> Yojson.Basic.to_string))
 ;;
 
-let elaboration_step (ast, ast_h) cmd =
+(* let elaboration_step (ast, ast_h) cmd =
   say_if cmd.verbose (fun () -> "doing elaborating...");
   let elab_h : Aste.program = Elaborater.elaborate ast_h in
   let _elab_raw : Aste.program = Elaborater.elaborate ast in
@@ -201,7 +201,7 @@ let elaboration_step (ast, ast_h) cmd =
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
   elab_h, elab_raw
-;;
+;; *)
 
 (* The main driver for the compiler: runs each phase. *)
 let compile (cmd : cmd_line_args) : unit =
@@ -220,7 +220,7 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
 
   if cmd.dump_parsing then exit 0;
-  (* Elaborate *)
+  (* Elaborate
   (* let elab_h, elab = elaboration_step (ast, ast_h) cmd in *)
   let elab_h, elab_raw = elaboration_step (ast, ast_h) cmd in
   (*if cmd.dump_ast then ignore ((exit 0): unit); *)
@@ -269,7 +269,7 @@ let compile (cmd : cmd_line_args) : unit =
         let union = Translate.get_string_list translated in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");
-        List.iter ~f:output_x86_instr union)
+        List.iter ~f:output_x86_instr union) *)
 ;;
 
 let run (cmd : cmd_line_args) : unit =

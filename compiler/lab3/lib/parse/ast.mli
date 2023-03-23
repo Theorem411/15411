@@ -11,7 +11,7 @@
  *)
 
 open Core
-module T = Ctype
+module T = Ctype_l4
 
 type binop =
   | Plus

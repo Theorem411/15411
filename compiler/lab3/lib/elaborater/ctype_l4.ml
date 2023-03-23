@@ -41,7 +41,7 @@ let rec _t_tostring = function
 let rec _tau_tostring = function
   | RealTyp t -> _t_tostring t
   | FakeTyp s -> Symbol.name s
-  | Star tau -> sprintf "%s*" (_tau_tostring tau)
+  | Star tau -> sprintf "pointer type: (%s*)" (_tau_tostring tau)
   | Array tau -> sprintf "%s[]" (_tau_tostring tau)
   | Struct s -> sprintf "struct %s" (Symbol.name s)
 ;;

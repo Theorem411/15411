@@ -1,1 +1,8 @@
-typedef x y;
+typedef int y;
+typedef y* x;
+
+int main(){
+    y * z;
+    a * b;
+    return 1;
+}
