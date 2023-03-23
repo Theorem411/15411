@@ -1,16 +1,11 @@
-//test return 89
+//test error
+/* recursively defined struct */
 
-int fib(int n) {
-  int i;
-  int[] f;
-  f = alloc_array(int, n+1);
-  f[0] = 1;
-  f[1] = 1;
-  for (i = 2; i <= n; i += 1)
-    f[i] = f[i-1]+f[i-2];
-  return f[n];
-}
+struct list {
+  int head;
+  struct list tail;
+};
 
 int main () {
-  return fib(10);
+  return -1;
 }

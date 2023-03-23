@@ -335,6 +335,9 @@ field :
     | t = type_ ; ident = Ident; Semicolon {
       (ident, t)
     }
+    | t = type_ ; ident = TypeIdent; Semicolon {
+      (ident, t)
+    }
 
 field_list :
   | (* empty *)
