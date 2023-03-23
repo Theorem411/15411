@@ -179,7 +179,9 @@ let get_reg_map
   AS.Map.map op_col ~f:(Int.Map.find_exn col_x86op)
 ;;
 
-let reg_alloc program =
+let reg_alloc (fspace: AS.fspace) =
+  match fspace with
+  | { fdef = program; _ } ->  
   let op2col : (AS.operand * color) list = __regalloc program in
   let col2operand, mem_cell_count = assign_colors op2col in
   (* let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in *)
