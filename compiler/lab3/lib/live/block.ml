@@ -111,12 +111,12 @@ let get_ending_with_label (b : (int * A.instr) list) bl =
 
 let to_block (b : (int * A.instr) list) : block option =
   let _, label_instr = List.nth_exn b 0 in
-  let l =
     match label_instr with
-    | A.Lab l -> l
-    | _ -> failwith (sprintf "BLOCK\n{%s} is not a label" (A.format_instr label_instr))
-  in
-  get_ending_with_label b (BlockLabel l)
+    | A.Lab l -> get_ending_with_label b (BlockLabel l)
+    | _ -> None (* dead code? *)
+    (* | _ -> failwith (sprintf "BLOCK\n{%s} is not a label" (A.format_instr label_instr)) *)
+  (* in *)
+  (* get_ending_with_label b (BlockLabel l) *)
 ;;
 
 let of_block (f : A.fspace) : fspace_block =

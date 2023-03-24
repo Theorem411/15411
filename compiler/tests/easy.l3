@@ -1,19 +1,18 @@
-//test return 29
+//test return 0
 
-int fun (int a, int b) {
-    int c = (a >= b) ? a : b;
-    int d = (a >= b) ? b : a;
-    int sum = 0;
-    for (int i = d; i <= c; i++) {
-        sum = sum + i;           
+// Compute collatz stopping-times
+int collatz(int x) {
+    if(x == 1) {
+        return 0;
+    } else if(x % 2 == 0) {
+        return collatz(x / 2) + 1;
+    } else {
+        return collatz(3 * x + 1) + 1;
     }
-    return sum;
 }
 
 int main() {
-    int a = fun(1, 3); // 6
-    int b = fun(2, 3); // 5
-    int c = fun(2, 4); // 9
-    int d = fun(4, 5); // 9
-    return a + b + c + d;
+    return collatz(1);
+    int i = 6;
+    i++;
 }
