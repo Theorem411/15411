@@ -1,4 +1,6 @@
 open Core
+module A = Aste_l4
+
 type intop_pure =
   | Plus
   | Minus
@@ -15,13 +17,19 @@ type intop_cmp =
   | Eq
   | Neq
 
+type ptrop_cmp =
+  | PtrEq
+  | PtrNeq
+
 type intop_efkt =
   | Divided_by
   | Modulo
   | ShiftL
   | ShiftR
 
-type intop = Pure of intop_pure | Efkt of intop_efkt
+type intop =
+  | Pure of intop_pure
+  | Efkt of intop_efkt
 
 type unop =
   | BitNot (*bitwise not*)
@@ -53,9 +61,13 @@ type exp =
       }
   | CmpBinop of
       { op : intop_cmp
-      ; size : int
       ; lhs : exp
       ; rhs : exp
+      }
+  | CmpPointer of
+      { op : ptrop_cmp
+      ; lhs : ptraddr
+      ; rhs : ptraddr
       }
   | Unop of
       { op : unop
@@ -63,10 +75,9 @@ type exp =
       }
   | Call of
       { name : Symbol.t
-      ; args : exp list
+      ; args : (exp * int) list
       }
-  | Null
-  | Deref of exp
+  | Deref of ptraddr
   | ArrayAccess of arraddr
   | StructAccess of ptraddr
   | Alloc of int
@@ -74,19 +85,22 @@ type exp =
       { type_size : int
       ; len : exp
       }
-  | Address of ptraddr
-  | ArrayIdx of arraddr
-  and ptraddr = {
-    start : exp
-    ; off : int
-  } 
-  and arraddr = {
-    head : exp
-    ; idx : int
-    ; size : int
+  | PtrAddr of ptraddr
+  | ArrAddr of arraddr
+
+and arraddr =
+  { head : exp
+  ; idx : exp
+  ; size : int
+  ; extra : int
   }
 
-type address = Ptr of ptraddr | Arr of arraddr
+and ptraddr =
+  | Ptr of
+      { start : exp
+      ; off : int
+      }
+  | Null
 
 type stm =
   | Declare of
@@ -101,7 +115,7 @@ type stm =
       ; exp : exp
       }
   | Asop of
-      { addr : address
+      { dest : exp
       ; size : int
       ; op : intop option
       ; exp : exp
@@ -118,7 +132,7 @@ type stm =
   | Return of (exp * int) option
   | Nop
   | Seq of mstm * mstm
-  | NakedExpr of exp
+  | NakedExpr of (exp * int)
   | AssertFail
   | NakedCall of
       { name : Symbol.t
@@ -136,8 +150,15 @@ type glob =
 type mglob = glob Mark.t
 type program = mglob list
 
+val intop_pure : A.binop_pure -> intop_pure
+val intop_efkt : A.binop_efkt -> intop_efkt
+val intop_cmp : A.binop_cmp -> intop_cmp
+val ptrop_cmp : A.binop_cmp -> ptrop_cmp
+val unop : A.unop -> unop
+val ptraddr_exn : exp -> ptraddr
+val arraddr_exn : exp -> arraddr
+
 module Print : sig
-  val pp_exp : exp -> string
   val pp_exp : exp -> string
   val pp_stm : stm -> string
   val pp_mstm : mstm -> string

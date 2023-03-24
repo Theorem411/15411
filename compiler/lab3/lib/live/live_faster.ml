@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module B = Block
 module V = Graph.Vertex
 module SP = Singlepass
@@ -36,4 +36,4 @@ let mk_liveness_fspace (fspace : B.fspace_block) =
 (*_ the final mk_graph_fspace function *)
 module VertexTable = Hashtbl.Make (V)
 let mk_graph_fspace (fspace : B.fspace_block) = failwith "not implemented"
-;;
+;; *)
