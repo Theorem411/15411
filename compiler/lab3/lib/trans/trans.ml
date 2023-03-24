@@ -243,7 +243,8 @@ and tr_stm_while genv env (cond : A.mexp) (body : A.mstm) =
   [ [ T.Label l3 ]
   ; T.Goto l1 :: loop_body_code
   ; T.Label l2 :: loop_guard_code
-  ; [ T.Label l1 ]
+  ; [ T.Label l1;  T.Goto l1]
+  (* ; [ T.Label l1 ] *)
   ]
   |> List.concat
 ;;
