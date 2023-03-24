@@ -5,14 +5,7 @@ module AS = Assem
 module IntTable = Hashtbl.Make (Int)
 
 let dump_liveness : bool ref = ref false
-
-(* let print_info =
-  if !dump_liveness
-  then (
-    prerr_endline)
-  else (
-    prerr_endline)
-;; *)
+(* let print_info = if !dump_liveness then prerr_endline else prerr_endline *)
 
 let print_info _ = ();;
 
@@ -42,6 +35,13 @@ let get_init (_ : int) : live_t * live_t =
     es;
   print_string "]"
 ;; *)
+
+let op_to_v_exn (op : AS.operand) : V.t =
+  match V.op_to_vertex_opt op with
+  | Some v -> v
+  | None -> failwith "NONE is given to op_to_v"
+;;
+
 (*_ return def set and uses set  and adds the function params to the stack if*)
 let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   let op_to_vset (op : AS.operand) : V.Set.t =
@@ -65,7 +65,8 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   | AS.Lab _ -> V.Set.empty, V.Set.empty
   | AS.Cmp (o1, o2) -> V.Set.empty, V.Set.union_list [ op_to_vset o1; op_to_vset o2 ]
   | AS.AssertFail -> V.Set.empty, V.Set.empty
-  | AS.Set { src; _ } -> V.Set.union_list (List.map ~f:op_to_vset [ src; AS.Reg AS.EAX;]), V.Set.empty
+  | AS.Set { src; _ } ->
+    V.Set.union_list (List.map ~f:op_to_vset [ src; AS.Reg AS.EAX ]), V.Set.empty
   (* defines a lot of registers *)
   | AS.Call { args_in_regs; _ } ->
     ( V.Set.of_list
@@ -75,6 +76,7 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     , V.Set.of_list (List.map ~f:(fun r -> V.R r) args_in_regs) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->
+    (* ADD REGISTERS TO USE. *)
     V.Set.of_list (List.map ~f:(fun t -> V.T t) stack_args), V.Set.empty
 ;;
 
@@ -107,17 +109,21 @@ let print_table (table : t) : string =
        keys)
 ;;
 
-let initialize_blocks table (fargs : Temp.t list) (x : B.block)  =
+let initialize_blocks table (fargs : Temp.t list) (x : B.block) =
   let b = x.block in
   List.iter b ~f:(fun (i, instr) ->
       let d, u = def_n_use instr in
       (* of load from stack add temp args to define *)
-      let d =
+      let d, u =
         match instr with
         | AS.LoadFromStack _ ->
           let fargs_def = V.Set.of_list (List.map ~f:(fun t -> V.T t) fargs) in
-          V.Set.union fargs_def d
-        | _ -> d
+          let u =
+            V.Set.of_list
+              (List.mapi ~f:(fun i _ -> op_to_v_exn (AS.Reg (AS.arg_i_to_reg i))) fargs)
+          in
+          V.Set.union fargs_def d, u
+        | _ -> d, u
       in
       let record = { d; u; lin = V.Set.empty; lout = V.Set.empty; instr } in
       Hashtbl.add_exn table ~key:i ~data:record)
@@ -125,7 +131,7 @@ let initialize_blocks table (fargs : Temp.t list) (x : B.block)  =
 
 let init_table (f : B.fspace_block) =
   let table : t = IntTable.create () in
-  let helper = initialize_blocks table (f.args) in
+  let helper = initialize_blocks table f.args in
   List.iter f.fdef_block ~f:helper;
   print_info (print_table table);
   table

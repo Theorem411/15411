@@ -1,18 +1,25 @@
-//test return 0
+//test return 210605
 
-// Compute collatz stopping-times
-int collatz(int x) {
-    if(x == 1) {
-        return 0;
-    } else if(x % 2 == 0) {
-        return collatz(x / 2) + 1;
-    } else {
-        return collatz(3 * x + 1) + 1;
-    }
+int do_op(int n) {
+  return (n << 3) ^ (n >> 3) + 55;
 }
 
+int level1(int n) {
+  int i = 0; int r = 55;
+  while ( i < n ) {
+    r = do_op(n + i); i++;
+  }
+  return r;
+}
+
+
 int main() {
-    return collatz(1);
-    int i = 6;
+  int i = 0;
+  int n = 10;
+  int r = 200;
+  while ( i < n ) {
+    r = level1(r);
     i++;
+  }
+  return r;
 }
