@@ -274,7 +274,8 @@ let all_regs = true
 let all_available_regs =
   if all_regs
   then
-    [ (* AS.EAX ; AS.EDX *)
+    [ 
+      AS.EAX ; AS.EDX ;
       (* ;  *)
       (* AS.EDI ; *)
       (* AS.EBX ; *)
