@@ -1,6 +1,9 @@
 //test return 120
 
 int fac(int n) {
+  for(int i = 1; i < 3; i++){
+    1;
+  }
   int k;
   k = 1;
   while (n > 1) {

@@ -240,8 +240,7 @@ let compile (cmd : cmd_line_args) : unit =
   let assem = Cogen.cogen ir in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
   (* Testing blocks *)
-  say_if cmd.dump_assem (fun () ->
-  Block.pp_all_blocks (Block.blocks_former assem));
+  say_if cmd.dump_assem (fun () -> Block.pp_all_blocks (Block.blocks_former assem));
   (* Testing blocks *)
   match cmd.emit with
   (* Output: abstract 3-address assem *)
