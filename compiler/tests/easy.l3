@@ -1,18 +1,19 @@
-//test return 120
+//test return 29
 
-int fac(int n) {
-  for(int i = 1; i < 3; i++){
-    1;
-  }
-  int k;
-  k = 1;
-  while (n > 1) {
-    k *= n;
-    n -= 1;
-  }
-  return k;
+int fun (int a, int b) {
+    int c = (a >= b) ? a : b;
+    int d = (a >= b) ? b : a;
+    int sum = 0;
+    for (int i = d; i <= c; i++) {
+        sum = sum + i;           
+    }
+    return sum;
 }
 
-int main () {
-  return fac(5);
+int main() {
+    int a = fun(1, 3); // 6
+    int b = fun(2, 3); // 5
+    int c = fun(2, 4); // 9
+    int d = fun(4, 5); // 9
+    return a + b + c + d;
 }

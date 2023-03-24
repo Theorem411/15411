@@ -183,6 +183,7 @@ let get_reg_map
 
 (* let print_reg_map (reg_map:X86.operand AS.Map.t) = AS.Map.iteri ~f:(fun ~key ~data -> prerr_endline (sprintf "%s -> %s" (AS.format_operand key) (X86.format_operand data))) reg_map ;; *)
 
+
 let reg_alloc (fspace : AS.fspace) =
   let op2col : (AS.operand * color) list = __regalloc fspace in
   let col2operand, mem_cell_count = assign_colors op2col in

@@ -4,6 +4,18 @@ module V = Graph.Vertex
 module AS = Assem
 module IntTable = Hashtbl.Make (Int)
 
+let dump_liveness : bool ref = ref false
+
+(* let print_info =
+  if !dump_liveness
+  then (
+    prerr_endline)
+  else (
+    prerr_endline)
+;; *)
+
+let print_info _ = ();;
+
 type ht_entry =
   { d : V.Set.t
   ; u : V.Set.t
@@ -30,7 +42,7 @@ let get_init (_ : int) : live_t * live_t =
     es;
   print_string "]"
 ;; *)
-(*_ return def set and uses set *)
+(*_ return def set and uses set  and adds the function params to the stack if*)
 let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   let op_to_vset (op : AS.operand) : V.Set.t =
     match V.op_to_vertex_opt op with
@@ -53,7 +65,7 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   | AS.Lab _ -> V.Set.empty, V.Set.empty
   | AS.Cmp (o1, o2) -> V.Set.empty, V.Set.union_list [ op_to_vset o1; op_to_vset o2 ]
   | AS.AssertFail -> V.Set.empty, V.Set.empty
-  | AS.Set { src; _ } -> op_to_vset src, V.Set.empty
+  | AS.Set { src; _ } -> V.Set.union_list (List.map ~f:op_to_vset [ src; AS.Reg AS.EAX;]), V.Set.empty
   (* defines a lot of registers *)
   | AS.Call { args_in_regs; _ } ->
     ( V.Set.of_list
@@ -62,17 +74,17 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
            [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D; AS.R10D; AS.R11D ])
     , V.Set.of_list (List.map ~f:(fun r -> V.R r) args_in_regs) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
-  | AS.LoadFromStack args ->
-    V.Set.of_list (List.map ~f:(fun t -> V.T t) args), V.Set.empty
+  | AS.LoadFromStack stack_args ->
+    V.Set.of_list (List.map ~f:(fun t -> V.T t) stack_args), V.Set.empty
 ;;
 
-(* let format_v_set s =
+let format_v_set s =
   String.concat ~sep:"," (List.map (V.Set.to_list s) ~f:(fun v -> V._to_string v))
-;; *)
+;;
 
-(* let format_table_entry (k : int) (e : ht_entry) : string =
-  let instr_raw = (AS.format_instr e.instr) in  
-  let instr = String.slice instr_raw 0 ((String.length instr_raw)-1) in 
+let format_table_entry (k : int) (e : ht_entry) : string =
+  let instr_raw = AS.format_instr e.instr in
+  let instr = String.slice instr_raw 0 (String.length instr_raw - 1) in
   sprintf
     "%d -> [%s] : d={%s}, u = {%s}, lin={%s}, lout={%s} "
     k
@@ -81,11 +93,11 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     (format_v_set e.u)
     (format_v_set e.lin)
     (format_v_set e.lout)
-;; *)
+;;
 
-(* let print_table (table : t) : string =
+let print_table (table : t) : string =
   let keys = IntTable.keys table in
-  let keys = List.sort ~compare:Int.compare keys in 
+  let keys = List.sort ~compare:Int.compare keys in
   String.concat
     ~sep:"\n"
     (List.map
@@ -93,23 +105,29 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
          let v = IntTable.find_exn table k in
          format_table_entry k v)
        keys)
-;; *)
+;;
 
-
-
-let initialize_blocks table (x : B.block) =
+let initialize_blocks table (fargs : Temp.t list) (x : B.block)  =
   let b = x.block in
   List.iter b ~f:(fun (i, instr) ->
       let d, u = def_n_use instr in
+      (* of load from stack add temp args to define *)
+      let d =
+        match instr with
+        | AS.LoadFromStack _ ->
+          let fargs_def = V.Set.of_list (List.map ~f:(fun t -> V.T t) fargs) in
+          V.Set.union fargs_def d
+        | _ -> d
+      in
       let record = { d; u; lin = V.Set.empty; lout = V.Set.empty; instr } in
       Hashtbl.add_exn table ~key:i ~data:record)
 ;;
 
 let init_table (f : B.fspace_block) =
   let table : t = IntTable.create () in
-  let helper = initialize_blocks table in
+  let helper = initialize_blocks table (f.args) in
   List.iter f.fdef_block ~f:helper;
-  (* prerr_endline (print_table table); *)
+  print_info (print_table table);
   table
 ;;
 
@@ -172,15 +190,15 @@ let handle_instrs
 let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.t)
     : V.Set.t
   =
-  (* let () = prerr_endline ("doing now: " ^ B.format_block b) in
+  let () = print_info ("doing now: " ^ B.format_block b) in
   let () =
-    prerr_endline
+    print_info
       ("input:["
       ^ String.concat
           ~sep:","
           (List.map (V.Set.to_list input) ~f:(fun v -> V._to_string v))
       ^ "]")
-  in *)
+  in
   (* handling arguments *)
   let args, black_list =
     match b.label with
@@ -190,13 +208,11 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
   in
   let out_raw = handle_instrs table (b.block, args) input in
   let out = V.Set.diff out_raw black_list in
-  (* let () =
-    prerr_endline
-      ("output:["
-      ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
-      ^ "]\n\n\n\n\n")
-  in *)
-  (* prerr_endline (print_table table); *)
+  print_info
+    ("output:["
+    ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
+    ^ "]\n\n\n\n\n");
+  print_info (print_table table);
   out
 ;;
 
@@ -223,14 +239,23 @@ let get_all_vertices (b : B.fspace_block) =
 ;;
 
 let get_edges (table : t) : (V.t * V.t) list =
-  let f ~key:_ ~data:info acc =
+  let f ~key ~data:info acc =
     let d, lout, lin =
       V.Set.to_list info.d, V.Set.to_list info.lout, V.Set.to_list info.lin
     in
     let cartesian l l' =
       List.concat (List.map ~f:(fun e -> List.map ~f:(fun e' -> e, e') l') l)
     in
-    List.concat [ cartesian d lout; cartesian d lin; acc ]
+    let out_ed, in_ed = cartesian d lout, cartesian d lin in
+    print_info
+      (sprintf
+         "[%d] edges: [%s]"
+         key
+         (String.concat
+            ~sep:","
+            (List.map (out_ed @ in_ed) ~f:(fun (a, b) ->
+                 V._to_string a ^ "-" ^ V._to_string b))));
+    List.concat [ out_ed; in_ed; acc ]
   in
   let init = ([] : (V.t * V.t) list) in
   IntTable.fold table ~init ~f

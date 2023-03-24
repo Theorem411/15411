@@ -147,16 +147,17 @@ let cogen_block (tprog : T.program_block) : A.program_block =
 ;; *)
 let munch_fspace ({ fname; args; fdef } : T.fspace) : A.fspace =
   let munch_prolog args =
-    let map_args_reg i a =
+    (* let map_args_reg i a =
       if i < 6
       then Some (A.Mov { src = A.Temp a; dest = A.Reg (A.arg_i_to_reg i) })
       else None
-    in
-    let mv_args_reg = List.filter_mapi args ~f:map_args_reg in
+    in *)
+    (* let mv_args_reg = List.filter_mapi args ~f:map_args_reg in *)
     let args_stack =
       List.filter_mapi args ~f:(fun i a -> if i < 6 then None else Some a)
     in
-    mv_args_reg @ [ A.LoadFromStack args_stack ]
+    (* mv_args_reg @ [ A.LoadFromStack args_stack ] *)
+    [ A.LoadFromStack args_stack ]
   in
   let prolog : A.instr list = munch_prolog args in
   { fname; args; fdef = prolog @ List.concat_map ~f:munch_stm fdef }

@@ -87,6 +87,7 @@ type cmd_line_args =
   ; dump_ast : bool
   ; dump_ir : bool
   ; dump_assem : bool
+  ; dump_liveness : bool
   ; typecheck_only : bool
   ; regalloc_only : bool
   ; emit : Emit.t
@@ -132,6 +133,9 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   and dump_assem =
     let doc = "If present, print the final assembly." in
     flag (Arg.info [ "dump-assem" ] ~doc)
+  and dump_liveness =
+    let doc = "If present, print the process of liveness (very long)." in
+    flag (Arg.info [ "dump-live" ] ~doc)
   and typecheck_only =
     let doc = "If present, exit after typechecking." in
     flag (Arg.info [ "t"; "typecheck-only" ] ~doc)
@@ -165,6 +169,7 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   ; dump_ast
   ; dump_ir
   ; dump_assem
+  ; dump_liveness
   ; typecheck_only
   ; regalloc_only
   ; emit
@@ -259,6 +264,7 @@ let compile (cmd : cmd_line_args) : unit =
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
     Out_channel.with_file file ~f:(fun out ->
         let output_x86_instr instr = Out_channel.fprintf out "%s\n" (X86.format instr) in
+        if cmd.dump_liveness then Singlepass.dump_liveness := true;
         let translated = Translate.translate assem in
         let union = Translate.get_string_list translated in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
