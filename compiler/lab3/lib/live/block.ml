@@ -100,11 +100,11 @@ let get_ending_with_label (b : (int * A.instr) list) bl =
             { label = bl; jump = JCon { jt = cjmp.l; jf = goto_l }; block = b }
           (* not conditional *)
           | _ -> { label = bl; jump = JUncon goto_l; block = b })
-      | _ ->
-        failwith
+      | _ -> { label = bl; jump = JRet; block = b }
+        (* failwith
           (sprintf
              "the last instruction is not jump: [%s]"
-             (A.format_instr last_jmp_instr))
+             (A.format_instr last_jmp_instr)) *)
     in
     Some res)
 ;;
@@ -128,8 +128,9 @@ let of_block (f : A.fspace) : fspace_block =
         then true
         else (
           match List.nth_exn f.fdef (i - 1), instr with
-          (* does not filter in only if it is a jump after return *)
+          (* does not filter in only if it is a jump after return or double returns *)
           | A.Ret, A.Jmp _ -> false
+          | A.Ret, A.Ret -> false
           | _ -> true))
   in
   let enum_fdef = List.mapi ~f:(fun i instr -> i, instr) fdef_filtered in

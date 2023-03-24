@@ -1,14 +1,26 @@
-//test return 34
-/* Recursive Fibonacci */
+//test return 128
 
-int fib (int n) {
-  if (n < 0) return 1/0;	/* raise exception on illegal call */
-  if (n == 0 || n == 1)
-    return 1;
-  else
-    return fib(n-1)+fib(n-2);
+// testing void return
+
+void nop() {
 }
 
-int main () {
-  return fib(8);
+void raise() {
+  1/0;
+}
+
+void abort() {
+  assert(false);
+  return;
+}
+
+void okay() {
+  assert(true);
+  return;
+}
+
+int main() {
+  nop();
+  if (true) okay();
+  return 128;
 }

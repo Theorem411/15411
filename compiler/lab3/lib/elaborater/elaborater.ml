@@ -187,6 +187,10 @@ let elab_assign_with_op
   AstElab.Assign { var = v; exp = copy_mark m_s expr_new }
 ;;
 
+let append_empty_return (mstm : AstElab.mstm) : AstElab.mstm =
+  copy_mark mstm (AstElab.Seq (mstm, copy_mark mstm (AstElab.Return None)))
+;;
+
 let elab_assign m_s =
   let s = Mark.data m_s in
   match s with
@@ -333,7 +337,11 @@ and elaborate' (s : Ast.mgdecl) : AstElab.mglob =
         { fsig = to_fsig params ret_type
         ; f = name
         ; args = to_arg_list params
-        ; fdef = elaborate_stmts [ body ]
+        (* Adding fake return for option function *)
+        ; fdef =
+            (match ret_type with
+            | Some _ -> elaborate_stmts [ body ]
+            | None -> append_empty_return (elaborate_stmts [ body ]))
         }
   in
   copy_mark s res
