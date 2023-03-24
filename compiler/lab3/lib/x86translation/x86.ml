@@ -269,20 +269,26 @@ let caller_saved oper =
   | _ -> raise (Failure "caller_saved can be applied only on Reg reg")
 ;;
 
+let all_regs = true
+
 let all_available_regs =
-  [ AS.EAX
-  ; AS.EDX
-  ; AS.EDI
-  ; AS.ESI (* ; AS.ECX removed for now because of shift operators *)
-  ; AS.R8D
-  ; AS.R9D
-  ; AS.R10D
-  ; AS.EBX
-    (* AS.R12D
-  ; AS.R13D
-  ; AS.R14D
-  ; AS.R15D *)
-  ]
+  if all_regs
+  then
+    [ (* AS.EAX ; AS.EDX *)
+      (* ;  *)
+      (* AS.EDI ; *)
+      (* AS.EBX ; *)
+      (* ;  *)
+      (* AS.ESI ; AS.ECX removed for now because of shift operators *)
+      AS.R8D
+    ; AS.R9D
+    ; AS.R10D 
+    ; AS.R12D
+    ; AS.R13D
+    ; AS.R14D
+    ; AS.R15D
+    ]
+  else []
 ;;
 
 let is_reg = function
