@@ -1,9 +1,15 @@
-//test return 0
-// decls can have different variable names
-int foo (int y, bool z);
+//test return 120
 
-int foo (int x, bool y) { if (y) return x; else return 10; }
+int fac(int n) {
+  int k;
+  k = 1;
+  while (n > 1) {
+    k *= n;
+    n -= 1;
+  }
+  return k;
+}
 
 int main () {
-    return foo (0, true);
+  return fac(5);
 }

@@ -66,11 +66,11 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     V.Set.of_list (List.map ~f:(fun t -> V.T t) args), V.Set.empty
 ;;
 
-let format_v_set s =
+(* let format_v_set s =
   String.concat ~sep:"," (List.map (V.Set.to_list s) ~f:(fun v -> V._to_string v))
-;;
+;; *)
 
-let format_table_entry (k : int) (e : ht_entry) : string =
+(* let format_table_entry (k : int) (e : ht_entry) : string =
   let instr_raw = (AS.format_instr e.instr) in  
   let instr = String.slice instr_raw 0 ((String.length instr_raw)-1) in 
   sprintf
@@ -81,9 +81,9 @@ let format_table_entry (k : int) (e : ht_entry) : string =
     (format_v_set e.u)
     (format_v_set e.lin)
     (format_v_set e.lout)
-;;
+;; *)
 
-let print_table (table : t) : string =
+(* let print_table (table : t) : string =
   let keys = IntTable.keys table in
   let keys = List.sort ~compare:Int.compare keys in 
   String.concat
@@ -93,7 +93,9 @@ let print_table (table : t) : string =
          let v = IntTable.find_exn table k in
          format_table_entry k v)
        keys)
-;;
+;; *)
+
+
 
 let initialize_blocks table (x : B.block) =
   let b = x.block in
@@ -107,7 +109,7 @@ let init_table (f : B.fspace_block) =
   let table : t = IntTable.create () in
   let helper = initialize_blocks table in
   List.iter f.fdef_block ~f:helper;
-  prerr_endline (print_table table);
+  (* prerr_endline (print_table table); *)
   table
 ;;
 
@@ -170,7 +172,7 @@ let handle_instrs
 let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.t)
     : V.Set.t
   =
-  let () = prerr_endline ("doing now: " ^ B.format_block b) in
+  (* let () = prerr_endline ("doing now: " ^ B.format_block b) in
   let () =
     prerr_endline
       ("input:["
@@ -178,7 +180,7 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
           ~sep:","
           (List.map (V.Set.to_list input) ~f:(fun v -> V._to_string v))
       ^ "]")
-  in
+  in *)
   (* handling arguments *)
   let args, black_list =
     match b.label with
@@ -188,13 +190,13 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
   in
   let out_raw = handle_instrs table (b.block, args) input in
   let out = V.Set.diff out_raw black_list in
-  let () =
+  (* let () =
     prerr_endline
       ("output:["
       ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
       ^ "]\n\n\n\n\n")
-  in
-  prerr_endline (print_table table);
+  in *)
+  (* prerr_endline (print_table table); *)
   out
 ;;
 

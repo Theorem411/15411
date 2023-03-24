@@ -120,7 +120,6 @@ let to_block (b : (int * A.instr) list) : block option =
 ;;
 
 let of_block (f : A.fspace) : fspace_block =
-  let () = printf "ntss %s:" (Symbol.name f.fname) in
   (* remove jumps right after returns *)
   let fdef_filtered =
     List.filteri f.fdef ~f:(fun i instr ->
