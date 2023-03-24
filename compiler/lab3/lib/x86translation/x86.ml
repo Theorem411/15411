@@ -124,7 +124,9 @@ let format_operation = function
   | Sal -> "sal"
   | Sar -> "sar"
   | Call -> "call"
-  (* | Sete -> "sete"
+;;
+
+(* | Sete -> "sete"
   | Setne -> "setne"
   | Setl -> "setl"
   | Setle -> "setle"
@@ -133,8 +135,7 @@ let format_operation = function
   | Jz -> "jz"
   | Je -> "je"
   | Jmp -> "jmp" *)
-  (* | _ -> raise (Failure "no such operation is allowed (yet).") *)
-;;
+(* | _ -> raise (Failure "no such operation is allowed (yet).") *)
 
 let format_jump j =
   match j with
@@ -226,7 +227,7 @@ let format = function
   | Call fname -> sprintf "\tcall\t%s" fname
 ;;
 
-let format_list l = List.map ~f: format l |> String.concat ~sep:"\n";;
+let format_list l = List.map ~f:format l |> String.concat ~sep:"\n"
 
 let pure_to_opr = function
   | AS.Add -> Add
@@ -269,14 +270,14 @@ let caller_saved oper =
 ;;
 
 let all_available_regs =
-  [ (* AS.EAX *)
-    (* AS.EDX *)
-    (* AS.EDI
+  [ AS.EAX
+  ; AS.EDX
+  ; AS.EDI
   ; AS.ESI (* ; AS.ECX removed for now because of shift operators *)
   ; AS.R8D
   ; AS.R9D
   ; AS.R10D
-  ; AS.EBX *)
+  ; AS.EBX
     (* AS.R12D
   ; AS.R13D
   ; AS.R14D

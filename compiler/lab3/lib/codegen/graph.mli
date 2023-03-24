@@ -13,12 +13,13 @@ module Vertex : sig
    include Comparable.S with type t := t
    val op_to_vertex_opt : AS.operand -> t option
    val print : t -> unit
+   val _to_string: t -> string 
 end
 (*_ the graph type *)
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 (*_ graph utilities *)
 val to_list: t -> (Vertex.t * Vertex.t list) list
-(* val coloring: t -> (Vertex.t * int) list *)
+val coloring: t -> (Vertex.t * int) list
 (*_ liveness *)
 (* val mk_interfere_graph : AS.instr list -> t *)
 

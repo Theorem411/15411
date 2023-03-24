@@ -2,7 +2,7 @@ open Core
 module AS = Assem
 module V = Graph.Vertex
 
-let default_val = true
+let default_val = false
 
 type color = int [@@deriving compare, equal, sexp]
 
@@ -14,13 +14,7 @@ let get_all_addressable_line instr =
     | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
     | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
     | Unop u -> [ u.dest ]
-    | Jmp _
-    | Cjmp _
-    | Lab _
-    | AssertFail
-    | AS.Directive _
-    | AS.Comment _
-    | Ret -> []
+    | Jmp _ | Cjmp _ | Lab _ | AssertFail | AS.Directive _ | AS.Comment _ | Ret -> []
     | LoadFromStack t -> templist_to_operand t
     | Cmp (l, r) -> [ l; r ]
     | Set { src; _ } -> [ src; AS.Reg EAX ]
@@ -56,17 +50,25 @@ let __coloring_debug (program : AS.instr list) : (V.t * color) list =
 ;;
 
 (*_ COLORING USING REG ALLOCATOR *)
-let __coloring ?(debug_mode_translate = default_val) (program : AS.instr list)
+let __coloring ?(debug_mode_translate = default_val) (fspace : AS.fspace)
     : (V.t * color) list
   =
-  (* if debug_mode_translate
+  match fspace with
+  | { fdef = program; _ } ->
+    if debug_mode_translate
+    then __coloring_debug program
+    else (
+      let graph = Live.mk_graph_fspace (Block.of_block fspace) in
+      Graph.coloring graph)
+;;
+
+(* pattern *)
+(* if debug_mode_translate
   then __coloring_debug program
   else (
     let graph = Live.mk_graph program in
     (* let graph = Graph.mk_interfere_graph program in *)
     Graph.coloring graph) *)
-  if debug_mode_translate then __coloring_debug program else __coloring_debug program
-;;
 
 let coloring_adapter : V.t * color -> AS.operand * color = function
   | V.T t, color -> AS.Temp t, color
@@ -77,8 +79,8 @@ let coloring_adapter : V.t * color -> AS.operand * color = function
 
 (* | _ -> raise (Failure "Not now, brah (coloring adapter getting not eax or edx)") *)
 
-let __regalloc (l : AS.instr list) : (AS.operand * color) list =
-  List.map (__coloring l) ~f:coloring_adapter
+let __regalloc (fspace : AS.fspace) : (AS.operand * color) list =
+  List.map (__coloring fspace) ~f:coloring_adapter
 ;;
 
 let __compare_color = compare_color
@@ -179,17 +181,18 @@ let get_reg_map
   AS.Map.map op_col ~f:(Int.Map.find_exn col_x86op)
 ;;
 
-let reg_alloc (fspace: AS.fspace) =
-  match fspace with
-  | { fdef = program; _ } ->  
-  let op2col : (AS.operand * color) list = __regalloc program in
+let print_reg_map (reg_map:X86.operand AS.Map.t) = AS.Map.iteri ~f:(fun ~key ~data -> prerr_endline (sprintf "%s -> %s" (AS.format_operand key) (X86.format_operand data))) reg_map ;;
+
+let reg_alloc (fspace : AS.fspace) =
+  let op2col : (AS.operand * color) list = __regalloc fspace in
   let col2operand, mem_cell_count = assign_colors op2col in
   (* let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in *)
   let reg_map = get_reg_map op2col col2operand in
+  let () = print_reg_map reg_map in 
   reg_map, mem_cell_count
 ;;
 
-let get_max_call_count fdef =
+(* let get_max_call_count fdef =
   let only_calls =
     List.filter_map
       ~f:(fun i ->
@@ -199,7 +202,7 @@ let get_max_call_count fdef =
       fdef
   in
   Option.value ~default:0 (List.max_elt only_calls ~compare:Int.compare)
-;;
+;; *)
 
 let do_arg_moves (reg_map : X86.operand AS.Map.t) (args : AS.operand list) total_size =
   let reg_args, stack_args = List.take args 6, List.drop args 6 in
@@ -232,19 +235,16 @@ let do_arg_moves (reg_map : X86.operand AS.Map.t) (args : AS.operand list) total
 
 (* arg[7 + i] <- rsp has some size so recalculate *)
 
-let get_function_be (fname, __args, fdef) reg_map mem_cell_count =
+let get_function_be (fname, __args, _) reg_map mem_cell_count =
   let args = templist_to_operand __args in
-  let mc = get_max_call_count fdef in
   let local_count = mem_cell_count in
   let cee_regs, cee_start, cee_finish = callee_handle reg_map in
   (* let cee_count = List.length cee_regs in  *)
-  let n = local_count + mc in
+  let n = local_count in
   (*active size of frame (local and arg pushes)*)
   let m = n + List.length cee_regs in
   (* total size of frame (added regs)*)
-  let (__sub_count, _) : int * int =
-    if m % 2 = 0 then n * 8, mc else (n * 8) + 8, mc + 1
-  in
+  let __sub_count : int = if m % 2 = 0 then n * 8 else (n * 8) + 8 in
   let sub_count = Int32.of_int_exn __sub_count in
   let total_size = __sub_count + List.length cee_regs in
   let locals = do_arg_moves reg_map args total_size in

@@ -61,6 +61,7 @@ let to_list (graph : t) : (Vertex.t * Vertex.t list) list =
 (*_ 
     graph coloring 
   *)
+  *)
 type color_palette_t = int option Vertex.Map.t [@@deriving sexp]
 
 (*_ 
@@ -183,16 +184,16 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
       let color_palette' = Vertex.Map.update color_palette v ~f:(fun _ -> Some c_new) in
       (v, c_new) :: coloring_aux graph color_palette' vs)
 ;;
-
+(*
 type debug_2 = (Vertex.t * Vertex.t) list [@@deriving sexp]
 type debug_3 = Vertex.t list [@@deriving sexp]
-
+*)
 let coloring (graph : t) : (Vertex.t * int) list =
   let vertex_order = ordering graph in
   let color_palette = precolor graph in
   coloring_aux graph color_palette vertex_order
 ;;
-
+(*_
 (*_ Liveness type: liveinfo_t
     *)
 type liveinfo_t = Vertex.Set.t * Vertex.Set.t [@@deriving sexp]

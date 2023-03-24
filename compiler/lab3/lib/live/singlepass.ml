@@ -97,8 +97,10 @@ let handle_instrs
     : V.Set.t
   =
   let n = List.length instrs in
+  (* let () = prerr_endline ("n = " ^ Int.to_string n) in  *)
   let indicies = List.map ~f:(fun (i, _) -> i) instrs in
   let first_index = List.nth_exn indicies 0 in
+  let last_index = first_index + n - 1 in 
   (* gets current live_in and live_out, updates them accordingly *)
   let (live_in, live_out) : live_t * live_t = get_init n in
   let liveness_aux (i, _) () =
@@ -111,7 +113,8 @@ let handle_instrs
     in
     (* let all_succs = succ i in *)
     let live_out_i =
-      match i = n - 1 with
+      (* let () = prerr_endline ("getting liveout = " ^ Int.to_string i ^ " where last_index is " ^ Int.to_string (last_index) ) in  *)
+      match i = last_index with
       | true -> input
       | false -> IntTable.find_exn live_in (i + 1)
     in
@@ -137,6 +140,8 @@ let handle_instrs
 let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.t)
     : V.Set.t
   =
+  (* let () = prerr_endline ("doing now: " ^ (B.format_block b)) in  *)
+  (* let () = prerr_endline ("input:[" ^ (String.concat ~sep: "," (List.map (V.Set.to_list input) ~f:(fun v -> V._to_string v))) ^ "]") in *)
   (* handling arguments *)
   let args =
     match b.label with

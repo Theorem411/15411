@@ -102,9 +102,20 @@ let to_block (b : (int * A.instr) list) : block =
   get_ending_with_label b (BlockLabel l)
 ;;
 
+
 let of_block (f : A.fspace) : fspace_block =
   let () = printf "ntss %s:" (Symbol.name f.fname) in
-  let enum_fdef = List.mapi ~f:(fun i instr -> i, instr) f.fdef in
+    (* remove jumps right after returns *)
+    let fdef_filtered =
+      List.filteri f.fdef ~f:(fun i instr ->
+          if i = 0
+          then true
+          else (
+            match List.nth_exn f.fdef (i - 1), instr with
+            (* does not filter in only if it is a jump after return *)
+            | A.Ret, (A.Jmp _) -> false
+            | _ -> true)) in 
+  let enum_fdef = List.mapi ~f:(fun i instr -> i, instr) fdef_filtered in
   let blocks = List.group ~break:is_jump enum_fdef in
   let first_block =
     get_ending_with_label (List.nth_exn blocks 0) (FunName (f.fname, f.args))
