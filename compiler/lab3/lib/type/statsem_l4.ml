@@ -162,11 +162,7 @@ let type_unify_exn t1 t2 = if type_unify t1 t2 then () else raise TypeError
   2. static_semantic_stmt : check stmt level expected return types, collect initialized variables, and return transformed ast'
   3. static_semantic_exp_syn :
   4. static_semantic_exp_chk : *)
-let rec static_semantic_exp_syn
-  (mexp : A.mexp)
-  (exp_ctx : exp_ctx)
-  : exp_res
-  =
+let rec static_semantic_exp_syn (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
   match Mark.data mexp with
   | A.True -> { res = A'.True; typ = T.Bool; used = SS.empty }
   | A.False -> { res = A'.False; typ = T.Bool; used = SS.empty }
@@ -228,8 +224,16 @@ let rec static_semantic_exp_syn
        ; used
        }
      | 8, 8 ->
-       let laddr = (match Mark.data lhs with | A.Null -> A'.Null | _ -> A'.Ptr {start=lhs'; off=0}) in
-       let raddr = (match Mark.data rhs with | A.Null -> A'.Null | _ -> A'.Ptr {start=rhs'; off=0}) in
+       let laddr =
+         match Mark.data lhs with
+         | A.Null -> A'.Null
+         | _ -> A'.Ptr { start = lhs'; off = 0 }
+       in
+       let raddr =
+         match Mark.data rhs with
+         | A.Null -> A'.Null
+         | _ -> A'.Ptr { start = rhs'; off = 0 }
+       in
        type_unify_exn tl tr;
        is_ptraddr_exn tl;
        is_ptraddr_exn tr;
@@ -247,32 +251,75 @@ let rec static_semantic_exp_syn
      | A.BitNot ->
        type_unify_exn typ T.Int;
        { res = A'.Unop { op = A'.unop op; operand = res }; typ = T.Int; used })
-  | A.Call { name; args } -> 
+  | A.Call { name; args } ->
     (*_ check function name: not variable names *)
     let () = if SM.mem exp_ctx.vdec name then raise TypeError else () in
     (*_ check function signature: return type not none *)
     let tlist, rettyp = SM.find_exn exp_ctx.fdec name in
-    let rett = (match rettyp with | None -> raise TypeError | Some t -> t) in
+    let rett =
+      match rettyp with
+      | None -> raise TypeError
+      | Some t -> t
+    in
     (*_ check function signature: argument types are correct *)
     let checklist = List.zip_exn args tlist in
-    let checkfun (e, t) = 
-      let {res; typ; used} = static_semantic_exp_syn e exp_ctx in
+    let checkfun (e, t) =
+      let { res; typ; used } = static_semantic_exp_syn e exp_ctx in
       type_unify_exn t typ;
       (res, small_type_size typ), used
     in
     let args, used = List.map checklist ~f:checkfun |> List.unzip in
-    { res=A'.Call {name; args}; typ=rett; used=SS.union_list used}
+    { res = A'.Call { name; args }; typ = rett; used = SS.union_list used }
   | A.Null -> { res = A'.PtrAddr A'.Null; typ = T.Any; used = SS.empty }
   | A.Deref e ->
     let { res; typ; used } = static_semantic_exp_syn e exp_ctx in
-    let paddr = A'.Ptr {start=res; off=0} in
+    let paddr = A'.Ptr { start = res; off = 0 } in
     (match typ with
      | T.Star t -> { res = A'.Deref paddr; typ = t; used }
      | _ -> raise TypeError)
-  | A.ArrAccess { arr; idx } -> failwith "not implemented"
-  | A.StructDot { str; field } -> failwith "not implemented"
+  | A.ArrAccess { arr; idx } ->
+    let { res = rarr; typ = tarr; used = uarr } = static_semantic_exp_syn arr exp_ctx in
+    let { res = ridx; typ = ti; used = ui } = static_semantic_exp_syn idx exp_ctx in
+    let typ =
+      match tarr with
+      | T.Array t -> t
+      | _ -> raise TypeError
+    in
+    let size =
+      match typ with
+      | T.Struct s ->
+        let { tot_size; _ } = SM.find_exn exp_ctx.sdef s in
+        tot_size
+      | _ -> small_type_size typ
+    in
+    type_unify_exn ti T.Int;
+    { res = A'.ArrayAccess { head = rarr; idx = ridx; size; extra = 0 }
+    ; typ
+    ; used = SS.union uarr ui
+    }
+  | A.StructDot { str; field } -> 
+    let { res = sres; typ = styp; used } = static_semantic_exp_syn str exp_ctx in
+    let s = (match styp with | T.Struct s -> s | _ -> raise TypeError) in
+    let {ssig; f_offset; _ } = SM.find_exn exp_ctx.sdef s in
+    let ssig' = SM.of_alist_exn ssig in
+    let typ = SM.find_exn ssig' field in
+    let i = SM.find_exn f_offset field in
+    let res = (match sres with 
+    | A'.PtrAddr A'.Ptr {start; off} -> A'.PtrAddr (A'.Ptr {start; off=off+i})
+    | A'.ArrAddr {head; idx; size; extra} -> A'.ArrAddr ({head; idx; size; extra=extra+i})
+    | e -> A'.PtrAddr (A'.Ptr {start=e; off=0})) in
+    { res; typ; used }
   | A.StructArr { str; field } -> failwith "not implemented"
-  | A.Alloc tau -> failwith "not implemented"
+  | A.Alloc tau -> 
+    let t = resolve exp_ctx.tdef tau in
+    let size =
+      match t with
+      | T.Struct s ->
+        let { tot_size; _ } = SM.find_exn exp_ctx.sdef s in
+        tot_size
+      | _ -> small_type_size t
+    in
+    {res=A'.Alloc size; typ=T.Star t; used=SS.empty}
   | A.Alloc_array { typ; len } -> failwith "not implemented"
 ;;
 
