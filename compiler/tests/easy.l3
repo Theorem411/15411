@@ -1,26 +1,9 @@
-//test return 128
+//test return 0
+// decls can have different variable names
+int foo (int y, bool z);
 
-// testing void return
+int foo (int x, bool y) { if (y) return x; else return 10; }
 
-void nop() {
-}
-
-void raise() {
-  1/0;
-}
-
-void abort() {
-  assert(false);
-  return;
-}
-
-void okay() {
-  assert(true);
-  return;
-}
-
-int main() {
-  nop();
-  if (true) okay();
-  return 128;
+int main () {
+    return foo (0, true);
 }
