@@ -1,5 +1,6 @@
 open Core
 module AS = Assem
+module R = Register
 module V = Graph.Vertex
 
 (*_ DEBUGGING STAFF  *)
@@ -19,10 +20,11 @@ let translate_pure get_reg = function
       [ X86.BinCommand { op = Mov; dest = d_final; src = lhs_final }
       ; X86.BinCommand { op = X86.pure_to_opr op; dest = d_final; src = rhs_final }
       ]
-    | Mem _ ->
-      [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final }
-      ; X86.BinCommand { op = X86.pure_to_opr op; dest = X86.__FREE_REG; src = rhs_final }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
+    | Stack _ ->
+      [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG 4; src = lhs_final }
+      ; X86.BinCommand
+          { op = X86.pure_to_opr op; dest = X86.__FREE_REG 4; src = rhs_final }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG 4 }
       ]
     | _ -> failwith "X86.Imm can not be a dest")
   | _ -> failwith "not a pure operation"
@@ -37,22 +39,22 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
     let right_commands =
       match rhs_final with
       | X86.Imm n ->
-        [ X86.BinCommand { op = Mov; dest = Reg EAX; src = lhs_final }
-        ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = X86.Imm n }
+        [ X86.BinCommand { op = Mov; dest = X86.Reg R.eax; src = lhs_final }
+        ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG 4; src = X86.Imm n }
         ; X86.ZeroCommand { op = X86.Cltd }
-        ; X86.UnCommand { op = IDiv; src = X86.__FREE_REG }
+        ; X86.UnCommand { op = IDiv; src = X86.__FREE_REG 4 }
         ; X86.BinCommand
             { op = Mov
             ; dest = d_final
             ; src =
                 (match op with
-                | Div -> Reg EAX
-                | Mod -> Reg EDX
+                | Div -> X86.Reg R.eax
+                | Mod -> X86.Reg { reg = R.EDX; size = 4 }
                 | _ -> raise (Failure "it is only Div/Mod case"))
             }
         ]
       | _ ->
-        [ X86.BinCommand { op = Mov; dest = Reg EAX; src = lhs_final }
+        [ X86.BinCommand { op = Mov; dest = X86.Reg R.eax; src = lhs_final }
         ; X86.ZeroCommand { op = X86.Cltd }
         ; X86.UnCommand { op = IDiv; src = rhs_final }
         ; X86.BinCommand
@@ -60,8 +62,8 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
             ; dest = d_final
             ; src =
                 (match op with
-                | Div -> Reg EAX
-                | Mod -> Reg EDX
+                | Div -> X86.Reg R.eax
+                | Mod -> X86.Reg { reg = R.EDX; size = 4 }
                 | _ -> raise (Failure "it is only Div/Mod case"))
             }
         ]
@@ -73,18 +75,24 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
     let lhs_final = get_reg lhs in
     let rhs_final = get_reg rhs in
     let right_commands =
-      [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = lhs_final }
-      ; X86.BinCommand { op = Mov; dest = Reg AS.ECX; src = rhs_final }
+      [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG 4; src = lhs_final }
+      ; X86.BinCommand
+          { op = Mov; dest = X86.Reg { reg = R.ECX; size = 4 }; src = rhs_final }
         (* check for the shift >= 32 *)
-      ; X86.Cmp { rhs = Reg AS.ECX; lhs = Imm (Int32.of_int_exn 32) }
+      ; X86.Cmp
+          { rhs = X86.Reg { reg = R.ECX; size = 4 }; lhs = Imm (Int32.of_int_exn 32) }
       ; X86.Jump { op = Some AS.Jge; label = errLabel }
         (* pre check end *)
         (* check for the shift < 32 *)
-      ; X86.Cmp { rhs = Reg AS.ECX; lhs = Imm (Int32.of_int_exn 0) }
+      ; X86.Cmp
+          { rhs = X86.Reg { reg = R.ECX; size = 4 }; lhs = Imm (Int32.of_int_exn 0) }
       ; X86.Jump { op = Some AS.Jl; label = errLabel }
       ; X86.BinCommand
-          { op = X86.efkt_to_opr op; dest = X86.__FREE_REG; src = Reg AS.ECX }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
+          { op = X86.efkt_to_opr op
+          ; dest = X86.__FREE_REG 4
+          ; src = X86.Reg { reg = R.ECX; size = 4 }
+          }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG 4 }
       ]
     in
     right_commands
@@ -93,9 +101,14 @@ let translate_efkt (get_reg : AS.operand -> X86.operand) (errLabel : Label.t) = 
 
 let translate_set get_reg = function
   | AS.Set { typ; src } ->
-    [ X86.Set { op = typ; src = X86.Reg AS.EAX }
-    ; X86.BinCommand { op = Movzx; src = X86.Reg AS.EAX; dest = X86.Reg AS.EAX }
-    ; X86.BinCommand { op = Mov; src = X86.Reg AS.EAX; dest = get_reg src }
+    [ X86.Set { op = typ; src = X86.Reg { reg = R.EAX; size = 4 } }
+    ; X86.BinCommand
+        { op = Movzx
+        ; src = X86.Reg { reg = R.EAX; size = 4 }
+        ; dest = X86.Reg { reg = R.EAX; size = 4 }
+        }
+    ; X86.BinCommand
+        { op = Mov; src = X86.Reg { reg = R.EAX; size = 4 }; dest = get_reg src }
     ]
   | _ -> failwith "Not a set operation on translate_set"
 ;;
@@ -115,19 +128,30 @@ let translate_call
       List.concat_mapi
         ~f:(fun i t ->
           let src = get_reg (AS.Temp t) in
-          let d = X86.Mem (i * 8) in
+          let d = X86.Stack (i * 8) in
           match src with
-          | Mem mem_i ->
-            [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = X86.Mem (mem_i + jump_int) }
-            ; X86.BinCommand { op = Mov; dest = d; src = X86.__FREE_REG }
+          | Stack mem_i ->
+            [ X86.BinCommand
+                { op = Mov; dest = X86.__FREE_REG 4; src = X86.Stack (mem_i + jump_int) }
+            ; X86.BinCommand { op = Mov; dest = d; src = X86.__FREE_REG 4 }
             ]
           | _ -> [ X86.BinCommand { op = Mov; dest = d; src } ])
         stack_args
     in
-    [ X86.BinCommand { op = X86.Addq; dest = X86.Reg AS.RSP; src = X86.Imm jump_size } ]
+    [ X86.BinCommand
+        { op = X86.Addq
+        ; dest = X86.Reg { reg = R.RSP; size = 8 }
+        ; src = X86.Imm jump_size
+        }
+    ]
     @ call
     @ List.rev arg_moves
-    @ [ X86.BinCommand { op = X86.Subq; dest = X86.Reg AS.RSP; src = X86.Imm jump_size } ])
+    @ [ X86.BinCommand
+          { op = X86.Subq
+          ; dest = X86.Reg { reg = R.RSP; size = 8 }
+          ; src = X86.Imm jump_size
+          }
+      ])
 ;;
 
 let translate_cmp get_reg = function
@@ -135,9 +159,9 @@ let translate_cmp get_reg = function
     let lf = get_reg l in
     let rf = get_reg r in
     (match lf, rf with
-    | X86.Mem _, _ ->
-      [ X86.BinCommand { op = Mov; src = lf; dest = X86.__FREE_REG }
-      ; X86.Cmp { lhs = X86.__FREE_REG; rhs = rf }
+    | X86.Stack _, _ ->
+      [ X86.BinCommand { op = Mov; src = lf; dest = X86.__FREE_REG 4 }
+      ; X86.Cmp { lhs = X86.__FREE_REG 4; rhs = rf }
       ]
     | _, _ -> [ X86.Cmp { lhs = lf; rhs = rf } ])
   | _ -> failwith "Not a cmp operation on translate_cmp"
@@ -157,16 +181,16 @@ let translate_line
     let d_final = get_reg d in
     let src_final = get_reg s in
     (match d_final, src_final with
-    | Mem _, Mem _ ->
+    | Stack _, Stack _ ->
       (* mov mem, mem *)
-      [ X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
-      ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = src_final }
+      [ X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG 4 }
+      ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG 4; src = src_final }
       ]
       @ prev_lines
-    | Mem _, _ ->
+    | Stack _, _ ->
       (* mov mem, mem *)
-      [ X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG }
-      ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG; src = src_final }
+      [ X86.BinCommand { op = Mov; dest = d_final; src = X86.__FREE_REG 4 }
+      ; X86.BinCommand { op = Mov; dest = X86.__FREE_REG 4; src = src_final }
       ]
       @ prev_lines
     | _ -> X86.BinCommand { op = Mov; dest = d_final; src = src_final } :: prev_lines)
@@ -193,26 +217,14 @@ let translate_line
   | AS.LoadFromStack _ -> [] @ prev_lines
 ;;
 
-(* | _ -> failwith "not implemented" *)
-
-(* let mem_handle = function
-  | 0 -> raise (Failure "can not happen to have 0 count and mem_handle")
-  | cnt ->
-    let n =
-      match Int32.of_int (cnt * 4) with
-      | Some x -> x
-      | None -> raise (Failure "Unexpected None")
-    in
-    ( [ X86.BinCommand { op = X86.Subq; dest = X86.Reg RSP; src = X86.Imm n } ]
-    , [ X86.BinCommand { op = X86.Addq; dest = X86.Reg RSP; src = X86.Imm n } ] )
-;; *)
-
 let get_error_block errLabel =
   [ X86.Lbl errLabel
-  ; X86.BinCommand { op = X86.Mov; dest = X86.Reg AS.EAX; src = X86.Imm Int32.one }
-  ; X86.BinCommand { op = X86.Mov; dest = X86.Reg AS.ECX; src = X86.Imm Int32.zero }
+  ; X86.BinCommand
+      { op = X86.Mov; dest = X86.Reg { reg = R.EAX; size = 4 }; src = X86.Imm Int32.one }
+  ; X86.BinCommand
+      { op = X86.Mov; dest = X86.Reg { reg = R.ECX; size = 4 }; src = X86.Imm Int32.zero }
   ; X86.ZeroCommand { op = X86.Cltd }
-  ; X86.UnCommand { op = X86.IDiv; src = X86.Reg AS.ECX }
+  ; X86.UnCommand { op = X86.IDiv; src = X86.Reg { reg = R.ECX; size = 4 } }
   ]
 ;;
 
@@ -220,7 +232,7 @@ let translate_function errLabel (fspace : AS.fspace) : X86.instr list =
   match fspace with
   | { fname; fdef; args = __args } ->
     (* has to be changed to the global one *)
-    let reg_map, mem_cell_count = Helper.reg_alloc fdef in
+    let reg_map, mem_cell_count = Helper.reg_alloc fspace in
     let get_reg o =
       match o with
       | AS.Imm n -> X86.Imm n

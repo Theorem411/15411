@@ -31,3 +31,6 @@ type reg =
 val format_reg : reg -> string
 val callee_saved: reg -> bool
 val caller_saved: reg -> bool
+val arg_i_to_reg: int -> int -> reg
+
+val eax: reg

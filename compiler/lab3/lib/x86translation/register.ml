@@ -30,6 +30,24 @@ type reg =
   }
 [@@deriving equal, sexp, compare, hash]
 
+let eax = {reg = EAX; size = 4}
+
+let arg_i_to_reg sz = function
+  | 0 -> { reg = EDI; size = sz }
+  | 2 -> { reg = EDX; size = sz }
+  | 1 -> { reg = ESI; size = sz }
+  | 3 -> { reg = ECX; size = sz }
+  | 4 -> { reg = R8D; size = sz }
+  | 5 -> { reg = R9D; size = sz }
+  | _ -> failwith "args overflow 6"
+;;
+
+(* fixig equal bugs *)
+let equal_reg a b =
+  match a, b with
+  | { reg = rega; _ }, { reg = regb; _ } -> equal_reg_enum rega regb
+;;
+
 let format_reg_32 = function
   | EAX -> "%eax"
   | EBX -> "%ebx"
