@@ -1,76 +1,18 @@
 open Core
 module AS = Assem
+module R = Register
 
 type operand =
   | Imm of Int32.t
-  | Reg of AS.reg
-  | Mem of int
+  | Stack of int
+  | Reg of R.reg
 [@@deriving equal, compare, sexp]
 
-let __format_reg = function
-  | AS.EAX -> "%eax"
-  | AS.EBX -> "%ebx"
-  | AS.RBX -> "%rbx"
-  | AS.ECX -> "%ecx"
-  | AS.RCX -> "%rcx"
-  | AS.EDX -> "%edx"
-  | AS.RDX -> "%rdx"
-  | AS.ESI -> "%esi"
-  | AS.RSI -> "%rsi"
-  | AS.EDI -> "%edi"
-  | AS.RDI -> "%rdi"
-  | AS.R8D -> "%r8d"
-  | AS.R9D -> "%r9d"
-  | AS.R10D -> "%r10d"
-  | AS.R11D -> "%r11d"
-  | AS.R12D -> "%r12d"
-  | AS.R13D -> "%r13d"
-  | AS.R14D -> "%r14d"
-  | AS.R15D -> "%r15d"
-  | AS.RBP -> "%rbp"
-  | AS.RSP -> "%rsp"
-;;
-
-let __format_reg_quad = function
-  | AS.EAX -> "%rax"
-  | AS.RBX -> "%rbx"
-  | AS.EBX -> "%rbx"
-  | AS.ECX -> "%rcx"
-  | AS.RCX -> "%rcx"
-  | AS.EDX -> "%rdx"
-  | AS.RDX -> "%rdx"
-  | AS.ESI -> "%rsi"
-  | AS.RSI -> "%rsi"
-  | AS.EDI -> "%rdi"
-  | AS.RDI -> "%rdi"
-  | AS.R8D -> "%r8"
-  | AS.R9D -> "%r9"
-  | AS.R10D -> "%r10"
-  | AS.R11D -> "%r11"
-  | AS.R12D -> "%r12"
-  | AS.R13D -> "%r13"
-  | AS.R14D -> "%r14"
-  | AS.R15D -> "%r15"
-  | AS.RBP -> "%rbp"
-  | AS.RSP -> "%rsp"
-;;
-
-let __format_reg_word = function
-  | AS.EAX -> "%al"
-  | AS.ECX -> "%cl"
-  | r -> failwith ("word not supported yet for " ^ __format_reg r)
-;;
-
-(* Mem n means that the varialbe is in -n(%rbp) *)
-let format_operand ?(quad = false) ?(word = false) = function
+(* Stack n means that the varialbe is in -n(%rbp) *)
+let format_operand = function
   | Imm n -> "$" ^ Int32.to_string n
-  | Reg r ->
-    (match quad, word with
-    | true, false -> __format_reg_quad r
-    | false, true -> __format_reg_word r
-    | false, false -> __format_reg r
-    | _, _ -> failwith "can not have both quad and word true")
-  | Mem n -> string_of_int n ^ "(%rsp)"
+  | Reg r -> R.format_reg r
+  | Stack n -> string_of_int n ^ "(%rsp)"
 ;;
 
 type operation =
@@ -106,7 +48,6 @@ let format_operation = function
   | Subq -> "subq"
   | Mul -> "imull"
   | IDiv -> "idivl"
-  (* | Mov -> "movl" *)
   | Mov -> "mov"
   | Cltd -> "cltd"
   | Pushq -> "pushq"
@@ -124,16 +65,6 @@ let format_operation = function
   | Sal -> "sal"
   | Sar -> "sar"
   | Call -> "call"
-  (* | Sete -> "sete"
-  | Setne -> "setne"
-  | Setl -> "setl"
-  | Setle -> "setle"
-  | Setg -> "setg"
-  | Setge -> "setge"
-  | Jz -> "jz"
-  | Je -> "je"
-  | Jmp -> "jmp" *)
-  (* | _ -> raise (Failure "no such operation is allowed (yet).") *)
 ;;
 
 let format_jump j =
@@ -142,9 +73,7 @@ let format_jump j =
   | Some x ->
     (match x with
     | AS.Je -> "je" (*_ jump if p1 == p2 *)
-    (* AS.| Jz  _ jump if p1 == 0 *)
     | AS.Jne -> "jne" (*_ jump if p1 != p2 *)
-    (*AS. | Jnz _ jump if p1 != 0 *)
     | AS.Jl -> "jl" (*_ jump if p1 < p2 *)
     | AS.Jge -> "jge" (*_ jump if p1 >= p2 *)
     | AS.Jle -> "jle" (*_ jump if p1 <= p2 *)
@@ -193,17 +122,9 @@ type instr =
 
 let format = function
   | BinCommand { op = (Addq | Subq) as bop; src = s; dest = d } ->
-    sprintf
-      "\t%s\t%s, %s"
-      (format_operation bop)
-      (format_operand ~quad:true s)
-      (format_operand ~quad:true d)
+    sprintf "\t%s\t%s, %s" (format_operation bop) (format_operand s) (format_operand d)
   | BinCommand { op = (Sal | Sar | Movzx) as bop; src = s; dest = d } ->
-    sprintf
-      "\t%s\t%s, %s"
-      (format_operation bop)
-      (format_operand ~word:true s)
-      (format_operand d)
+    sprintf "\t%s\t%s, %s" (format_operation bop) (format_operand s) (format_operand d)
   | BinCommand binop ->
     sprintf
       "\t%s\t%s, %s"
@@ -211,7 +132,7 @@ let format = function
       (format_operand binop.src)
       (format_operand binop.dest)
   | UnCommand { op = (Pushq | Popq) as unop; src = s } ->
-    sprintf "\t%s\t%s" (format_operation unop) (format_operand ~quad:true s)
+    sprintf "\t%s\t%s" (format_operation unop) (format_operand s)
   | UnCommand unop ->
     sprintf "\t%s\t%s" (format_operation unop.op) (format_operand unop.src)
   | ZeroCommand z -> sprintf "\t%s" (format_operation z.op)
@@ -222,11 +143,11 @@ let format = function
   | Cmp { rhs; lhs } -> sprintf "\tcmp\t%s, %s" (format_operand lhs) (format_operand rhs)
   | Lbl l -> Label.name l ^ ":"
   | Jump { op; label } -> sprintf "\t%s\t%s" (format_jump op) (Label.name label)
-  | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand ~word:true src)
+  | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand src)
   | Call fname -> sprintf "\tcall\t%s" fname
 ;;
 
-let format_list l = List.map ~f: format l |> String.concat ~sep:"\n";;
+let format_list l = List.map ~f:format l |> String.concat ~sep:"\n"
 
 let pure_to_opr = function
   | AS.Add -> Add
@@ -250,21 +171,13 @@ let unary_to_opr = function
 
 let callee_saved oper =
   match oper with
-  | Reg r ->
-    (match r with
-    | AS.EBX | AS.RSP | AS.RBP -> true
-    | AS.R12D | AS.R13D | AS.R14D | AS.R15D -> true
-    | _ -> false)
+  | Reg r -> R.callee_saved r
   | _ -> raise (Failure "callee_saved can be applied only on Reg reg")
 ;;
 
 let caller_saved oper =
   match oper with
-  | Reg r ->
-    (match r with
-    | AS.EAX | AS.EDI | AS.ESI | AS.EDX -> true
-    | AS.ECX | AS.R8D | AS.R9D | AS.R10D | AS.R11D -> true
-    | _ -> false)
+  | Reg r -> R.caller_saved r
   | _ -> raise (Failure "caller_saved can be applied only on Reg reg")
 ;;
 
@@ -280,8 +193,7 @@ let all_available_regs =
     (* AS.R12D
   ; AS.R13D
   ; AS.R14D
-  ; AS.R15D *)
-  ]
+  ; AS.R15D *) ]
 ;;
 
 let is_reg = function
@@ -289,4 +201,4 @@ let is_reg = function
   | _ -> false
 ;;
 
-let __FREE_REG = Reg AS.R11D
+let __FREE_REG (sz : int) : operand = Reg { reg = R.R11D; size = sz }

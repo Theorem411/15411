@@ -1,10 +1,11 @@
 open Core
 module AS = Assem
+module R = Register
 
 type operand =
   | Imm of Int32.t
-  | Reg of AS.reg
-  | Mem of int
+  | Stack of int
+  | Reg of R.reg
 [@@deriving equal, compare, sexp]
 
 type operation =
@@ -69,7 +70,7 @@ val efkt_to_opr : AS.efkt_operation -> operation
 val unary_to_opr : AS.unary_operation -> operation
 val format : instr -> string
 val format_list : instr list -> string
-val __FREE_REG : operand
+val __FREE_REG : int -> operand
 val all_available_regs : AS.reg list
 val callee_saved : operand -> bool
 val caller_saved : operand -> bool
