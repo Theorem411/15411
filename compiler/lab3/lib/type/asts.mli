@@ -107,7 +107,7 @@ type stm =
       { var : Symbol.t
       ; size : int
       ; assign : exp option
-      ; body : mstm
+      ; body : stm
       }
   | Assign of
       { var : Symbol.t
@@ -122,16 +122,16 @@ type stm =
       }
   | If of
       { cond : exp
-      ; lb : mstm
-      ; rb : mstm
+      ; lb : stm
+      ; rb : stm
       }
   | While of
       { cond : exp
-      ; body : mstm
+      ; body : stm
       }
   | Return of (exp * int) option
   | Nop
-  | Seq of mstm * mstm
+  | Seq of stm * stm
   | NakedExpr of (exp * int)
   | AssertFail
   | NakedCall of
@@ -139,17 +139,15 @@ type stm =
       ; args : (exp * int) list
       }
 
-and mstm = stm Mark.t
-
 type glob =
   { f : Symbol.t
   ; args : (Symbol.t * int) list
-  ; fdef : mstm
+  ; fdef : stm
   }
 
-type mglob = glob Mark.t
-type program = mglob list
+type program = glob list
 
+val intop : A.binop -> intop
 val intop_pure : A.binop_pure -> intop_pure
 val intop_efkt : A.binop_efkt -> intop_efkt
 val intop_cmp : A.binop_cmp -> intop_cmp
@@ -161,8 +159,6 @@ val arraddr_exn : exp -> arraddr
 module Print : sig
   val pp_exp : exp -> string
   val pp_stm : stm -> string
-  val pp_mstm : mstm -> string
   val pp_glob : glob -> string
-  val pp_mglob : mglob -> string
   val print_all : program -> string
 end
