@@ -1,5 +1,5 @@
 open Core
-module AS = Assem
+module AS = Assem_l4
 module R = Register
 
 type operand =
