@@ -12,6 +12,7 @@ module Vertex : sig
    type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp, hash]
    include Comparable.S with type t := t
    val op_to_vertex_opt : AS.operand -> t option
+   val _to_string: t -> string
    val print : t -> unit
 end
 (*_ the graph type *)

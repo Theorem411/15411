@@ -72,27 +72,44 @@ let is_jump ((_, f) : int * A.instr) ((_, s) : int * A.instr) : bool =
 let get_ending_with_label (b : (int * A.instr) list) bl =
   let n = List.length b in
   let _, last_jmp_instr = List.nth_exn b (n - 1) in
-  match last_jmp_instr with
-  | A.Ret -> { label = bl; jump = JRet; block = b }
-  | A.Jmp goto_l ->
-    if n <= 2
-    then
-      (* do not have to check if block has a conditional jump *)
-      { label = bl; jump = JUncon goto_l; block = b }
-    else (
-      (* have to check if the block has a conditional jump *)
-      match List.nth_exn b (n - 2) with
-      (* conditional jump *)
-      | _, A.Cjmp cjmp ->
-        { label = bl; jump = JCon { jt = cjmp.l; jf = goto_l }; block = b }
-      (* not conditional *)
-      | _ -> { label = bl; jump = JUncon goto_l; block = b })
-  | _ ->
-    failwith
-      (sprintf "the last instruction is not jump: [%s]" (A.format_instr last_jmp_instr))
+  (* let () =
+    prerr_endline
+      (sprintf
+         "Doing label %s. n = %d. Last instr = %s"
+         (format_block_label_t bl)
+         n
+         (A.format_instr last_jmp_instr)) 
+   in *)
+  (* filter out empty labels *)
+  if n = 1
+  then None
+  else (
+    let res =
+      match last_jmp_instr with
+      | A.Ret -> { label = bl; jump = JRet; block = b }
+      | A.Jmp goto_l ->
+        if n <= 2
+        then
+          (* do not have to check if block has a conditional jump *)
+          { label = bl; jump = JUncon goto_l; block = b }
+        else (
+          (* have to check if the block has a conditional jump *)
+          match List.nth_exn b (n - 2) with
+          (* conditional jump *)
+          | _, A.Cjmp cjmp ->
+            { label = bl; jump = JCon { jt = cjmp.l; jf = goto_l }; block = b }
+          (* not conditional *)
+          | _ -> { label = bl; jump = JUncon goto_l; block = b })
+      | _ -> { label = bl; jump = JRet; block = b }
+        (* failwith
+          (sprintf
+             "the last instruction is not jump: [%s]"
+             (A.format_instr last_jmp_instr)) *)
+    in
+    Some res)
 ;;
 
-let to_block (b : (int * A.instr) list) : block =
+let to_block (b : (int * A.instr) list) : block option =
   let _, label_instr = List.nth_exn b 0 in
   let l =
     match label_instr with
@@ -103,14 +120,25 @@ let to_block (b : (int * A.instr) list) : block =
 ;;
 
 let of_block (f : A.fspace) : fspace_block =
-  let () = printf "ntss %s:" (Symbol.name f.fname) in
-  let enum_fdef = List.mapi ~f:(fun i instr -> i, instr) f.fdef in
+  (* remove jumps right after returns *)
+  let fdef_filtered =
+    List.filteri f.fdef ~f:(fun i instr ->
+        if i = 0
+        then true
+        else (
+          match List.nth_exn f.fdef (i - 1), instr with
+          (* does not filter in only if it is a jump after return or double returns *)
+          | A.Ret, A.Jmp _ -> false
+          | A.Ret, A.Ret -> false
+          | _ -> true))
+  in
+  let enum_fdef = List.mapi ~f:(fun i instr -> i, instr) fdef_filtered in
   let blocks = List.group ~break:is_jump enum_fdef in
   let first_block =
     get_ending_with_label (List.nth_exn blocks 0) (FunName (f.fname, f.args))
   in
   let rest_blocks = List.map ~f:to_block (List.drop blocks 1) in
-  { fname = f.fname; args = f.args; fdef_block = first_block :: rest_blocks }
+  { fname = f.fname; args = f.args; fdef_block = List.filter_opt (first_block :: rest_blocks) }
 ;;
 
 let blocks_former (funcs : A.fspace list) = List.map ~f:of_block funcs

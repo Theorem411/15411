@@ -27,5 +27,7 @@ type fspace_block =
 
 type block_program = fspace_block list
 
+val of_block : A.fspace -> fspace_block
 val blocks_former : A.program -> block_program
 val pp_all_blocks : fspace_block list -> string
+val format_block : block -> string
