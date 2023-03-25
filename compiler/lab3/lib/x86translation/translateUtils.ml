@@ -181,15 +181,19 @@ let get_reg_map
   AS.Map.map op_col ~f:(Int.Map.find_exn col_x86op)
 ;;
 
-(* let print_reg_map (reg_map:X86.operand AS.Map.t) = AS.Map.iteri ~f:(fun ~key ~data -> prerr_endline (sprintf "%s -> %s" (AS.format_operand key) (X86.format_operand data))) reg_map ;; *)
-
+(* let print_reg_map (reg_map : X86.operand AS.Map.t) =
+  AS.Map.iteri
+    ~f:(fun ~key ~data ->
+      prerr_endline (sprintf "%s -> %s" (AS.format_operand key) (X86.format_operand data)))
+    reg_map
+;; *)
 
 let reg_alloc (fspace : AS.fspace) =
   let op2col : (AS.operand * color) list = __regalloc fspace in
   let col2operand, mem_cell_count = assign_colors op2col in
   (* let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in *)
   let reg_map = get_reg_map op2col col2operand in
-  (* let () = print_reg_map reg_map in  *)
+  (* let () = print_reg_map reg_map in *)
   reg_map, mem_cell_count
 ;;
 
@@ -247,7 +251,7 @@ let get_function_be (fname, __args, _) reg_map mem_cell_count =
   (* total size of frame (added regs)*)
   let __sub_count : int = if m % 2 = 0 then n * 8 else (n * 8) + 8 in
   let sub_count = Int32.of_int_exn __sub_count in
-  let total_size = __sub_count + List.length cee_regs in
+  let total_size = __sub_count + (List.length cee_regs)*8 in
   let locals = do_arg_moves reg_map args total_size in
   let ret_label = Label.create () in
   (* function labels *)

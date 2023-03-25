@@ -1,25 +1,15 @@
-//test return 210605
-
-int do_op(int n) {
-  return (n << 3) ^ (n >> 3) + 55;
+int foo(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j) {
+    a++; b++; c++; d++; e++; f++; g++; h++; i++; j++;
+    return a + b + c + d + e + f + g + h + i + j;
 }
-
-int level1(int n) {
-  int i = 0; int r = 55;
-  while ( i < n ) {
-    r = do_op(n + i); i++;
-  }
-  return r;
-}
-
 
 int main() {
-  int i = 0;
-  int n = 10;
-  int r = 200;
-  while ( i < n ) {
-    r = level1(r);
-    i++;
-  }
-  return r;
+    int a = 5;
+    int b = 5;
+    int c = 5;
+    int d = foo (a, b, c, 0, 0, 0, 0, 0, 0, 0);
+    assert(a == 5);
+    assert(b == 5);
+    assert(c == 5);
+    return d;
 }

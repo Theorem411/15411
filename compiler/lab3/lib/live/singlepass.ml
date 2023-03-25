@@ -5,9 +5,10 @@ module AS = Assem
 module IntTable = Hashtbl.Make (Int)
 
 let dump_liveness : bool ref = ref false
-(* let print_info = if !dump_liveness then prerr_endline else prerr_endline *)
+let to_print = !dump_liveness
+let print_info v = if v then prerr_endline else fun _ -> ()
 
-let print_info _ = ();;
+(* let print_info _ = ();; *)
 
 type ht_entry =
   { d : V.Set.t
@@ -68,12 +69,14 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   | AS.Set { src; _ } ->
     V.Set.union_list (List.map ~f:op_to_vset [ src; AS.Reg AS.EAX ]), V.Set.empty
   (* defines a lot of registers *)
-  | AS.Call { args_in_regs; _ } ->
+  | AS.Call { args_in_regs; args_overflow; _ } ->
+    let args_over = List.map ~f:(fun t -> V.T t) args_overflow in
     ( V.Set.of_list
         (List.map
            ~f:(fun r -> V.R r)
-           [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D; AS.R10D; AS.R11D ])
-    , V.Set.of_list (List.map ~f:(fun r -> V.R r) args_in_regs) )
+           [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D; AS.R10D; AS.R11D ]
+        @ args_over)
+    , V.Set.of_list (List.map ~f:(fun r -> V.R r) args_in_regs @ args_over) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->
     (* ADD REGISTERS TO USE. *)
@@ -120,7 +123,11 @@ let initialize_blocks table (fargs : Temp.t list) (x : B.block) =
           let fargs_def = V.Set.of_list (List.map ~f:(fun t -> V.T t) fargs) in
           let u =
             V.Set.of_list
-              (List.mapi ~f:(fun i _ -> op_to_v_exn (AS.Reg (AS.arg_i_to_reg i))) fargs)
+              (List.mapi (* using registers  *)
+                 ~f:(fun i _ -> op_to_v_exn (AS.Reg (AS.arg_i_to_reg i)))
+                 (List.take fargs 6)
+              (* using the all the params to get edges between temps in arg, so that they do not clash *)
+              @ List.map ~f:(fun t -> V.T t) fargs)
           in
           V.Set.union fargs_def d, u
         | _ -> d, u
@@ -133,7 +140,7 @@ let init_table (f : B.fspace_block) =
   let table : t = IntTable.create () in
   let helper = initialize_blocks table f.args in
   List.iter f.fdef_block ~f:helper;
-  print_info (print_table table);
+  print_info to_print (print_table table);
   table
 ;;
 
@@ -196,9 +203,10 @@ let handle_instrs
 let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.t)
     : V.Set.t
   =
-  let () = print_info ("doing now: " ^ B.format_block b) in
+  let () = print_info to_print ("doing now: " ^ B.format_block b) in
   let () =
     print_info
+      to_print
       ("input:["
       ^ String.concat
           ~sep:","
@@ -210,15 +218,16 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
     match b.label with
     | Block.BlockLabel _ -> None, V.Set.empty
     | Block.FunName (_, args) ->
-      Some args, V.Set.of_list (List.map ~f:(fun t -> V.T t) args)
+      Some args, V.Set.of_list ([ V.R AS.EDI ] @ List.map ~f:(fun t -> V.T t) args)
   in
   let out_raw = handle_instrs table (b.block, args) input in
   let out = V.Set.diff out_raw black_list in
   print_info
+    to_print
     ("output:["
     ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
     ^ "]\n\n\n\n\n");
-  print_info (print_table table);
+  print_info to_print (print_table table);
   out
 ;;
 
@@ -254,6 +263,7 @@ let get_edges (table : t) : (V.t * V.t) list =
     in
     let out_ed, in_ed = cartesian d lout, cartesian d lin in
     print_info
+      to_print
       (sprintf
          "[%d] edges: [%s]"
          key
