@@ -52,6 +52,10 @@ let intop_efkt = function
   | A.ShiftR -> ShiftR
 ;;
 
+let intop = function 
+  | A.Pure o -> Pure (intop_pure o)
+  | A.Efkt o -> Efkt (intop_efkt o)
+;;
 let intop_cmp = function
   | A.Leq -> Leq
   | A.Less -> Less
@@ -154,7 +158,7 @@ type stm =
       { var : Symbol.t
       ; size : int
       ; assign : exp option
-      ; body : mstm
+      ; body : stm
       }
   | Assign of
       { var : Symbol.t
@@ -169,16 +173,16 @@ type stm =
       }
   | If of
       { cond : exp
-      ; lb : mstm
-      ; rb : mstm
+      ; lb : stm
+      ; rb : stm
       }
   | While of
       { cond : exp
-      ; body : mstm
+      ; body : stm
       }
   | Return of (exp * int) option
   | Nop
-  | Seq of mstm * mstm
+  | Seq of stm * stm
   | NakedExpr of (exp * int)
   | AssertFail
   | NakedCall of
@@ -186,16 +190,13 @@ type stm =
       ; args : (exp * int) list
       }
 
-and mstm = stm Mark.t
-
 type glob =
   { f : Symbol.t
   ; args : (Symbol.t * int) list
-  ; fdef : mstm
+  ; fdef : stm
   }
 
-type mglob = glob Mark.t
-type program = mglob list
+type program = glob list
 
 module Print = struct
   let pp_binop_pure = function
@@ -283,14 +284,14 @@ module Print = struct
   let rec pp_stm = function
     | Declare { var; size; assign; body } ->
       (match assign with
-       | None -> sprintf "decl %s;\n%s" (Symbol.name var) (pp_mstm body)
+       | None -> sprintf "decl %s;\n%s" (Symbol.name var) (pp_stm body)
        | Some e ->
          sprintf
            "decl %s[%s]=%s;\n%s"
            (Symbol.name var)
            (Int.to_string size)
            (pp_exp e)
-           (pp_mstm body))
+           (pp_stm body))
     | Assign { var; size; exp } ->
       sprintf "%s[%s] = %s;" (Symbol.name var) (Int.to_string size) (pp_exp exp)
     | Asop { dest; size; op = None; exp } ->
@@ -303,14 +304,14 @@ module Print = struct
         (pp_exp exp)
         (Int.to_string size)
     | If { cond; lb; rb } ->
-      sprintf "if (%s) {\n%s\n}\nelse {\n%s\n}" (pp_exp cond) (pp_mstm lb) (pp_mstm rb)
-    | While { cond; body } -> sprintf "while(%s) {\n%s}" (pp_exp cond) (pp_mstm body)
+      sprintf "if (%s) {\n%s\n}\nelse {\n%s\n}" (pp_exp cond) (pp_stm lb) (pp_stm rb)
+    | While { cond; body } -> sprintf "while(%s) {\n%s}" (pp_exp cond) (pp_stm body)
     | Return eopt ->
       (match eopt with
        | None -> "return"
        | Some (e, i) -> sprintf "return %s[%s]" (pp_exp e) (Int.to_string i))
     | NakedExpr (e, i) -> sprintf "%s[%s];" (pp_exp e) (Int.to_string i)
-    | Seq (s1, s2) -> sprintf "%s\n%s" (pp_mstm s1) (pp_mstm s2)
+    | Seq (s1, s2) -> sprintf "%s\n%s" (pp_stm s1) (pp_stm s2)
     | Nop -> "nop;"
     | AssertFail -> "__assert_fail;"
     | NakedCall { name; args } ->
@@ -320,18 +321,14 @@ module Print = struct
         (List.map args ~f:(fun (e, i) -> sprintf "%s[%s]" (pp_exp e) (Int.to_string i))
         |> String.concat ~sep:", ")
 
-  and pp_mstm prog = pp_stm (Mark.data prog)
-
   let pp_glob { f; args; fdef } =
     sprintf
       "%s(%s) =\n%s\n\n"
       (Symbol.name f)
       (List.map args ~f:(fun (s, i) -> sprintf "%s:%s," (Symbol.name s) (Int.to_string i))
       |> String.concat)
-      (pp_mstm fdef)
+      (pp_stm fdef)
   ;;
-
-  let pp_mglob mglob = pp_glob (Mark.data mglob) ^ "\n"
-  let pp_program prog = List.fold prog ~init:"" ~f:(fun s g -> s ^ pp_mglob g)
+  let pp_program prog = List.fold prog ~init:"" ~f:(fun s g -> s ^ pp_glob g)
   let print_all prog = "\n\n" ^ pp_program prog ^ "\n"
 end

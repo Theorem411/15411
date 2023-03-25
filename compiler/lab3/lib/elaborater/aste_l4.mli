@@ -124,7 +124,7 @@ and mstm = stm Mark.t
 type glob =
   | Typedef of
       { told : Typ.tau
-      ; tnew : Typ.tau
+      ; tnew : Symbol.t
       }
   | Fundecl of
       { f : Symbol.t

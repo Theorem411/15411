@@ -334,6 +334,7 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) =
   let fold_f global_ctx mglob = static_semantic_gdecl mglob global_ctx in
   let global_ctx_hdr = List.fold hdr ~init:global_ctx_init ~f:fold_f in
   let () = if SS.length global_ctx_hdr.fdef = 0 then () else raise TypeError in
+  (*_ for src file assume *)
   let global_ctx_init' =
     { fdef =
         SM.key_set global_ctx_hdr.fdec (*_ f declared in hdr are considered defined *)
@@ -341,7 +342,6 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) =
     ; tdef = global_ctx_hdr.tdef
     }
   in
-  (* let () = printf "wtf---------" in *)
   (* let fold_f global_ctx mglob = static_semantic_gdecl mglob global_ctx in *)
   let global_ctx_src = List.fold src ~init:global_ctx_init' ~f:fold_f in
   (*_ main function is defined *)

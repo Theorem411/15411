@@ -125,7 +125,7 @@ and mstm = stm Mark.t
 type glob =
   | Typedef of
       { told : Typ.tau
-      ; tnew : Typ.tau
+      ; tnew : Symbol.t
       }
   | Fundecl of
       { f : Symbol.t
@@ -278,7 +278,7 @@ module Print = struct
 
   let pp_glob ?(n = 0) = function
     | Typedef { told; tnew } ->
-      sprintf "typedef %s <--- %s;" (Typ._tau_tostring told) (Typ._tau_tostring tnew)
+      sprintf "typedef %s <--- %s;" (Typ._tau_tostring told) (Symbol.name tnew)
     | Fundecl { f; args; fsig } ->
       sprintf
         "%s(%s): %s\n\n"
