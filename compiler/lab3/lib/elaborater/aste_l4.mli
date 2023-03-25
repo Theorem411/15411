@@ -23,10 +23,7 @@ type binop_efkt =
   | ShiftL
   | ShiftR
 
-type binop =
-  | Pure of binop_pure
-  | Efkt of binop_efkt
-
+type binop = Pure of binop_pure | Efkt of binop_efkt
 type unop =
   | BitNot (*bitwise not*)
   | LogNot (*!*)
@@ -94,11 +91,11 @@ type stm =
       ; assign : mexp option
       ; body : mstm
       }
-  | AssignToSymbol of
+  | Assign of
       { var : Symbol.t
       ; exp : mexp
       }
-  | Assign of
+  | Asop of
       { dest : mexp
       ; op : binop option
       ; exp : mexp

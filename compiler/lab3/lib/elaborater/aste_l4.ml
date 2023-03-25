@@ -94,11 +94,11 @@ type stm =
       ; assign : mexp option
       ; body : mstm
       }
-  | AssignToSymbol of
+  | Assign of
       { var : Symbol.t
       ; exp : mexp
       }
-  | Assign of
+  | Asop of
       { dest : mexp
       ; op : binop option
       ; exp : mexp
@@ -178,6 +178,10 @@ module Print = struct
     | ShiftR -> ">>"
   ;;
 
+  let pp_binop = function 
+    | Pure o -> pp_binop_pure o
+    | Efkt o -> pp_binop_efkt o
+;;
   let pp_unop = function
     | BitNot -> "~"
     | LogNot -> "!"
@@ -228,27 +232,24 @@ module Print = struct
     let f ~n = function
       | Declare { var; typ; assign; body } ->
         (match assign with
-        | None ->
-          sprintf "%s %s;\n%s" (Typ._tau_tostring typ) (Symbol.name var) (pp_mstm ~n body)
-        | Some e ->
-          sprintf
-            "%s %s=%s;\n%s"
-            (Typ._tau_tostring typ)
-            (Symbol.name var)
-            (pp_mexp e)
-            (pp_mstm ~n body))
-      | AssignToSymbol { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
-      | Assign { dest; op; exp } ->
+         | None ->
+           sprintf
+             "%s %s;\n%s"
+             (Typ._tau_tostring typ)
+             (Symbol.name var)
+             (pp_mstm ~n body)
+         | Some e ->
+           sprintf
+             "%s %s=%s;\n%s"
+             (Typ._tau_tostring typ)
+             (Symbol.name var)
+             (pp_mexp e)
+             (pp_mstm ~n body))
+      | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
+      | Asop { dest; op; exp } ->
         (match op with
-        | Some o ->
-          sprintf
-            "%s %s= %s;"
-            (pp_mexp dest)
-            (match o with
-            | Pure p -> pp_binop_pure p
-            | Efkt e -> pp_binop_efkt e)
-            (pp_mexp exp)
-        | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
+         | Some o -> sprintf "%s %s= %s;" (pp_mexp dest) (pp_binop o) (pp_mexp exp)
+         | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
       | If { cond; lb; rb } ->
         sprintf
           "if (%s) {%s\n%s\n%s}\n%selse {\n%s%s\n%s}"

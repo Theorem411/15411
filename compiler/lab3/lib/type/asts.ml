@@ -1,4 +1,5 @@
-(* open Core
+open Core
+module A = Aste_l4
 
 type intop_pure =
   | Plus
@@ -8,6 +9,20 @@ type intop_pure =
   | BitOr
   | BitXor
 
+type intop_efkt =
+  | Divided_by
+  | Modulo
+  | ShiftL
+  | ShiftR
+
+type intop =
+  | Pure of intop_pure
+  | Efkt of intop_efkt
+
+type unop =
+  | BitNot (*bitwise not*)
+  | LogNot (*!*)
+
 type intop_cmp =
   | Leq
   | Less
@@ -16,15 +31,46 @@ type intop_cmp =
   | Eq
   | Neq
 
-type intop_efkt =
-  | Divided_by
-  | Modulo
-  | ShiftL
-  | ShiftR
+type ptrop_cmp =
+  | PtrEq
+  | PtrNeq
 
-type unop =
-  | BitNot (*bitwise not*)
-  | LogNot (*!*)
+(*_ operator conversion function *)
+let intop_pure = function
+  | A.Plus -> Plus
+  | A.Minus -> Minus
+  | A.Times -> Times
+  | A.BitAnd -> BitAnd
+  | A.BitOr -> BitOr
+  | A.BitXor -> BitXor
+;;
+
+let intop_efkt = function
+  | A.Divided_by -> Divided_by
+  | A.Modulo -> Modulo
+  | A.ShiftL -> ShiftL
+  | A.ShiftR -> ShiftR
+;;
+
+let intop_cmp = function
+  | A.Leq -> Leq
+  | A.Less -> Less
+  | A.Geq -> Geq
+  | A.Greater -> Greater
+  | A.Eq -> Eq
+  | A.Neq -> Neq
+;;
+
+let ptrop_cmp = function
+  | A.Eq -> PtrEq
+  | A.Neq -> PtrNeq
+  | _ -> failwith "no you can not"
+;;
+
+let unop = function
+  | A.LogNot -> LogNot
+  | A.BitNot -> BitNot
+;;
 
 (*_ all subclasses of exp type  *)
 type exp =
@@ -36,87 +82,108 @@ type exp =
       }
   | Const of Int32.t
   | Ternary of
-      { cond : mexp
-      ; lb : mexp
-      ; rb : mexp
+      { cond : exp
+      ; lb : exp
+      ; rb : exp
       }
   | PureBinop of
       { op : intop_pure
-      ; lhs : mexp
-      ; rhs : mexp
+      ; lhs : exp
+      ; rhs : exp
       }
   | EfktBinop of
       { op : intop_efkt
-      ; lhs : mexp
-      ; rhs : mexp
+      ; lhs : exp
+      ; rhs : exp
       }
   | CmpBinop of
       { op : intop_cmp
-      ; lhs : mexp
-      ; rhs : mexp
+      ; lhs : exp
+      ; rhs : exp
+      }
+  | CmpPointer of
+      { op : ptrop_cmp
+      ; lhs : ptraddr
+      ; rhs : ptraddr
       }
   | Unop of
       { op : unop
-      ; operand : mexp
+      ; operand : exp
       }
   | Call of
       { name : Symbol.t
-      ; args : mexp list
+      ; args : (exp * int) list
       }
-  | Null
-  | Deref of address
-  | ArrayAccess of address
-  | StructAccess of address
+  | Deref of ptraddr
+  | ArrayAccess of arraddr
+  | StructAccess of ptraddr
   | Alloc of int
   | Alloc_array of
       { type_size : int
-      ; len : mexp
+      ; len : exp
       }
+  | PtrAddr of ptraddr
+  | ArrAddr of arraddr
 
-and mexp = exp * int
-
-and address =
-  { ptr : mexp
-  ; off : int
+and arraddr =
+  { head : exp
+  ; idx : exp
+  ; size : int
+  ; extra : int
   }
 
+and ptraddr =
+  | Ptr of
+      { start : exp
+      ; off : int
+      }
+  | Null
+
+let ptraddr_exn = function 
+  | PtrAddr ptraddr -> ptraddr
+  | _ -> failwith "no you can not"
+;;
+let arraddr_exn = function 
+  | ArrAddr arraddr -> arraddr 
+  | _ -> failwith "no you can not"
+;;
+
+(*_ stm type *)
 type stm =
   | Declare of
       { var : Symbol.t
-      ; assign : mexp option
+      ; size : int
+      ; assign : exp option
       ; body : mstm
       }
-  | AssignToSymbol of
+  | Assign of
       { var : Symbol.t
-      ; exp : mexp
+      ; size : int
+      ; exp : exp
       }
-  | AsopMemPure of
-      { addr : address
-      ; op : intop_pure option
-      ; exp : mexp
-      }
-  | AsopMemEfkt of
-      { addr : address
-      ; op : intop_efkt option
-      ; exp : mexp
+  | Asop of
+      { dest : exp
+      ; size : int
+      ; op : intop option
+      ; exp : exp
       }
   | If of
-      { cond : mexp
+      { cond : exp
       ; lb : mstm
       ; rb : mstm
       }
   | While of
-      { cond : mexp
+      { cond : exp
       ; body : mstm
       }
-  | Return of mexp option
+  | Return of (exp * int) option
   | Nop
   | Seq of mstm * mstm
-  | NakedExpr of mexp
+  | NakedExpr of (exp * int)
   | AssertFail
   | NakedCall of
       { name : Symbol.t
-      ; args : mexp list
+      ; args : (exp * int) list
       }
 
 and mstm = stm Mark.t
@@ -131,9 +198,6 @@ type mglob = glob Mark.t
 type program = mglob list
 
 module Print = struct
-  let repeat s n = List.map ~f:(fun _ -> s) (List.range 0 n) |> String.concat
-  let tabs = repeat ""
-
   let pp_binop_pure = function
     | Plus -> "+"
     | Minus -> "-"
@@ -159,88 +223,102 @@ module Print = struct
     | ShiftR -> ">>"
   ;;
 
+  let pp_binop = function
+    | Pure o -> pp_binop_pure o
+    | Efkt o -> pp_binop_efkt o
+  ;;
+
   let pp_unop = function
     | BitNot -> "~"
     | LogNot -> "!"
   ;;
 
-  let rec pp_exp = function
-  | Var { var; type_size } -> sprintf "%s{%s}" (Symbol.name var) (Int.to_string type_size)
-  | Const c -> Int32.to_string c
-  | Unop unop -> sprintf "%s(%s)" (pp_unop unop.op) (pp_mexp unop.operand)
-  | True -> "true"
-  | False -> "false"
-  | PureBinop binop ->
-    sprintf
-      "(%s %s %s)"
-      (pp_mexp binop.lhs)
-      (pp_binop_pure binop.op)
-      (pp_mexp binop.rhs)
-  | CmpBinop binop ->
-    sprintf
-      "(%s %s %s)"
-      (pp_mexp binop.lhs)
-      (pp_binop_comp binop.op)
-      (pp_mexp binop.rhs)
-  | EfktBinop binop ->
-    sprintf
-      "(%s %s %s)"
-      (pp_mexp binop.lhs)
-      (pp_binop_efkt binop.op)
-      (pp_mexp binop.rhs)
-  | Ternary t -> sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.lb) (pp_mexp t.rb)
-  | Call { name; args } ->
-    sprintf
-      "(%s (%s))"
-      (Symbol.name name)
-      (List.map args ~f:(fun e -> pp_mexp e ^ ", ") |> String.concat)
-  | Null -> "null"
-  | Deref addr -> sprintf "*%s" (pp_addr addr)
-  | ArrayAccess addr -> sprintf "{%s}" (pp_addr addr)
-  | StructAccess addr -> sprintf "{%s}" (pp_addr addr)
-  | Alloc i -> sprintf "alloc(%s)" (Int.to_string i)
-  | Alloc_array { type_size; len } ->
-    sprintf "calloc(%s, %s)" (Int.to_string type_size) (pp_mexp len)
+  let pp_ptrop_cmp = function
+    | PtrEq -> "=="
+    | PtrNeq -> "!="
+  ;;
 
-  and pp_addr { ptr; off } = sprintf "%s{+%s}" (pp_mexp ptr) (Int.to_string off)
-  and pp_mexp (e, _) = pp_exp e
+  let rec pp_exp = function
+    | Var { var; type_size } ->
+      sprintf "%s{%s}" (Symbol.name var) (Int.to_string type_size)
+    | Const c -> Int32.to_string c
+    | Unop unop -> sprintf "%s(%s)" (pp_unop unop.op) (pp_exp unop.operand)
+    | True -> "true"
+    | False -> "false"
+    | PureBinop binop ->
+      sprintf "(%s %s %s)" (pp_exp binop.lhs) (pp_binop_pure binop.op) (pp_exp binop.rhs)
+    | CmpBinop binop ->
+      sprintf "(%s %s %s)" (pp_exp binop.lhs) (pp_binop_comp binop.op) (pp_exp binop.rhs)
+    | CmpPointer { op; lhs; rhs } ->
+      sprintf "(%s %s %s)" (pp_ptraddr lhs) (pp_ptrop_cmp op) (pp_ptraddr rhs)
+    | EfktBinop binop ->
+      sprintf "(%s %s %s)" (pp_exp binop.lhs) (pp_binop_efkt binop.op) (pp_exp binop.rhs)
+    | Ternary t -> sprintf "(%s ? %s : %s)" (pp_exp t.cond) (pp_exp t.lb) (pp_exp t.rb)
+    | Call { name; args } ->
+      sprintf
+        "(%s (%s))"
+        (Symbol.name name)
+        (List.map args ~f:(fun (e, i) -> sprintf "%s[%s]" (pp_exp e) (Int.to_string i)) |> String.concat ~sep:", ")
+    | Deref addr -> sprintf "(%s)" (pp_ptraddr addr)
+    | ArrayAccess addr -> sprintf "arr[%s]" (pp_arraddr addr)
+    | StructAccess addr -> sprintf "(%s)" (pp_ptraddr addr)
+    | Alloc i -> sprintf "alloc(%s)" (Int.to_string i)
+    | Alloc_array { type_size; len } ->
+      sprintf "calloc(%s, %s)" (Int.to_string type_size) (pp_exp len)
+    | PtrAddr ptraddr -> pp_ptraddr ptraddr
+    | ArrAddr arraddr -> pp_arraddr arraddr
+
+  and pp_ptraddr = function
+  | Ptr { start; off } -> sprintf "%s:%s" (pp_exp start) (Int.to_string off)
+  | Null -> "NULL"
+  and pp_arraddr { head; idx; size; extra } = 
+    sprintf
+      "%s:%s:%s:%s"
+      (pp_exp head)
+      (pp_exp idx)
+      (Int.to_string size)
+      (Int.to_string extra)
+  ;;
 
   let rec pp_stm = function
-      | Declare { var; assign; body } ->
-        (match assign with
-         | None -> sprintf "decl %s;\n%s" (Symbol.name var) (pp_mstm body)
-         | Some (e, i) ->
-           sprintf "decl %s:%s=%s;\n%s" (Symbol.name var) (Int.to_string i) (pp_mexp (e, i)) (pp_mstm body))
-      | AssignToSymbol { var; exp=e, i } -> sprintf "%s = %s{%s};" (Symbol.name var) (pp_mexp (e, i)) (Int.to_string i)
-      | AsopMemPure { addr; op = None; exp=e, i } ->
-        sprintf "(%s) = %s{%s}" (pp_addr addr) (pp_mexp (e, i)) (Int.to_string i)
-      | AsopMemPure { addr; op = Some o; exp=e, i } ->
-        sprintf "(%s) %s= %s{%s}" (pp_addr addr) (pp_binop_pure o) (pp_mexp (e, i)) (Int.to_string i)
-      | AsopMemEfkt { addr; op = None; exp=e, i } ->
-        sprintf "(%s) = %s{%s}" (pp_addr addr) (pp_mexp (e, i)) (Int.to_string i)
-      | AsopMemEfkt { addr; op = Some o; exp=e, i } ->
-        sprintf "(%s) %s= %s{%s}" (pp_addr addr) (pp_binop_efkt o) (pp_mexp (e,i)) (Int.to_string i)
-      | If { cond=c, i; lb; rb} ->
-        sprintf
-          "if (%s{%s}) {\n%s\n}\nelse {\n%s\n}"
-          (pp_mexp (c, i))
-          (Int.to_string i)
-          (pp_mstm lb)
-          (pp_mstm rb)
-      | While { cond=c, i; body } ->
-        sprintf "while(%s{%s}) {\n%s}" (pp_mexp (c, i)) (Int.to_string i) (pp_mstm body)
-      | Return eopt -> (match eopt with 
-        | None -> "return"
-        | Some (e', i) -> sprintf "return %s{%s}" (pp_mexp (e', i)) (Int.to_string i))
-      | NakedExpr (e, i) -> sprintf "(%s{%s});" (pp_mexp (e, i)) (Int.to_string i)
-      | Seq (s1, s2) -> sprintf "%s\n%s" (pp_mstm s1) (pp_mstm s2)
-      | Nop -> "nop;"
-      | AssertFail -> "__assert_fail;"
-      | NakedCall { name; args } ->
-        sprintf
-          "%s(%s);"
-          (Symbol.name name)
-          (List.map args ~f:(fun (e, i) -> sprintf "%s{%s}" (pp_mexp (e,i)) (Int.to_string i)) |> String.concat ~sep:", ")
+    | Declare { var; size; assign; body } ->
+      (match assign with
+       | None -> sprintf "decl %s;\n%s" (Symbol.name var) (pp_mstm body)
+       | Some e ->
+         sprintf
+           "decl %s[%s]=%s;\n%s"
+           (Symbol.name var)
+           (Int.to_string size)
+           (pp_exp e)
+           (pp_mstm body))
+    | Assign { var; size; exp } ->
+      sprintf "%s[%s] = %s;" (Symbol.name var) (Int.to_string size) (pp_exp exp)
+    | Asop { dest; size; op = None; exp } ->
+      sprintf "(%s) = %s[%s]" (pp_exp dest) (pp_exp exp) (Int.to_string size)
+    | Asop { dest; size; op = Some o; exp } ->
+      sprintf
+        "(%s) %s= %s[%s]"
+        (pp_exp dest)
+        (pp_binop o)
+        (pp_exp exp)
+        (Int.to_string size)
+    | If { cond; lb; rb } ->
+      sprintf "if (%s) {\n%s\n}\nelse {\n%s\n}" (pp_exp cond) (pp_mstm lb) (pp_mstm rb)
+    | While { cond; body } -> sprintf "while(%s) {\n%s}" (pp_exp cond) (pp_mstm body)
+    | Return eopt ->
+      (match eopt with
+       | None -> "return"
+       | Some (e, i) -> sprintf "return %s[%s]" (pp_exp e) (Int.to_string i))
+    | NakedExpr (e, i) -> sprintf "%s[%s];" (pp_exp e) (Int.to_string i)
+    | Seq (s1, s2) -> sprintf "%s\n%s" (pp_mstm s1) (pp_mstm s2)
+    | Nop -> "nop;"
+    | AssertFail -> "__assert_fail;"
+    | NakedCall { name; args } ->
+      sprintf
+        "%s(%s);"
+        (Symbol.name name)
+        (List.map args ~f:(fun (e, i) -> sprintf "%s[%s]" (pp_exp e) (Int.to_string i))
+        |> String.concat ~sep:", ")
 
   and pp_mstm prog = pp_stm (Mark.data prog)
 
@@ -248,11 +326,12 @@ module Print = struct
     sprintf
       "%s(%s) =\n%s\n\n"
       (Symbol.name f)
-      (List.map args ~f:(fun (s, i) -> sprintf "%s:%s," (Symbol.name s) (Int.to_string i)) |> String.concat)
+      (List.map args ~f:(fun (s, i) -> sprintf "%s:%s," (Symbol.name s) (Int.to_string i))
+      |> String.concat)
       (pp_mstm fdef)
   ;;
 
   let pp_mglob mglob = pp_glob (Mark.data mglob) ^ "\n"
   let pp_program prog = List.fold prog ~init:"" ~f:(fun s g -> s ^ pp_mglob g)
   let print_all prog = "\n\n" ^ pp_program prog ^ "\n"
-end *)
+end

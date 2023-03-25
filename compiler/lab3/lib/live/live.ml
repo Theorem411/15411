@@ -58,10 +58,14 @@ let predecessors ({ fdef_block; _ } : B.fspace_block) =
 ;;
 
 let mk_liveness_fspace (fspace : B.fspace_block) =
+  (*_ determine predecessors of all the blocks *)
   let labs_rev, preds = predecessors fspace in
+  (*_ init major hashtbl's *)
   let give_to_block = give_to_block_init labs_rev in
   let block_receive = block_recieve_init labs_rev in
+  (* init wq *)
   let wq = Queue.of_list (List.rev fspace.fdef_block) in
+  (* init final result, which is a SP.t *)
   let singlepass_tbl = SP.init_table fspace in
   let rec wq_loop wq =
     let iter (block : B.block) =
