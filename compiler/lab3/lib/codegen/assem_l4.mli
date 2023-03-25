@@ -74,18 +74,11 @@ type efkt_operation =
 
 type jump_t =
   | Je (*_ jump if p1 == p2 *)
-  (* | Jz  _ jump if p1 == 0 *)
   | Jne (*_ jump if p1 != p2 *)
-  (* | Jnz _ jump if p1 != 0 *)
   | Jl (*_ jump if p1 < p2 *)
-  (* | Jnge _ jump if NOT p1 >= p2 *)
   | Jge (*_ jump if p1 >= p2 *)
-  (* | Jnl _ jump if NOT p1 < p2 *)
   | Jle (*_ jump if p1 <= p2 *)
-  (* | Jng _ jump if NOT p1 > p2 *)
   | Jg
-(*_ jump if p1 > p2 *)
-(* | Jnle _ jump if NOT p1 <= p2 *)
 [@@deriving equal, sexp, compare]
 
 (*_ what is potentially missing? 
@@ -187,19 +180,11 @@ type fspace_block =
   ; fdef_block : block list
   }
 
-type fspace =
-  { fname : Symbol.t
-  ; args : Temp.t list
-  ; fdef : instr list
-  }
-
 type program_block = fspace_block list
-type program = fspace list
 
 val arg_i_to_reg : int -> reg
 val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program_block : program_block -> string
-val format_program : program -> string
 
 include Comparable.S with type t := operand

@@ -579,7 +579,8 @@ let static_semantic_gdecl
         ; sdef
         ; suse
         }
-      , SS.empty, None ))
+      , SS.empty
+      , None ))
   | A.Fundecl { f; fsig; args } ->
     let fsig_real, snames = resolve_fsig tdef fsig in
     let () = validate_args tdef sdef args fsig_real in
@@ -592,7 +593,9 @@ let static_semantic_gdecl
          | Some _ -> raise TypeError
        in
        let fdec' = SM.add_exn fdec ~key:f ~data:fsig_real in
-       { fdef; fdec = fdec'; tdef; sdec = SS.union sdec snames; sdef; suse }, SS.empty, None
+       ( { fdef; fdec = fdec'; tdef; sdec = SS.union sdec snames; sdef; suse }
+       , SS.empty
+       , None )
      | Some fsig_real' ->
        (*_ if f is redeclared: check fsig is the same *)
        if T.equal_fsig_real fsig_real fsig_real'
@@ -624,23 +627,24 @@ let static_semantic_gdecl
       | `Duplicate -> fdec
     in
     let tlist, topt = fsig_real in
-    let vdec =
+    let args_size =
       List.zip_exn args tlist
       |> List.map ~f:(fun (s, t) -> s, (t, small_type_size t))
-      |> SM.of_alist_exn
     in
     let stm_ctx : stm_ctx =
       { tdef
       ; fdec = fdec'
       ; vdef = SS.of_list args
-      ; vdec
+      ; vdec = SM.of_alist_exn args_size
       ; sdec = SS.union sdec snames
       ; sdef
       ; suse
       }
     in
     let ({ res; used; _ } : stm_res) = static_semantic_stm mstm stm_ctx topt in
-    { fdef = fdef'; fdec = fdec'; tdef; sdec = SS.union sdec snames; sdef; suse }, used, Some res
+    ( { fdef = fdef'; fdec = fdec'; tdef; sdec = SS.union sdec snames; sdef; suse }
+    , used
+    , Some { f; args=List.map args_size ~f:(fun (x, (_, i)) -> x, i); fdef = res } )
   | A.Sdecl s ->
     not_func_names (SM.key_set fdec) s;
     not_type_names tdef s;
@@ -682,12 +686,18 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) : A'.program =
     ; suse = global_ctx_hdr.suse
     }
   in
-  let fold_f (global_ctx, used, prog) glob = 
+  let fold_f (global_ctx, used, prog) glob =
     let global_ctx', used', glob_opt = static_semantic_gdecl glob global_ctx in
-    let prog' = match glob_opt with | None -> prog | Some glob -> glob :: prog in
+    let prog' =
+      match glob_opt with
+      | None -> prog
+      | Some glob -> glob :: prog
+    in
     global_ctx', SS.union used used', prog'
   in
-  let global_ctx_src, used', program = List.fold src ~init:(global_ctx_init', used, []) ~f:fold_f in
+  let global_ctx_src, used', program =
+    List.fold src ~init:(global_ctx_init', used, []) ~f:fold_f
+  in
   let program = List.rev program in
   (*_ main function is defined *)
   let () =
