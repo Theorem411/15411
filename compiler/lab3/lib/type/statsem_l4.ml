@@ -60,8 +60,8 @@ type exp_res =
 let f_declared fdec (f : Symbol.t) : T.fsig_real option = SM.find fdec f
 let f_defined fdef (f : Symbol.t) = SS.mem fdef f
 let t_defined tdef (s : Symbol.t) = SM.find tdef s
-let s_declared sdec (s : Symbol.t) = SS.find sdec ~f:(Symbol.equal s)
-let s_defined sdef (s : Symbol.t) = SM.find sdef s
+(* let s_declared sdec (s : Symbol.t) = SS.find sdec ~f:(Symbol.equal s) *)
+(* let s_defined sdef (s : Symbol.t) = SM.find sdef s *)
 
 (*_ type, size, align related helper *)
 let small_type_size : T.t -> int = function
@@ -707,3 +707,4 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) : A'.program =
   let () = if SS.is_subset used' ~of_:global_ctx_src.fdef then () else raise TypeError in
   program
 ;;
+
