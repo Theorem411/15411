@@ -218,7 +218,7 @@ let elab_assign_with_op_to_var
       AstElab.CmpBinop { op = to_cmp op; lhs = elab_mexp m_l; rhs = elab_mexp m_r }
     | _ -> failwith "Not asign with op"
   in
-  AstElab.AssignToSymbol { var = v; exp = copy_mark m_s expr_new }
+  AstElab.Assign { var = v; exp = copy_mark m_s expr_new }
 ;;
 
 let elab_assign m_s =
@@ -229,10 +229,10 @@ let elab_assign m_s =
     (match l with
     | Ast.Var v ->
       (match asgnop with
-      | None -> AstElab.AssignToSymbol { var = v; exp = elab_mexp m_r }
+      | None -> AstElab.Assign { var = v; exp = elab_mexp m_r }
       | Some op -> elab_assign_with_op_to_var m_l v op m_r m_s)
     | Ast.StructDot _ | Ast.StructArr _ | Ast.ArrAccess _ | Ast.Deref _ ->
-      AstElab.Assign { dest = elab_mexp m_l; exp = elab_mexp m_r; op = to_binop asgnop }
+      AstElab.Asop { dest = elab_mexp m_l; exp = elab_mexp m_r; op = to_binop asgnop }
     | _ -> failwith "LHS is not a lvalue")
   | _ -> failwith "elab_assign recieved not assign"
 ;;
@@ -362,7 +362,12 @@ and elaborate' (s : Ast.mgdecl) : AstElab.mglob =
   let res =
     match Mark.data s with
     | Ast.Typedef { old_name; new_name } ->
-      AstElab.Typedef { told = old_name; tnew = new_name }
+      let new_name_symbol =
+        match new_name with
+        | Typ.FakeTyp s -> s
+        | _ -> failwith "New typedef name is not symbol"
+      in
+      AstElab.Typedef { told = old_name; tnew = new_name_symbol }
     | Ast.FunDec { name; ret_type; params } ->
       AstElab.Fundecl
         { fsig = to_fsig params ret_type; f = name; args = to_arg_list params }
