@@ -17,9 +17,9 @@ type intop_cmp =
   | Eq
   | Neq
 
-type ptrop_cmp =
+(* type ptrop_cmp =
   | PtrEq
-  | PtrNeq
+  | PtrNeq *)
 
 type intop_efkt =
   | Divided_by
@@ -40,42 +40,36 @@ type exp =
   | True
   | False
   | Var of
-      { var : Symbol.t
-      ; type_size : int
-      }
+      Symbol.t
   | Const of Int32.t
   | Ternary of
-      { cond : exp
-      ; lb : exp
-      ; rb : exp
+      { cond : mexp
+      ; lb : mexp
+      ; rb : mexp
       }
   | PureBinop of
       { op : intop_pure
-      ; lhs : exp
-      ; rhs : exp
+      ; lhs : mexp
+      ; rhs : mexp
       }
   | EfktBinop of
       { op : intop_efkt
-      ; lhs : exp
-      ; rhs : exp
+      ; lhs : mexp
+      ; rhs : mexp
       }
   | CmpBinop of
       { op : intop_cmp
-      ; lhs : exp
-      ; rhs : exp
-      }
-  | CmpPointer of
-      { op : ptrop_cmp
-      ; lhs : ptraddr
-      ; rhs : ptraddr
+      ; size : int
+      ; lhs : mexp
+      ; rhs : mexp
       }
   | Unop of
       { op : unop
-      ; operand : exp
+      ; operand : mexp
       }
   | Call of
       { name : Symbol.t
-      ; args : (exp * int) list
+      ; args : mexp list
       }
   | Deref of ptraddr
   | ArrayAccess of arraddr
@@ -83,60 +77,61 @@ type exp =
   | Alloc of int
   | Alloc_array of
       { type_size : int
-      ; len : exp
+      ; len : mexp
       }
   | PtrAddr of ptraddr
   | ArrAddr of arraddr
 
 and arraddr =
-  { head : exp
-  ; idx : exp
+  { head : mexp
+  ; idx : mexp
   ; size : int
   ; extra : int
   }
 
 and ptraddr =
   | Ptr of
-      { start : exp
+      { start : mexp
       ; off : int
       }
   | Null
 
+and mexp = exp * int
+
 type stm =
   | Declare of
       { var : Symbol.t
-      ; size : int
-      ; assign : exp option
+      ; typ_size : int
+      ; assign : mexp option
       ; body : stm
       }
   | Assign of
       { var : Symbol.t
-      ; size : int
-      ; exp : exp
+      ; typ_size : int
+      ; exp : mexp
       }
   | Asop of
-      { dest : exp
-      ; size : int
+      { dest : mexp
       ; op : intop option
-      ; exp : exp
+      ; exp : mexp
       }
   | If of
-      { cond : exp
+      { cond : mexp
       ; lb : stm
       ; rb : stm
       }
   | While of
-      { cond : exp
+      { cond : mexp
       ; body : stm
       }
-  | Return of (exp * int) option
+  | Return of mexp option
   | Nop
   | Seq of stm * stm
-  | NakedExpr of (exp * int)
+  | NakedExpr of mexp
   | AssertFail
   | NakedCall of
       { name : Symbol.t
-      ; args : (exp * int) list
+      ; args : mexp list
       }
 
 type glob =
@@ -151,13 +146,16 @@ val intop : A.binop -> intop
 val intop_pure : A.binop_pure -> intop_pure
 val intop_efkt : A.binop_efkt -> intop_efkt
 val intop_cmp : A.binop_cmp -> intop_cmp
-val ptrop_cmp : A.binop_cmp -> ptrop_cmp
+val ptrop_cmp : A.binop_cmp -> intop_cmp
 val unop : A.unop -> unop
 val ptraddr_exn : exp -> ptraddr
 val arraddr_exn : exp -> arraddr
 
+val size : mexp -> int
+
 module Print : sig
   val pp_exp : exp -> string
+  val pp_mexp : mexp -> string
   val pp_stm : stm -> string
   val pp_glob : glob -> string
   val print_all : program -> string

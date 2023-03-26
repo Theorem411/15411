@@ -30,10 +30,10 @@ type intop_cmp =
   | Greater
   | Eq
   | Neq
-
+(* 
 type ptrop_cmp =
   | PtrEq
-  | PtrNeq
+  | PtrNeq *)
 
 (*_ operator conversion function *)
 let intop_pure = function
@@ -52,10 +52,11 @@ let intop_efkt = function
   | A.ShiftR -> ShiftR
 ;;
 
-let intop = function 
+let intop = function
   | A.Pure o -> Pure (intop_pure o)
   | A.Efkt o -> Efkt (intop_efkt o)
 ;;
+
 let intop_cmp = function
   | A.Leq -> Leq
   | A.Less -> Less
@@ -66,8 +67,8 @@ let intop_cmp = function
 ;;
 
 let ptrop_cmp = function
-  | A.Eq -> PtrEq
-  | A.Neq -> PtrNeq
+  | A.Eq -> Eq
+  | A.Neq -> Neq
   | _ -> failwith "no you can not"
 ;;
 
@@ -80,43 +81,36 @@ let unop = function
 type exp =
   | True
   | False
-  | Var of
-      { var : Symbol.t
-      ; type_size : int
-      }
+  | Var of Symbol.t
   | Const of Int32.t
   | Ternary of
-      { cond : exp
-      ; lb : exp
-      ; rb : exp
+      { cond : mexp
+      ; lb : mexp
+      ; rb : mexp
       }
   | PureBinop of
       { op : intop_pure
-      ; lhs : exp
-      ; rhs : exp
+      ; lhs : mexp
+      ; rhs : mexp
       }
   | EfktBinop of
       { op : intop_efkt
-      ; lhs : exp
-      ; rhs : exp
+      ; lhs : mexp
+      ; rhs : mexp
       }
   | CmpBinop of
       { op : intop_cmp
-      ; lhs : exp
-      ; rhs : exp
-      }
-  | CmpPointer of
-      { op : ptrop_cmp
-      ; lhs : ptraddr
-      ; rhs : ptraddr
+      ; size : int
+      ; lhs : mexp
+      ; rhs : mexp
       }
   | Unop of
       { op : unop
-      ; operand : exp
+      ; operand : mexp
       }
   | Call of
       { name : Symbol.t
-      ; args : (exp * int) list
+      ; args : mexp list
       }
   | Deref of ptraddr
   | ArrayAccess of arraddr
@@ -124,70 +118,61 @@ type exp =
   | Alloc of int
   | Alloc_array of
       { type_size : int
-      ; len : exp
+      ; len : mexp
       }
   | PtrAddr of ptraddr
   | ArrAddr of arraddr
 
 and arraddr =
-  { head : exp
-  ; idx : exp
+  { head : mexp
+  ; idx : mexp
   ; size : int
   ; extra : int
   }
 
 and ptraddr =
   | Ptr of
-      { start : exp
+      { start : mexp
       ; off : int
       }
   | Null
 
-let ptraddr_exn = function 
-  | PtrAddr ptraddr -> ptraddr
-  | _ -> failwith "no you can not"
-;;
-let arraddr_exn = function 
-  | ArrAddr arraddr -> arraddr 
-  | _ -> failwith "no you can not"
-;;
+and mexp = exp * int
 
-(*_ stm type *)
 type stm =
   | Declare of
       { var : Symbol.t
-      ; size : int
-      ; assign : exp option
+      ; typ_size : int
+      ; assign : mexp option
       ; body : stm
       }
   | Assign of
       { var : Symbol.t
-      ; size : int
-      ; exp : exp
+      ; typ_size : int
+      ; exp : mexp
       }
   | Asop of
-      { dest : exp
-      ; size : int
+      { dest : mexp
       ; op : intop option
-      ; exp : exp
+      ; exp : mexp
       }
   | If of
-      { cond : exp
+      { cond : mexp
       ; lb : stm
       ; rb : stm
       }
   | While of
-      { cond : exp
+      { cond : mexp
       ; body : stm
       }
-  | Return of (exp * int) option
+  | Return of mexp option
   | Nop
   | Seq of stm * stm
-  | NakedExpr of (exp * int)
+  | NakedExpr of mexp
   | AssertFail
   | NakedCall of
       { name : Symbol.t
-      ; args : (exp * int) list
+      ; args : mexp list
       }
 
 type glob =
@@ -197,6 +182,19 @@ type glob =
   }
 
 type program = glob list
+
+(*_ helper functions go here *)
+let size ((_, i) : mexp) = i
+
+let ptraddr_exn = function
+  | PtrAddr ptraddr -> ptraddr
+  | _ -> failwith "no you can not"
+;;
+
+let arraddr_exn = function
+  | ArrAddr arraddr -> arraddr
+  | _ -> failwith "no you can not"
+;;
 
 module Print = struct
   let pp_binop_pure = function
@@ -234,78 +232,85 @@ module Print = struct
     | LogNot -> "!"
   ;;
 
-  let pp_ptrop_cmp = function
+  (* let pp_ptrop_cmp = function
     | PtrEq -> "=="
     | PtrNeq -> "!="
-  ;;
+  ;; *)
 
   let rec pp_exp = function
-    | Var { var; type_size } ->
-      sprintf "%s{%s}" (Symbol.name var) (Int.to_string type_size)
+    | Var x -> sprintf "%s" (Symbol.name x)
     | Const c -> Int32.to_string c
-    | Unop unop -> sprintf "%s(%s)" (pp_unop unop.op) (pp_exp unop.operand)
+    | Unop unop -> sprintf "%s(%s)" (pp_unop unop.op) (pp_mexp unop.operand)
     | True -> "true"
     | False -> "false"
     | PureBinop binop ->
-      sprintf "(%s %s %s)" (pp_exp binop.lhs) (pp_binop_pure binop.op) (pp_exp binop.rhs)
-    | CmpBinop binop ->
-      sprintf "(%s %s %s)" (pp_exp binop.lhs) (pp_binop_comp binop.op) (pp_exp binop.rhs)
-    | CmpPointer { op; lhs; rhs } ->
-      sprintf "(%s %s %s)" (pp_ptraddr lhs) (pp_ptrop_cmp op) (pp_ptraddr rhs)
+      sprintf
+        "(%s %s %s)"
+        (pp_mexp binop.lhs)
+        (pp_binop_pure binop.op)
+        (pp_mexp binop.rhs)
+    | CmpBinop { op; size; lhs; rhs } ->
+      sprintf
+        "(%s %s(%s) %s)"
+        (pp_mexp lhs)
+        (pp_binop_comp op)
+        (Int.to_string size)
+        (pp_mexp rhs)
     | EfktBinop binop ->
-      sprintf "(%s %s %s)" (pp_exp binop.lhs) (pp_binop_efkt binop.op) (pp_exp binop.rhs)
-    | Ternary t -> sprintf "(%s ? %s : %s)" (pp_exp t.cond) (pp_exp t.lb) (pp_exp t.rb)
+      sprintf
+        "(%s %s %s)"
+        (pp_mexp binop.lhs)
+        (pp_binop_efkt binop.op)
+        (pp_mexp binop.rhs)
+    | Ternary t -> sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.lb) (pp_mexp t.rb)
     | Call { name; args } ->
       sprintf
         "(%s (%s))"
         (Symbol.name name)
-        (List.map args ~f:(fun (e, i) -> sprintf "%s[%s]" (pp_exp e) (Int.to_string i)) |> String.concat ~sep:", ")
+        (List.map args ~f:(fun (e, i) -> sprintf "%s[%s]" (pp_exp e) (Int.to_string i))
+        |> String.concat ~sep:", ")
     | Deref addr -> sprintf "(%s)" (pp_ptraddr addr)
     | ArrayAccess addr -> sprintf "arr[%s]" (pp_arraddr addr)
     | StructAccess addr -> sprintf "(%s)" (pp_ptraddr addr)
     | Alloc i -> sprintf "alloc(%s)" (Int.to_string i)
     | Alloc_array { type_size; len } ->
-      sprintf "calloc(%s, %s)" (Int.to_string type_size) (pp_exp len)
+      sprintf "calloc(%s, %s)" (Int.to_string type_size) (pp_mexp len)
     | PtrAddr ptraddr -> pp_ptraddr ptraddr
     | ArrAddr arraddr -> pp_arraddr arraddr
 
   and pp_ptraddr = function
-  | Ptr { start; off } -> sprintf "%s:%s" (pp_exp start) (Int.to_string off)
-  | Null -> "NULL"
-  and pp_arraddr { head; idx; size; extra } = 
+    | Ptr { start; off } -> sprintf "%s:%s" (pp_mexp start) (Int.to_string off)
+    | Null -> "NULL"
+
+  and pp_arraddr { head; idx; size; extra } =
     sprintf
       "%s:%s:%s:%s"
-      (pp_exp head)
-      (pp_exp idx)
+      (pp_mexp head)
+      (pp_mexp idx)
       (Int.to_string size)
       (Int.to_string extra)
-  ;;
+
+  and pp_mexp ((e, _) : mexp) = pp_exp e
 
   let rec pp_stm = function
-    | Declare { var; size; assign; body } ->
+    | Declare { var; typ_size; assign; body } ->
       (match assign with
        | None -> sprintf "decl %s;\n%s" (Symbol.name var) (pp_stm body)
-       | Some e ->
+       | Some (e, _) ->
          sprintf
            "decl %s[%s]=%s;\n%s"
            (Symbol.name var)
-           (Int.to_string size)
+           (Int.to_string typ_size)
            (pp_exp e)
            (pp_stm body))
-    | Assign { var; size; exp } ->
-      sprintf "%s[%s] = %s;" (Symbol.name var) (Int.to_string size) (pp_exp exp)
-    | Asop { dest; size; op = None; exp } ->
-      sprintf "(%s) = %s[%s]" (pp_exp dest) (pp_exp exp) (Int.to_string size)
-    | Asop { dest; size; op = Some o; exp } ->
-      sprintf
-        "(%s) %s= %s[%s]"
-        (pp_exp dest)
-        (pp_binop o)
-        (pp_exp exp)
-        (Int.to_string size)
+    | Assign { var; typ_size; exp } ->
+      sprintf "%s[%s] = %s;" (Symbol.name var) (Int.to_string typ_size) (pp_mexp exp)
+    | Asop { dest; op = None; exp } -> sprintf "(%s) = %s" (pp_mexp dest) (pp_mexp exp)
+    | Asop { dest; op = Some o; exp } ->
+      sprintf "(%s) %s= %s" (pp_mexp dest) (pp_binop o) (pp_mexp exp)
     | If { cond; lb; rb } ->
-      sprintf "if (%s) {\n%s\n}\nelse {\n%s\n}" (pp_exp cond) (pp_stm lb) (pp_stm rb)
-    | While { cond; body } -> sprintf "while(%s) {\n%s}" (pp_exp cond) (pp_stm body)
+      sprintf "if (%s) {\n%s\n}\nelse {\n%s\n}" (pp_mexp cond) (pp_stm lb) (pp_stm rb)
+    | While { cond; body } -> sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_stm body)
     | Return eopt ->
       (match eopt with
        | None -> "return"
@@ -320,6 +325,7 @@ module Print = struct
         (Symbol.name name)
         (List.map args ~f:(fun (e, i) -> sprintf "%s[%s]" (pp_exp e) (Int.to_string i))
         |> String.concat ~sep:", ")
+  ;;
 
   let pp_glob { f; args; fdef } =
     sprintf
@@ -329,6 +335,7 @@ module Print = struct
       |> String.concat)
       (pp_stm fdef)
   ;;
+
   let pp_program prog = List.fold prog ~init:"" ~f:(fun s g -> s ^ pp_glob g)
   let print_all prog = "\n\n" ^ pp_program prog ^ "\n"
 end
