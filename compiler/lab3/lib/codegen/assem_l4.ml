@@ -34,45 +34,37 @@ let arg_i_to_reg = function
   | _ -> failwith "args overflow 6"
 ;;
 
+type local =
+  | Imm of Int32.t
+  | Reg of reg
+  | Temp of Temp.t
+[@@deriving equal, sexp, compare]
+
 type ptraddr =
-  | PtrTemp of
-      { start : Temp.t
-      ; off : int
-      }
-  | PtrReg of
-      { start : reg
-      ; off : int
-      }
-[@@deriving equal, compare, sexp]
+  { start : local
+  ; off : int
+  }
+[@@deriving equal, sexp, compare]
 
 type arraddr =
-  | ArrTemp of
-      { start : Temp.t
-      ; off : int
-      ; typ : int
-      ; extra : int
-      }
-  | ArrReg of
-      { start : reg
-      ; off : int
-      ; typ : int
-      ; extra : int
-      }
-[@@deriving equal, compare, sexp]
+  { head : local
+  ; idx : local
+  ; typ : int
+  ; extra : int
+  }
+[@@deriving equal, sexp, compare]
 
 type addr =
   | Ptr of ptraddr
   | Arr of arraddr
-[@@deriving equal, compare, sexp]
-
-type roperand =
-  | Imm of Int32.t
-  | Reg of reg
-  | Temp of Temp.t
-  | Mem of addr
 [@@deriving equal, sexp, compare]
 
-and operand = roperand * int
+type roperand =
+  | Local of local
+  | Remote of addr
+[@@deriving equal, sexp, compare]
+
+type operand = roperand * int [@@deriving equal, sexp, compare]
 
 type pure_operation =
   | Add

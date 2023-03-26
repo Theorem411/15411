@@ -24,37 +24,32 @@ type reg =
   | RBX
 [@@deriving equal, sexp, compare, enum, hash]
 
-type ptraddr =
-  | PtrTemp of
-      { start : Temp.t
-      ; off : int
-      }
-  | PtrReg of
-      { start : reg
-      ; off : int
-      }
-type arraddr =
-  | ArrTemp of
-      { start : Temp.t
-      ; off : int
-      ; typ : int
-      ; extra : int
-      }
-  | ArrReg of
-      { start : reg
-      ; off : int
-      ; typ : int
-      ; extra : int
-      }
-type addr = Ptr of ptraddr | Arr of arraddr
-
-type roperand =
+type local =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
-  | Mem of addr
-[@@deriving equal, sexp, compare]
-and operand = roperand * int
+
+type ptraddr =
+  { start : local
+  ; off : int
+  }
+
+type arraddr =
+  { head : local
+  ; idx : local
+  ; typ : int
+  ; extra : int
+  }
+
+type addr =
+  | Ptr of ptraddr
+  | Arr of arraddr
+
+type roperand =
+  | Local of local
+  | Remote of addr
+
+type operand = roperand * int [@@deriving equal, sexp, compare]
 
 type pure_operation =
   | Add
@@ -153,11 +148,10 @@ type instr =
       ; len : operand
       }
   | CheckNull of ptraddr
-  | CheckBound of 
-  {
-      base : arraddr
-    ; idx : int
-  }
+  | CheckBound of
+      { base : arraddr
+      ; idx : int
+      }
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
