@@ -178,7 +178,7 @@ type block =
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
-  ; fdef_block : block list
+  ; fdef_blocks : block list
   }
 
 type program = fspace list

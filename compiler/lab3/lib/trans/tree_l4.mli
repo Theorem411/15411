@@ -49,8 +49,13 @@ type pexp =
       }
   | PtrAddr of ptraddr
   | ArrAddr of arraddr
-  | Mem of addr
-  
+  | Mem of addr (*_ deref of address *)
+  | Addr of addr (*_ just the raw address *)
+  | Alloc of int
+  | Calloc of
+      { len : mpexp
+      ; typ : int
+      }
 
 and ptraddr =
   { start : mpexp
@@ -66,7 +71,7 @@ and arraddr =
 
 and addr =
   | Ptr of ptraddr
-  | Null 
+  | Null
   | Arr of arraddr
 
 and mpexp = pexp * int

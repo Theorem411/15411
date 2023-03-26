@@ -51,6 +51,12 @@ type pexp =
   | PtrAddr of ptraddr
   | ArrAddr of arraddr
   | Mem of addr
+  | Addr of addr 
+  | Alloc of int
+  | Calloc of
+      { len : mpexp
+      ; typ : int
+      }
 
 and ptraddr =
   { start : mpexp

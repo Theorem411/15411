@@ -129,7 +129,7 @@ let rec tr_exp_rev
       { b with code = T.MovFuncApp { dest = Some t; fname = name; args = es } :: b.code }
     in
     (T.Temp t, esize), acc, b
-  | A.Deref (A.Ptr { start; off }) | A.StructAccess A.Ptr { start; off } ->
+  | A.Deref (A.Ptr { start; off }) | A.StructAccess (A.Ptr { start; off }) ->
     let e, acc, b = tr_exp_rev env start acc_rev block_rev in
     let t = Temp.create () in
     let b =
@@ -155,10 +155,16 @@ let rec tr_exp_rev
     let src = T.Mem (T.Arr { head = ehead; idx = eidx; typ_size = size; extra }), esize in
     let b = { b with code = T.MovPureExp { dest = t; src } :: b.code } in
     (T.Temp t, esize), acc, b
-  | A.Alloc i -> failwith "no"
-  | A.Alloc_array { type_size; len } -> failwith "no"
-  | A.PtrAddr paddr -> failwith "no"
-  | A.ArrAddr aaddr -> failwith "no"
+  | A.Alloc i -> (T.Alloc i, esize), acc_rev, block_rev
+  | A.Alloc_array { type_size; len } ->
+    let elen, acc, b = tr_exp_rev env len acc_rev block_rev in
+    (T.Calloc { len = elen; typ = type_size }, esize), acc, b
+  | A.PtrAddr (A.Ptr { start; off }) ->
+    let e, acc, b = tr_exp_rev env start acc_rev block_rev in
+    (T.Addr (T.Ptr { start = e; off }), esize), acc, b
+  | A.PtrAddr A.Null -> (T.Addr T.Null, esize), acc_rev, block_rev
+  | A.ArrAddr { head; idx; size; extra } -> 
+    failwith "no"
 ;;
 
 type tr_stm_t = T.block list * T.block
