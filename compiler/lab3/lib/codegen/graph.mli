@@ -6,7 +6,7 @@
 
 open Core
 
-module AS = Assem
+module AS = Assem_l4
 module Vertex : sig
    type reg [@@deriving compare, sexp]
    type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp, hash]

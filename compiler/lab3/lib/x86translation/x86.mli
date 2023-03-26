@@ -6,6 +6,12 @@ type operand =
   | Imm of Int32.t
   | Stack of int
   | Reg of R.reg
+  | Mem of
+      { base_reg : R.reg
+      ; idx_reg : R.reg option
+      ; scale : int option
+      ; disp : int option
+      }
 [@@deriving equal, compare, sexp]
 
 type operation =
@@ -18,10 +24,12 @@ type operation =
   | IDiv
   | Mod
   | Cltd
+  | Cqde
   | Mov
   | Movl
   | Movq
   | Movzx
+  | Movsx
   | Pushq
   | Popq
   | And
@@ -32,6 +40,8 @@ type operation =
   | Sal
   | Sar
   | Call
+  | Test
+  | Div
 [@@deriving equal, compare, sexp]
 
 type instr =
@@ -49,6 +59,14 @@ type instr =
   | Cmp of
       { rhs : operand
       ; lhs : operand
+      }
+  | Test of
+      { rhs : operand
+      ; lhs : operand
+      }
+  | Lea of
+      { dest : operand
+      ; src : operand
       }
   | Lbl of Label.t
   | Jump of
@@ -75,3 +93,5 @@ val all_available_regs : AS.reg list
 val callee_saved : operand -> bool
 val caller_saved : operand -> bool
 val is_reg : operand -> bool
+
+val as_to_reg_enum: AS.reg -> R.reg_enum

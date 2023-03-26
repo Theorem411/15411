@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module A = Asts
 module T = Tree_l4
 module S = Symbol.Map
@@ -136,4 +136,4 @@ let args_tag (sl : Symbol.t list) =
 ;;
 
 let tr_glob (glob : A.glob) = failwith "not implemented"
-let translate (prog : A.program) : T.program = failwith "not implemented"
+let translate (prog : A.program) : T.program = failwith "not implemented" *)

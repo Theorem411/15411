@@ -1,9 +1,9 @@
-module AS = Assem
+module AS = Assem_l4
 module V = Graph.Vertex
 
 type color = (int[@deriving sexp, equal, compare])
 
-val reg_alloc : AS.fspace -> X86.operand AS.Map.t * int
+val reg_alloc : AS.block list -> X86.operand AS.Map.t * int
 
 (* val dump_liveness: bool ref *)
 

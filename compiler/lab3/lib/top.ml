@@ -272,6 +272,7 @@ let compile (cmd : cmd_line_args) : unit =
         let union = Translate.get_string_list translated in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");
+        Out_channel.fprintf out "%s\n" X86.alloc_javaway_res;
         List.iter ~f:output_x86_instr union) *)
 
 let run (cmd : cmd_line_args) : unit =

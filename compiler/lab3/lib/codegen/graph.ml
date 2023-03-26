@@ -3,7 +3,7 @@ open Core
     * Graph type definition
  *)
 
-module AS = Assem
+module AS = Assem_l4
 
 module Vertex = struct
   (* type reg = EAX | EDX [@@deriving compare, sexp]  *)

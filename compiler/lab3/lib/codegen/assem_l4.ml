@@ -97,6 +97,8 @@ type jump_t =
   | Jge (*_ jump if p1 >= p2 *)
   | Jle (*_ jump if p1 <= p2 *)
   | Jg
+  | Js
+  | Jb
 [@@deriving equal, sexp, compare]
 
 (*_ what is potentially missing? 

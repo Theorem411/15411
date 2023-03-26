@@ -2,7 +2,7 @@ open Core
 module AS = Assem_l4
 module R = Register
 module V = Graph.Vertex
-
+module Custom = CustomAssembly
 (*_ DEBUGGING STAFF  *)
 
 type fspace = X86.instr list
@@ -167,6 +167,43 @@ let translate_cmp get_reg = function
   | _ -> failwith "Not a cmp operation on translate_cmp"
 ;;
 
+let translate_alloc sz =
+  [ X86.BinCommand
+      { op = Mov
+      ; dest = X86.Reg { reg = X86.R.EDI; size = 4 }
+      ; src = X86.Imm (Int32.of_int_exn sz)
+      }
+  ; X86.Call Custom.alloc_fname
+  ]
+;;
+
+let translate_alloc_array (get_reg : AS.operand -> X86.operand) sz (len : AS.operand) =
+  let move_to_rsi =
+    let len_final = get_reg len in 
+    match len_final with
+    | Imm n ->
+      [ X86.BinCommand
+          { op = Mov; dest = X86.Reg { reg = X86.R.ESI; size = 4 }; src = X86.Imm n }
+      ]
+    | Reg reg ->
+      [ X86.BinCommand
+          { op = Mov
+          ; dest = X86.Reg { reg = X86.R.ESI; size = 4 }
+          ; src = X86.Reg reg
+          }
+      ]
+    | _ -> failwith "unimplemented"
+  in
+  [ X86.BinCommand
+      { op = Mov
+      ; dest = X86.Reg { reg = X86.R.EDI; size = 4 }
+      ; src = X86.Imm (Int32.of_int_exn sz)
+      }
+  ]
+  @ move_to_rsi
+  @ [ X86.Call Custom.alloc_array_fname ]
+;;
+
 let translate_line
     (retLabel : Label.t)
     (errLabel : Label.t)
@@ -215,10 +252,15 @@ let translate_line
   | AS.Call { fname; args_overflow = stack_args; _ } ->
     translate_call get_reg (Symbol.name fname) stack_args @ prev_lines
   | AS.LoadFromStack _ -> [] @ prev_lines
+  | Alloc sz -> translate_alloc sz @ prev_lines
+  | Calloc { typ = sz; len } -> translate_alloc_array get_reg sz len @ prev_lines
+  | CheckNull _ -> failwith "not implemented"
+  | CheckBound _ -> failwith "not implemented"
 ;;
 
 let get_error_block errLabel =
   [ X86.Lbl errLabel
+  ; X86.Comment "Arithmetic Error Label"
   ; X86.BinCommand
       { op = X86.Mov; dest = X86.Reg { reg = R.EAX; size = 4 }; src = X86.Imm Int32.one }
   ; X86.BinCommand
@@ -228,29 +270,47 @@ let get_error_block errLabel =
   ]
 ;;
 
-let translate_function errLabel (fspace : AS.fspace) : X86.instr list =
+let get_memErrLabel_block errLabel =
+  [ X86.Lbl errLabel
+  ; X86.Comment "Memory Error Label"
+  ; X86.BinCommand
+      { op = X86.Mov
+      ; dest = X86.Reg { reg = R.RDI; size = 4 }
+      ; src = X86.Imm (Int32.of_int_exn 12)
+      }
+  ; X86.Call "raise"
+  ]
+;;
+
+let translate_function (errLabel, memErrLabel) (fspace : AS.fspace_block) : X86.instr list
+  =
   match fspace with
-  | { fname; fdef; args = __args } ->
+  | { fname; fdef_block = fdef_blocks; args = __args } ->
     (* has to be changed to the global one *)
-    let reg_map, mem_cell_count = Helper.reg_alloc fspace in
+    let reg_map, mem_cell_count = Helper.reg_alloc fdef_blocks in
     let get_reg o =
       match o with
       | AS.Imm n -> X86.Imm n
       | _ -> AS.Map.find_exn reg_map o
     in
-    let b, e, retLabel =
-      Helper.get_function_be (fname, __args, fdef) reg_map mem_cell_count
+    let b, e, retLabel = Helper.get_function_be (fname, __args) reg_map mem_cell_count in
+    let block_instrs = List.map fdef_blocks ~f:(fun { block; _ } -> block) in
+    let translated instructions : X86.instr list =
+      List.fold instructions ~init:[] ~f:(translate_line retLabel errLabel get_reg)
     in
-    let translated : X86.instr list =
-      List.fold fdef ~init:[] ~f:(translate_line retLabel errLabel get_reg)
-    in
-    let full_rev = List.rev_append e translated in
+    let res = List.concat_map ~f:translated block_instrs in
+    let full_rev = List.rev_append e res in
     b @ List.rev full_rev
 ;;
 
-let translate fs =
-  let errLabel = Label.create () in
-  [ get_error_block errLabel ] @ List.map ~f:(fun f -> translate_function errLabel f) fs
+let translate (fs : AS.program_block) =
+  let arithErrLabel = Label.create () in
+  let memErrLabel = Label.create () in
+  [ Custom.get_alloc_function memErrLabel ]
+  @ [ Custom.get_arrayalloc_function memErrLabel ]
+  @ [ get_memErrLabel_block memErrLabel ]
+  @ [ get_error_block arithErrLabel ]
+  @ List.map ~f:(fun f -> translate_function (arithErrLabel, memErrLabel) f) fs
 ;;
 
 (* let pp_fspace l = List.map ~f:(X86.format) l

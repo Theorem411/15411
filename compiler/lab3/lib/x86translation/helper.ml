@@ -1,5 +1,5 @@
 open Core
-module AS = Assem
+module AS = Assem_l4
 module V = Graph.Vertex
 module R = Register
 
@@ -256,7 +256,7 @@ let do_arg_moves (reg_map : X86.operand AS.Map.t) (args : AS.operand list) total
 let rbp = X86.Reg { reg = R.RBP; size = 8 }
 let rsp = X86.Reg { reg = R.RBP; size = 8 }
 
-let get_function_be (fname, __args, _) reg_map mem_cell_count =
+let get_function_be (fname, __args) reg_map mem_cell_count =
   let args = templist_to_operand __args in
   let local_count = mem_cell_count in
   let cee_regs, cee_start, cee_finish = callee_handle reg_map in
