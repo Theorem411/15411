@@ -129,7 +129,7 @@ let rec tr_exp_rev
       { b with code = T.MovFuncApp { dest = Some t; fname = name; args = es } :: b.code }
     in
     (T.Temp t, esize), acc, b
-  | A.Deref (A.Ptr { start; off }) ->
+  | A.Deref (A.Ptr { start; off }) | A.StructAccess A.Ptr { start; off } ->
     let e, acc, b = tr_exp_rev env start acc_rev block_rev in
     let t = Temp.create () in
     let b =
@@ -140,18 +140,21 @@ let rec tr_exp_rev
       }
     in
     (T.Temp t, esize), acc, b
-  | A.Deref A.Null ->
+  | A.Deref A.Null | A.StructAccess A.Null ->
     let t = Temp.create () in
     let b =
-      { b with
-        code =
-          T.MovPureExp { dest = t; src = T.Mem (T.Ptr { start = e; off }), esize }
-          :: b.code
+      { block_rev with
+        code = T.MovPureExp { dest = t; src = T.Mem T.Null, esize } :: block_rev.code
       }
     in
+    (T.Temp t, esize), acc_rev, b
+  | A.ArrayAccess { head; idx; size; extra } ->
+    let t = Temp.create () in
+    let ehead, acc, b = tr_exp_rev env head acc_rev block_rev in
+    let eidx, acc, b = tr_exp_rev env idx acc b in
+    let src = T.Mem (T.Arr { head = ehead; idx = eidx; typ_size = size; extra }), esize in
+    let b = { b with code = T.MovPureExp { dest = t; src } :: b.code } in
     (T.Temp t, esize), acc, b
-  | A.ArrayAccess aaddr -> failwith "no"
-  | A.StructAccess paddr -> failwith "no"
   | A.Alloc i -> failwith "no"
   | A.Alloc_array { type_size; len } -> failwith "no"
   | A.PtrAddr paddr -> failwith "no"
