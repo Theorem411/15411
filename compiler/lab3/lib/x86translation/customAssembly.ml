@@ -45,7 +45,7 @@ let get_alloc_function memErrLabel =
   ]
 ;;
 
-let alloc_array_fname = "____alloc_javaway"
+let alloc_array_fname = "____allocarray_javaway"
 (* c0_alloc_array:
         movsx   r10 <- esi
         mov     r11, r10

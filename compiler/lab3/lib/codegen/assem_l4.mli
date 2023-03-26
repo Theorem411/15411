@@ -147,9 +147,9 @@ type instr =
       { typ : int
       ; len : operand
       }
-  | CheckNull of ptraddr
+  | CheckNull of local
   | CheckBound of
-      { base : arraddr
+      { base : local
       ; idx : int
       }
   (* Assembly directive. *)

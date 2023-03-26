@@ -162,9 +162,9 @@ type instr =
       { typ : int
       ; len : operand
       }
-  | CheckNull of ptraddr
+  | CheckNull of local
   | CheckBound of
-      { base : arraddr
+      { base : local
       ; idx : int
       }
   (* Assembly directive. *)
@@ -190,28 +190,26 @@ type block =
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
-  ; fdef_block : block list
+  ; fdef_blocks : block list
   }
 
-(* type fspace =
-  { fname : Symbol.t
-  ; args : Temp.t list
-  ; fdef : instr list
-  } *)
-
-type program_block = fspace_block list
+type program = fspace list
 
 let format_reg r = sexp_of_reg r |> string_of_sexp
+
+let format_local (l: local): string = 
+  match l with
+  | Imm n -> Int32.to_string n  
+  | Reg reg -> format_reg reg
+  | Temp t -> Temp.name t
+
 let format_ptraddr = function
-  | PtrTemp { start; off } -> sprintf "%s + off(%d)" (Temp.name start) off
-  | PtrReg { start; off } -> sprintf "%s + off(%d)" (format_reg start) off
+  | { start; off } -> sprintf "%s + off(%d)" (format_local start) off
 ;;
 
 let format_arraddr = function
-  | ArrTemp { start; off; typ; extra } ->
-    sprintf "start=%s; off=%d; typsz = %d; extra = %d" (Temp.name start) off typ extra
-  | ArrReg { start; off; typ; extra } ->
-    sprintf "start=%s; off=%d; typsz = %d; extra = %d" (format_reg start) off typ extra
+   { head; idx; typ; extra } ->
+    sprintf "head=%s; idx=%s; typsz = %d; extra = %d" (format_local head) (format_local idx) typ extra
 ;;
 
 let format_addr = function
@@ -219,11 +217,13 @@ let format_addr = function
   | Arr a -> format_arraddr a
 ;;
 
-let format_operand = function
-  | Imm n -> "$" ^ Int32.to_string n
-  | Temp t -> Temp.name t
-  | Reg r -> format_reg r
-  | Mem m -> "Mem(" ^ format_addr m ^ ")"
+let format_roperand = function
+  | Local l -> format_local l
+  | Remote m -> "Mem(" ^ format_addr m ^ ")"
+;;
+
+let format_operand: operand -> string = function
+  | (rop, n) -> sprintf "%s:%d" (format_roperand rop) n
 ;;
 
 let format_pure_operation = function
@@ -290,8 +290,8 @@ let format_instr' = function
       (List.map ts ~f:(fun t -> Temp.name t ^ ", ") |> String.concat)
   | Alloc sz -> sprintf "alloc(%d)" sz
   | Calloc { typ; len } -> sprintf "alloc_array[%s] of %d" (format_operand len) typ
-  | CheckNull p -> sprintf "check_if_null(%s)" (format_ptraddr p)
-  | CheckBound { base; idx } -> sprintf "check_bound(%s[%d])" (format_arraddr base) idx
+  | CheckNull p -> sprintf "check_if_null(%s)" (format_local p)
+  | CheckBound { base; idx } -> sprintf "check_bound(%s[%d])" (format_local base) idx
 ;;
 
 let format_instr i = format_instr' i ^ "\n"
@@ -311,12 +311,12 @@ let format_block ({ label; block; jump } : block) : string =
 ;;
 
 let format_program_block prog_block =
-  let format_fspace_block { fname; args; fdef_block } =
+  let format_fspace_block { fname; args; fdef_blocks } =
     sprintf
       "%s(%s): \n%s"
       (Symbol.name fname)
       (List.map args ~f:Temp.name |> String.concat)
-      (List.map fdef_block ~f:format_block |> String.concat)
+      (List.map fdef_blocks ~f:format_block |> String.concat)
   in
   List.map prog_block ~f:format_fspace_block |> String.concat
 ;;

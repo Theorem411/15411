@@ -2,29 +2,29 @@ open Core
 module AS = Assem_l4
 module R = Register
 
-
-let as_to_reg_enum: AS.reg -> R.reg_enum = function
-| AS.EAX -> R.EAX
-| AS.EDX -> R.EDX
-| AS.ECX -> R.ECX
-| AS.ESI -> R.ESI
-| AS.EDI -> R.EDI
-| AS.EBX -> R.EBX
-| AS.R8D -> R.R8D
-| AS.R9D -> R.R9D
-| AS.R10D -> R.R10D
-| AS.R11D -> R.R11D
-| AS.R12D -> R.R12D
-| AS.R13D -> R.R13D
-| AS.R14D -> R.R14D
-| AS.R15D -> R.R15D
-| AS.RBP -> R.RBP
-| AS.RSP -> R.RSP
-| AS.RCX -> R.RCX
-| AS.RDX -> R.RDX
-| AS.RSI -> R.RSI
-| AS.RDI -> R.RDI
-| AS.RBX -> R.RBX
+let as_to_reg_enum : AS.reg -> R.reg_enum = function
+  | AS.EAX -> R.EAX
+  | AS.EDX -> R.EDX
+  | AS.ECX -> R.ECX
+  | AS.ESI -> R.ESI
+  | AS.EDI -> R.EDI
+  | AS.EBX -> R.EBX
+  | AS.R8D -> R.R8D
+  | AS.R9D -> R.R9D
+  | AS.R10D -> R.R10D
+  | AS.R11D -> R.R11D
+  | AS.R12D -> R.R12D
+  | AS.R13D -> R.R13D
+  | AS.R14D -> R.R14D
+  | AS.R15D -> R.R15D
+  | AS.RBP -> R.RBP
+  | AS.RSP -> R.RSP
+  | AS.RCX -> R.RCX
+  | AS.RDX -> R.RDX
+  | AS.RSI -> R.RSI
+  | AS.RDI -> R.RDI
+  | AS.RBX -> R.RBX
+;;
 
 type operand =
   | Imm of Int32.t
@@ -38,6 +38,10 @@ type operand =
       }
 [@@deriving equal, compare, sexp]
 
+let integer_formatting d =
+  if d = 0 then failwith "integer formatting of 0" else if d > 0 then "+", d else "-", -d
+;;
+
 (* Stack n means that the varialbe is in -n(%rbp) *)
 let format_operand = function
   | Imm n -> "$" ^ Int32.to_string n
@@ -46,12 +50,24 @@ let format_operand = function
   | Mem { disp; base_reg; idx_reg; scale } ->
     (match idx_reg, scale, disp with
     | Some idx, Some sc, Some disp ->
-      sprintf "[%s + %d*%s + %d]" (R.format_reg base_reg) sc (R.format_reg idx) disp
+      let sign1, sc = integer_formatting sc in
+      let sign2, disp = integer_formatting disp in
+      sprintf
+        "[%s %s %d*%s %s %d]"
+        (R.format_reg base_reg)
+        sign1
+        sc
+        (R.format_reg idx)
+        sign2
+        disp
     | Some idx, Some sc, None ->
-      sprintf "[%s + %d*%s]" (R.format_reg base_reg) sc (R.format_reg idx)
+      let sign1, sc = integer_formatting sc in
+      sprintf "[%s %s %d*%s]" (R.format_reg base_reg) sign1 sc (R.format_reg idx)
     | Some _, None, _ -> failwith "no scale when idx is at memory"
     | None, Some _, _ -> failwith "no index register when given scale"
-    | None, None, Some disp -> sprintf "[%s + %d]" (R.format_reg base_reg) disp
+    | None, None, Some disp ->
+      let sign1, disp = integer_formatting disp in
+      sprintf "[%s %s %d]" (R.format_reg base_reg) sign1 disp
     | None, None, None -> sprintf "[%s]" (R.format_reg base_reg))
 ;;
 
@@ -201,8 +217,8 @@ let format = function
   | Cmp { rhs; lhs } -> sprintf "\tcmp\t%s, %s" (format_operand lhs) (format_operand rhs)
   | Test { rhs; lhs } ->
     sprintf "\ttest\t%s, %s" (format_operand lhs) (format_operand rhs)
-    | Lea { dest; src } ->
-      sprintf "\ttest\t%s, %s" (format_operand dest) (format_operand src)
+  | Lea { dest; src } ->
+    sprintf "\ttest\t%s, %s" (format_operand dest) (format_operand src)
   | Lbl l -> Label.name l ^ ":"
   | Jump { op; label } -> sprintf "\t%s\t%s" (format_jump op) (Label.name label)
   | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand src)
