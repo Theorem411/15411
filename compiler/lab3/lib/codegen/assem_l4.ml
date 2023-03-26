@@ -65,12 +65,14 @@ type addr =
   | Arr of arraddr
 [@@deriving equal, compare, sexp]
 
-type operand =
+type roperand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
   | Mem of addr
 [@@deriving equal, sexp, compare]
+
+and operand = roperand * int
 
 type pure_operation =
   | Add
@@ -193,7 +195,7 @@ type block =
   ; jump : jump_tag_t
   }
 
-type fspace_block =
+type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
   ; fdef_block : block list

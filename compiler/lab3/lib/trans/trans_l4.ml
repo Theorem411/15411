@@ -87,20 +87,69 @@ let rec tr_exp_rev
     let b = { b with code = T.MovPureExp { dest = t; src = er } :: b.code } in
     let acc, b = update acc b ~finisher:(T.Goto l3) ~newlab:l3 in
     (T.Temp t, esize), acc, b
-  | A.PureBinop { op; lhs; rhs } -> 
+  | A.PureBinop { op; lhs; rhs } ->
     let el, acc, b = tr_exp_rev env lhs acc_rev block_rev in
     let er, acc, b = tr_exp_rev env rhs acc b in
-    (T.Binop { op=intop_to_pbop op; lhs=el; rhs=er}, esize), acc, b
-  | A.EfktBinop { op; lhs; rhs } -> 
+    (T.Binop { op = intop_to_pbop op; lhs = el; rhs = er }, esize), acc, b
+  | A.EfktBinop { op; lhs; rhs } ->
     let t = Temp.create () in
     let el, acc, b = tr_exp_rev env lhs acc_rev block_rev in
     let er, acc, b = tr_exp_rev env rhs acc b in
-    let b = { b with code=T.MovEfktExp { dest=t; ebop=intop_to_ebop op; lhs=el; rhs=er} :: b.code} in
+    let b =
+      { b with
+        code =
+          T.MovEfktExp { dest = t; ebop = intop_to_ebop op; lhs = el; rhs = er } :: b.code
+      }
+    in
     (T.Temp t, esize), acc, b
-  | A.CmpBinop { op; size; lhs; rhs } -> failwith "no"
-  | A.Unop { op; operand } -> failwith "no"
-  | A.Call { name; args } -> failwith "no"
-  | A.Deref paddr -> failwith "no"
+  | A.CmpBinop { op; size; lhs; rhs } ->
+    let el, acc, b = tr_exp_rev env lhs acc_rev block_rev in
+    let er, acc, b = tr_exp_rev env rhs acc b in
+    (T.Cmpop { op = intop_to_cbop op; size; lhs = el; rhs = er }, esize), acc, b
+  | A.Unop { op = A.LogNot; operand = A.Unop { op = A.LogNot; operand }, _ } ->
+    tr_exp_rev env operand acc_rev block_rev
+  | A.Unop { op = A.BitNot; operand = A.Unop { op = A.BitNot; operand }, _ } ->
+    tr_exp_rev env operand acc_rev block_rev
+  | A.Unop { op = A.LogNot; operand } ->
+    let e, acc, b = tr_exp_rev env operand acc_rev block_rev in
+    ( (T.Binop { op = T.BitXor; lhs = e; rhs = T.Const (Int32.of_int_exn 1), 4 }, esize)
+    , acc
+    , b )
+  | A.Unop { op = A.BitNot; operand } ->
+    let e, acc, b = tr_exp_rev env operand acc_rev block_rev in
+    (T.Unop { op = T.BitNot; p = e }, esize), acc, b
+  | A.Call { name; args } ->
+    let t = Temp.create () in
+    let fold_f (es, acc, b) a =
+      let e, acc, b = tr_exp_rev env a acc b in
+      e :: es, acc, b
+    in
+    let es, acc, b = List.fold args ~init:([], acc_rev, block_rev) ~f:fold_f in
+    let b =
+      { b with code = T.MovFuncApp { dest = Some t; fname = name; args = es } :: b.code }
+    in
+    (T.Temp t, esize), acc, b
+  | A.Deref (A.Ptr { start; off }) ->
+    let e, acc, b = tr_exp_rev env start acc_rev block_rev in
+    let t = Temp.create () in
+    let b =
+      { b with
+        code =
+          T.MovPureExp { dest = t; src = T.Mem (T.Ptr { start = e; off }), esize }
+          :: b.code
+      }
+    in
+    (T.Temp t, esize), acc, b
+  | A.Deref A.Null ->
+    let t = Temp.create () in
+    let b =
+      { b with
+        code =
+          T.MovPureExp { dest = t; src = T.Mem (T.Ptr { start = e; off }), esize }
+          :: b.code
+      }
+    in
+    (T.Temp t, esize), acc, b
   | A.ArrayAccess aaddr -> failwith "no"
   | A.StructAccess paddr -> failwith "no"
   | A.Alloc i -> failwith "no"
