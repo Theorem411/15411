@@ -39,6 +39,7 @@ type pexp =
       }
   | Cmpop of
       { op : cbop
+      ; size : int
       ; lhs : mpexp
       ; rhs : mpexp
       }
@@ -64,6 +65,7 @@ and arraddr =
 
 and addr =
   | Ptr of ptraddr
+  | Null 
   | Arr of arraddr
 
 and mpexp = pexp * int
@@ -139,6 +141,7 @@ type program = fspace_block list
 
 module Print : sig
   val pp_pexp : pexp -> string
+  val pp_mpexp : mpexp -> string
   val pp_stm : stm -> string
   val pp_program : program -> string
 end

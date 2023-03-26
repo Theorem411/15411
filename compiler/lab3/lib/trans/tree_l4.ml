@@ -1,4 +1,4 @@
-open Core 
+open Core
 module A = Asts
 
 type pbop =
@@ -40,6 +40,7 @@ type pexp =
       }
   | Cmpop of
       { op : cbop
+      ; size : int
       ; lhs : mpexp
       ; rhs : mpexp
       }
@@ -50,9 +51,24 @@ type pexp =
   | PtrAddr of ptraddr
   | ArrAddr of arraddr
   | Mem of addr
-and ptraddr = { start : mpexp; off : int}
-and arraddr = { head : mpexp; idx : mpexp; typ_size: int; extra: int}
-and addr = Ptr of ptraddr | Arr of arraddr
+
+and ptraddr =
+  { start : mpexp
+  ; off : int
+  }
+
+and arraddr =
+  { head : mpexp
+  ; idx : mpexp
+  ; typ_size : int
+  ; extra : int
+  }
+
+and addr =
+  | Ptr of ptraddr
+  | Null
+  | Arr of arraddr
+
 and mpexp = pexp * int
 
 type cond =
@@ -84,14 +100,16 @@ type stm =
       ; fname : Symbol.t
       ; args : mpexp list
       }
-  | MovToMemPure of 
+  | MovToMemPure of
       { mem : mpexp
-      ; src : mpexp}
-  | MovToMemEfkt of 
+      ; src : mpexp
+      }
+  | MovToMemEfkt of
       { mem : mpexp
       ; ebop : ebop
       ; lhs : mpexp
-      ; rhs : mpexp }
+      ; rhs : mpexp
+      }
   | MovToMemFunc of
       { mem : mpexp
       ; fname : Symbol.t
@@ -121,3 +139,10 @@ type fspace_block =
   }
 
 type program = fspace_block list
+
+module Print = struct
+  let pp_pexp (e : pexp) = failwith "no"
+  let pp_mpexp ((e, _) : mpexp) = pp_pexp e
+  let pp_stm (stm : stm) = failwith "no"
+  let pp_program (prog : program) = failwith "no"
+end
