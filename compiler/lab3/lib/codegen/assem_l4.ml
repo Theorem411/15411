@@ -47,11 +47,13 @@ type arraddr =
 type addr =
   | Ptr of ptraddr
   | Arr of arraddr
+  | Null 
 [@@deriving equal, sexp, compare]
 
 type roperand =
   | Local of local
   | Remote of addr
+  | Addr of addr
 [@@deriving equal, sexp, compare]
 
 type operand = roperand * int [@@deriving equal, sexp, compare]
@@ -150,9 +152,9 @@ type instr =
       { typ : int
       ; len : operand
       }
-  | CheckNull of ptraddr
+  | CheckNull of local
   | CheckBound of
-      { base : arraddr
+      { base : local
       ; idx : int
       }
   (* Assembly directive. *)
