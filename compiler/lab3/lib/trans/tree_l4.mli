@@ -91,14 +91,12 @@ type stm =
   | Label of Label.t
   | MovEfktExp of
       { dest : Temp.t
-      ; size : int
       ; ebop : ebop
       ; lhs : mpexp
       ; rhs : mpexp
       }
   | MovPureExp of
       { dest : Temp.t
-      ; size : int
       ; src : mpexp
       }
   | MovFuncApp of
@@ -108,8 +106,7 @@ type stm =
       }
   | MovToMem of (*_ move src to deref mem *)
       { mem : Temp.t
-      ; size : int
-      ; src : pexp
+      ; src : mpexp
       }
   | Return of (pexp * int) option
   | AssertFail

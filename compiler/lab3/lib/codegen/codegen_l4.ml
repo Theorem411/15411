@@ -11,7 +11,7 @@ let reg (r, size : A.reg * int) : A.operand =
 ;;
 
 let imm (n : Int32.t) : A.operand = 
-  A.Local (A.Imm n), 4 
+  A.Imm n, 4 
 ;;
 
 let mem (addr, size : A.addr * int) : A.operand =

@@ -152,11 +152,8 @@ type instr =
       { typ : int
       ; len : operand
       }
-  | CheckNull of local
-  | CheckBound of
-      { base : local
-      ; idx : int
-      }
+  | CheckNull of ptraddr
+  | CheckBound of arraddr
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
