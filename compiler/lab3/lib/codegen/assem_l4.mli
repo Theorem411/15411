@@ -30,25 +30,6 @@ type operand =
   | Temp of Temp.t
 [@@deriving equal, sexp, compare]
 
-type ptraddr =
-  { start : operand
-  ; off : int
-  }
-[@@deriving equal, sexp, compare]
-
-type arraddr =
-  { head : operand
-  ; idx : operand
-  ; typ : int
-  ; extra : int
-  }
-[@@deriving equal, sexp, compare]
-
-type addr =
-  | Ptr of ptraddr
-  | Arr of arraddr
-[@@deriving equal, sexp, compare]
-
 type pure_operation =
   | Add
   | Sub
@@ -125,10 +106,10 @@ type instr =
   | MovFrom of
       { dest : operand
       ; size : size
-      ; src : addr
+      ; src : operand
       }
   | MovTo of
-      { dest : addr
+      { dest : operand
       ; size : size
       ; src : operand
       }
@@ -152,16 +133,11 @@ type instr =
       }
   | AssertFail
   (* this is in the third assem *)
-  | LoadFromStack of Temp.t list
+  | LoadFromStack of (Temp.t * size) list
   | Call of
       { fname : Symbol.t
-      ; args_in_regs : reg list
-      ; args_overflow : Temp.t list
-      }
-  | Alloc of int
-  | Calloc of
-      { typ : int
-      ; len : operand
+      ; args_in_regs : (reg * size) list
+      ; args_overflow : (Temp.t * size) list
       }
   (* Assembly directive. *)
   | Directive of string
@@ -178,7 +154,7 @@ type jump_tag_t =
   | JUncon of Label.t
 
 type block =
-  { label : Label.t
+  { label : Label.t  
   ; block : instr list
   ; jump : jump_tag_t
   }

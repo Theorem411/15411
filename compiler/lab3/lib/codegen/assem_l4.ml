@@ -24,39 +24,11 @@ type reg =
   | RBX
 [@@deriving equal, sexp, compare, enum, hash]
 
-type local =
+type operand =
+  | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
 [@@deriving equal, sexp, compare]
-
-type ptraddr =
-  { start : local
-  ; off : int
-  }
-[@@deriving equal, sexp, compare]
-
-type arraddr =
-  { head : local
-  ; idx : local
-  ; typ : int
-  ; extra : int
-  }
-[@@deriving equal, sexp, compare]
-
-type addr =
-  | Ptr of ptraddr
-  | Arr of arraddr
-  | Null 
-[@@deriving equal, sexp, compare]
-
-type roperand =
-  | Imm of Int32.t
-  | Local of local
-  | Remote of addr
-  | Addr of addr
-[@@deriving equal, sexp, compare]
-
-type operand = roperand * int [@@deriving equal, sexp, compare]
 
 type pure_operation =
   | Add
@@ -102,10 +74,16 @@ type set_t =
   | Setle
 [@@deriving equal, sexp, compare]
 
+type size =
+  | L
+  | S
+[@@deriving equal,sexp, compare]
+
 type instr =
   (* dest <- lhs op rhs *)
   | PureBinop of
       { op : pure_operation
+      ; size : size
       ; dest : operand
       ; lhs : operand
       ; rhs : operand
@@ -123,6 +101,17 @@ type instr =
   (* dest <- src *)
   | Mov of
       { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | MovFrom of
+      { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | MovTo of
+      { dest : operand
+      ; size : size
       ; src : operand
       }
   (*_ unconditional jump *)
@@ -138,22 +127,19 @@ type instr =
       }
   | Ret
   | Lab of Label.t
-  | Cmp of operand * operand
+  | Cmp of
+      { size : size
+      ; lhs : operand
+      ; rhs : operand
+      }
   | AssertFail
   (* this is in the third assem *)
-  | LoadFromStack of Temp.t list
+  | LoadFromStack of (Temp.t * size) list
   | Call of
       { fname : Symbol.t
-      ; args_in_regs : reg list
-      ; args_overflow : Temp.t list
+      ; args_in_regs : (reg * size) list
+      ; args_overflow : (Temp.t * size) list
       }
-  | Alloc of int
-  | Calloc of
-      { typ : int
-      ; len : operand
-      }
-  | CheckNull of ptraddr
-  | CheckBound of arraddr
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
@@ -169,7 +155,7 @@ type jump_tag_t =
   | JUncon of Label.t
 
 type block =
-  { label : Label.t
+  { label : Label.t  
   ; block : instr list
   ; jump : jump_tag_t
   }
@@ -181,7 +167,6 @@ type fspace =
   }
 
 type program = fspace list
-
 (*_ comparable Make *)
 module T = struct
   type t = operand [@@deriving compare, equal, sexp]
