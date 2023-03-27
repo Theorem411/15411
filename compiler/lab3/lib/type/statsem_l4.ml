@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module T = Ctype_l4
 module SM = Symbol.Map
 module SS = Symbol.Set
@@ -722,4 +722,4 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) : A'.program =
   let () = if SS.is_subset used' ~of_:global_ctx_src.fdef then () else raise TypeError in
   program
 ;;
-
+ *)

@@ -30,46 +30,16 @@ type operand =
   | Imm of Int32.t
   | Stack of int
   | Reg of R.reg
-  | Mem of
-      { base_reg : R.reg
-      ; idx_reg : R.reg option
-      ; scale : int option
-      ; disp : int option
-      }
 [@@deriving equal, compare, sexp]
-
-let integer_formatting d =
-  if d = 0 then failwith "integer formatting of 0" else if d > 0 then "+", d else "-", -d
-;;
 
 (* Stack n means that the varialbe is in -n(%rbp) *)
 let format_operand = function
   | Imm n -> "$" ^ Int32.to_string n
   | Reg r -> R.format_reg r
   | Stack n -> string_of_int n ^ "(%rsp)"
-  | Mem { disp; base_reg; idx_reg; scale } ->
-    (match idx_reg, scale, disp with
-    | Some idx, Some sc, Some disp ->
-      let sign1, sc = integer_formatting sc in
-      let sign2, disp = integer_formatting disp in
-      sprintf
-        "[%s %s %d*%s %s %d]"
-        (R.format_reg base_reg)
-        sign1
-        sc
-        (R.format_reg idx)
-        sign2
-        disp
-    | Some idx, Some sc, None ->
-      let sign1, sc = integer_formatting sc in
-      sprintf "[%s %s %d*%s]" (R.format_reg base_reg) sign1 sc (R.format_reg idx)
-    | Some _, None, _ -> failwith "no scale when idx is at memory"
-    | None, Some _, _ -> failwith "no index register when given scale"
-    | None, None, Some disp ->
-      let sign1, disp = integer_formatting disp in
-      sprintf "[%s %s %d]" (R.format_reg base_reg) sign1 disp
-    | None, None, None -> sprintf "[%s]" (R.format_reg base_reg))
 ;;
+
+type mem = | Mem of { disp: int option ; base_reg: R.reg ; idx_reg: R.reg  option ; scale: int };;
 
 type operation =
   | Add
@@ -154,6 +124,29 @@ let format_set = function
   | AS.Setl -> "setl"
   | AS.Setle -> "setle"
 ;;
+
+let format_mem = function | Mem { disp; base_reg; idx_reg; scale } ->
+  (match idx_reg, scale, disp with
+  | Some idx, Some sc, Some disp ->
+    let sign1, sc = integer_formatting sc in
+    let sign2, disp = integer_formatting disp in
+    sprintf
+      "[%s %s %d*%s %s %d]"
+      (R.format_reg base_reg)
+      sign1
+      sc
+      (R.format_reg idx)
+      sign2
+      disp
+  | Some idx, Some sc, None ->
+    let sign1, sc = integer_formatting sc in
+    sprintf "[%s %s %d*%s]" (R.format_reg base_reg) sign1 sc (R.format_reg idx)
+  | Some _, None, _ -> failwith "no scale when idx is at memory"
+  | None, Some _, _ -> failwith "no index register when given scale"
+  | None, None, Some disp ->
+    let sign1, disp = integer_formatting disp in
+    sprintf "[%s %s %d]" (R.format_reg base_reg) sign1 disp
+  | None, None, None -> sprintf "[%s]" (R.format_reg base_reg))
 
 type instr =
   | BinCommand of

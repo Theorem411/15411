@@ -1,4 +1,4 @@
-module T = Tree_l4
+(* module T = Tree_l4
 module A = Assem_l4
 
 
@@ -23,4 +23,4 @@ let addr (addr : A.addr) : A.operand =
 ;;
 
 
-let cogen : T.program -> A.program = failwith "not"
+let cogen : T.program -> A.program = failwith "not" *)

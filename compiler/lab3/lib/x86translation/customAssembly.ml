@@ -2,7 +2,7 @@ open Core
 module AS = Assem_l4
 module R = Register
 
-let alloc_fname = "____alloc_javaway"
+let alloc_fname = "____calloc_javaway"
 
 (* alloc_fname:
         cmp     %edi, 0

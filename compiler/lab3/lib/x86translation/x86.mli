@@ -6,13 +6,9 @@ type operand =
   | Imm of Int32.t
   | Stack of int
   | Reg of R.reg
-  | Mem of
-      { base_reg : R.reg
-      ; idx_reg : R.reg option
-      ; scale : int option
-      ; disp : int option
-      }
 [@@deriving equal, compare, sexp]
+
+type mem =  Mem of { disp: int option ; base_reg: R.reg ; idx_reg: R.reg  option ; scale: int }[@@deriving equal, compare, sexp]
 
 type operation =
   | Add

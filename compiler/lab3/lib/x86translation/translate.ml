@@ -196,79 +196,6 @@ let translate_alloc_array (get_final : AS.operand -> X86.operand) sz (len : AS.o
   @ [ X86.Call Custom.alloc_array_fname ]
 ;;
 
-let translate_check_null
-    memErrLabel
-    (get_final : AS.operand -> X86.operand)
-    (p : AS.local)
-  =
-  let final = get_final (AS.Local p, 8) in
-  match final with
-  | Imm _ -> failwith "can not check nullness of an imm"
-  | Stack _ ->
-    [ X86.BinCommand { op = Movq; dest = X86.__FREE_REG 8; src = final }
-    ; X86.Test { rhs = X86.__FREE_REG 8; lhs = X86.__FREE_REG 8 }
-    ; X86.Jump { label = memErrLabel; op = Some AS.Je }
-    ]
-  | Reg _ ->
-    [ X86.Test { rhs = final; lhs = final }
-    ; X86.Jump { label = memErrLabel; op = Some AS.Je }
-    ]
-  | Mem _ -> failwith "local can not be memory (on check_null)"
-;;
-
-let translate_check_bound
-    memErrLabel
-    (get_final : AS.operand -> X86.operand)
-    ((base, idx) : AS.local * int)
-  =
-  let head = get_final (AS.Local base, 8) in
-  match head with
-  | Imm _ -> failwith "can not check bound of an imm"
-  | Stack _ ->
-    [ X86.BinCommand { op = Mov; dest = X86.__FREE_REG 8; src = head }
-    ; X86.BinCommand
-        { op = Mov
-        ; dest = X86.Reg { reg = R.EAX; size = 4 }
-        ; src =
-            X86.Mem
-              { base_reg = { reg = R.R11D; size = 8 }
-              ; disp = Some (-8)
-              ; idx_reg = None
-              ; scale = None
-              }
-        }
-    ; X86.BinCommand
-        { op = Mov; dest = X86.__FREE_REG 4; src = X86.Imm (Int32.of_int_exn idx) }
-    ; X86.Test { rhs = X86.__FREE_REG 4; lhs = X86.__FREE_REG 4 }
-    ; X86.Jump { label = memErrLabel; op = Some AS.Js }
-    ; X86.Cmp { rhs = X86.Reg { reg = R.EAX; size = 4 }; lhs = X86.__FREE_REG 4 }
-    ; X86.Jump { label = memErrLabel; op = Some AS.Jle }
-    ]
-  | Reg { reg; size } ->
-    if not (size = 8)
-    then failwith "pointer size is not 8"
-    else
-      [ X86.BinCommand
-          { op = Mov
-          ; dest = X86.Reg { reg; size = 4 }
-          ; src =
-              X86.Mem
-                { base_reg = { reg; size = 8 }
-                ; disp = Some (-8)
-                ; idx_reg = None
-                ; scale = None
-                }
-          }
-      ; X86.BinCommand
-          { op = Mov; dest = X86.__FREE_REG 4; src = X86.Imm (Int32.of_int_exn idx) }
-      ; X86.Test { rhs = X86.__FREE_REG 4; lhs = X86.__FREE_REG 4 }
-      ; X86.Jump { label = memErrLabel; op = Some AS.Js }
-      ; X86.Cmp { rhs = X86.Reg { reg = R.EAX; size = 4 }; lhs = X86.__FREE_REG 4 }
-      ; X86.Jump { label = memErrLabel; op = Some AS.Jle }
-      ]
-  | Mem _ -> failwith "local can not be memory (on check_null)"
-;;
-
 let translate_line
     (retLabel, errLabel, memErrLabel)
     (get_final : AS.operand -> X86.operand)
@@ -317,18 +244,6 @@ let translate_line
   | AS.Call { fname; args_overflow = stack_args; _ } ->
     translate_call get_final (Symbol.name fname) stack_args @ prev_lines
   | AS.LoadFromStack _ -> [] @ prev_lines
-  | Alloc sz -> List.rev_append (translate_alloc sz) prev_lines
-  | Calloc { typ = sz; len } ->
-    List.rev_append (translate_alloc_array get_final sz len) prev_lines
-  | CheckNull p ->
-    if checks_on
-    then List.rev_append (translate_check_null memErrLabel get_final p) prev_lines
-    else prev_lines
-  | CheckBound { base; idx } ->
-    if checks_on
-    then
-      List.rev_append (translate_check_bound memErrLabel get_final (base, idx)) prev_lines
-    else prev_lines
 ;;
 
 let get_error_block errLabel =
@@ -343,8 +258,8 @@ let get_error_block errLabel =
   ]
 ;;
 
-let get_memErrLabel_block errLabel =
-  [ X86.Lbl errLabel
+let get_memErrLabel_block memErrLabel =
+  [ X86.Lbl memErrLabel
   ; X86.Comment "Memory Error Label"
   ; X86.BinCommand
       { op = X86.Mov
