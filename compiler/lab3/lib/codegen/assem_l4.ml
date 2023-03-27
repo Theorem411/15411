@@ -1,5 +1,7 @@
 open Core
 
+let mem_fail_lab = Label.create ()
+
 type reg =
   | EAX
   | EDX
@@ -55,6 +57,8 @@ type jump_t =
   | Jge (*_ jump if p1 >= p2 *)
   | Jle (*_ jump if p1 <= p2 *)
   | Jg
+  | Js
+  | Jb
 [@@deriving equal, sexp, compare]
 
 (*_ what is potentially missing? 
@@ -77,7 +81,7 @@ type set_t =
 type size =
   | L
   | S
-[@@deriving equal,sexp, compare]
+[@@deriving equal, sexp, compare]
 
 type instr =
   (* dest <- lhs op rhs *)
@@ -140,6 +144,11 @@ type instr =
       ; args_in_regs : (reg * size) list
       ; args_overflow : (Temp.t * size) list
       }
+  | Alloc of int
+  | Calloc of
+      { typ : int
+      ; len : operand
+      }
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
@@ -155,7 +164,7 @@ type jump_tag_t =
   | JUncon of Label.t
 
 type block =
-  { label : Label.t  
+  { label : Label.t
   ; block : instr list
   ; jump : jump_tag_t
   }
@@ -163,10 +172,134 @@ type block =
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
-  ; fdef_block : block list
+  ; fdef_blocks : block list
   }
 
 type program = fspace list
+
+let format_reg r = sexp_of_reg r |> string_of_sexp
+
+let format_operand = function
+  | Imm n -> Int32.to_string n
+  | Reg reg -> format_reg reg
+  | Temp t -> Temp.name t
+;;
+
+let format_pure_operation = function
+  | Add -> "+"
+  | Sub -> "-"
+  | Mul -> "*"
+  | BitAnd -> "&"
+  | BitXor -> "^"
+  | BitOr -> "|"
+;;
+
+let format_efkt_operation = function
+  | Div -> "/"
+  | Mod -> "%"
+  | ShiftL -> "<<"
+  | ShiftR -> ">>"
+;;
+
+let format_unop = function
+  | BitNot -> "~"
+;;
+
+let format_size = function
+  | L -> "L"
+  | S -> "S"
+;;
+
+let format_temp_size = (fun (t, sz) -> (sprintf "%s[%s]" (Temp.name t) (format_size sz)))
+let format_reg_size = (fun (r, sz) -> (sprintf "%s[%s]" (format_reg r) (format_size sz)))
+
+let format_instr' = function
+  | PureBinop binop ->
+    sprintf
+      "%s <-- %s %s %s"
+      (format_operand binop.dest)
+      (format_operand binop.lhs)
+      (format_pure_operation binop.op)
+      (format_operand binop.rhs)
+  | EfktBinop binop ->
+    sprintf
+      "%s <-- %s %s %s"
+      (format_operand binop.dest)
+      (format_operand binop.lhs)
+      (format_efkt_operation binop.op)
+      (format_operand binop.rhs)
+  | Unop unop ->
+    sprintf
+      "%s <-- %s%s"
+      (format_operand unop.dest)
+      (format_unop unop.op)
+      (format_operand unop.dest)
+  | Mov { src; dest; size } ->
+    sprintf "%s <-- %s (%s)" (format_operand dest) (format_operand src) (format_size size)
+  | MovFrom { src; dest; size } ->
+    sprintf
+      "%s <-- *%s (%s)"
+      (format_operand dest)
+      (format_operand src)
+      (format_size size)
+  | MovTo { src; dest; size } ->
+    sprintf
+      "*%s <-- %s (%s)"
+      (format_operand dest)
+      (format_operand src)
+      (format_size size)
+  | Directive dir -> sprintf "%s" dir
+  | Comment comment -> sprintf "/* %s */" comment
+  | Jmp l -> "jump" ^ Label.name l
+  | Cjmp c -> sprintf "%s %s" (c.typ |> sexp_of_jump_t |> string_of_sexp) (Label.name c.l)
+  | Lab l -> ".Label " ^ Label.name l
+  | Ret -> "ret"
+  | Set c ->
+    sprintf "%s %s" (c.typ |> sexp_of_set_t |> string_of_sexp) (format_operand c.src)
+  | Cmp { lhs; rhs; size } ->
+    sprintf "cmp[%s] %s, %s" (format_size size) (format_operand lhs) (format_operand rhs)
+  | AssertFail -> "call __assert_fail"
+  | Call { fname; args_in_regs; args_overflow } ->
+    sprintf
+      "call %s(%s|%s)"
+      (Symbol.name fname)
+      (List.map args_in_regs ~f:format_reg_size |> String.concat ~sep:", ")
+      (List.map args_overflow ~f:format_temp_size |> String.concat ~sep:", ")
+  | LoadFromStack ts ->
+    sprintf
+      "loadfromstack {%s}"
+      (List.map ts ~f:format_temp_size |> String.concat ~sep:", ")
+  | Alloc sz -> sprintf "alloc(%d)" sz
+  | Calloc { typ; len } -> sprintf "alloc_array[%s] of %d" (format_operand len) typ
+;;
+
+let format_instr i = format_instr' i ^ "\n"
+
+let format_jump_tag = function
+  | JRet -> "ret"
+  | JCon { jt; jf } -> sprintf "if(%s|%s)" (Label.name jt) (Label.name jf)
+  | JUncon l -> Label.name l
+;;
+
+let format_block ({ label; block; jump } : block) : string =
+  sprintf
+    "\n%s:\n%s\n%s\n"
+    (Label.name label)
+    (List.map block ~f:format_instr |> String.concat)
+    (format_jump_tag jump)
+;;
+
+let format_program prog =
+  let format_fspace_block { fname; args; fdef_blocks } =
+    sprintf
+      "%s(%s): \n%s"
+      (Symbol.name fname)
+      (List.map args ~f:Temp.name |> String.concat)
+      (List.map fdef_blocks ~f:format_block |> String.concat)
+  in
+  List.map prog ~f:format_fspace_block |> String.concat
+;;
+
 (*_ comparable Make *)
 module T = struct
   type t = operand [@@deriving compare, equal, sexp]

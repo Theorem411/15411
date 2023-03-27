@@ -55,6 +55,8 @@ type jump_t =
   | Jge (*_ jump if p1 >= p2 *)
   | Jle (*_ jump if p1 <= p2 *)
   | Jg
+  | Js
+  | Jb
 [@@deriving equal, sexp, compare]
 
 (*_ what is potentially missing? 
@@ -77,6 +79,7 @@ type set_t =
 type size =
   | L
   | S
+[@@deriving equal, sexp, compare]
 
 type instr =
   (* dest <- lhs op rhs *)
@@ -139,6 +142,11 @@ type instr =
       ; args_in_regs : (reg * size) list
       ; args_overflow : (Temp.t * size) list
       }
+  | Alloc of int
+  | Calloc of
+      { typ : int
+      ; len : operand
+      }
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
@@ -154,7 +162,7 @@ type jump_tag_t =
   | JUncon of Label.t
 
 type block =
-  { label : Label.t  
+  { label : Label.t
   ; block : instr list
   ; jump : jump_tag_t
   }
@@ -162,13 +170,12 @@ type block =
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
-  ; fdef_block : block list
+  ; fdef_blocks : block list
   }
 
 type program = fspace list
 
 val mem_fail_lab : Label.t
-val arg_i_to_reg : int -> reg
 val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program : program -> string
