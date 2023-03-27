@@ -30,25 +30,6 @@ type operand =
   | Temp of Temp.t
 [@@deriving equal, sexp, compare]
 
-type ptraddr =
-  { start : operand
-  ; off : int
-  }
-[@@deriving equal, sexp, compare]
-
-type arraddr =
-  { head : operand
-  ; idx : operand
-  ; typ : int
-  ; extra : int
-  }
-[@@deriving equal, sexp, compare]
-
-type addr =
-  | Ptr of ptraddr
-  | Arr of arraddr
-[@@deriving equal, sexp, compare]
-
 type pure_operation =
   | Add
   | Sub
@@ -98,6 +79,7 @@ type set_t =
 type size =
   | L
   | S
+[@@deriving equal, sexp, compare]
 
 type instr =
   (* dest <- lhs op rhs *)
@@ -127,10 +109,10 @@ type instr =
   | MovFrom of
       { dest : operand
       ; size : size
-      ; src : addr
+      ; src : operand
       }
   | MovTo of
-      { dest : addr
+      { dest : operand
       ; size : size
       ; src : operand
       }
@@ -154,11 +136,11 @@ type instr =
       }
   | AssertFail
   (* this is in the third assem *)
-  | LoadFromStack of Temp.t list
+  | LoadFromStack of (Temp.t * size) list
   | Call of
       { fname : Symbol.t
-      ; args_in_regs : reg list
-      ; args_overflow : Temp.t list
+      ; args_in_regs : (reg * size) list
+      ; args_overflow : (Temp.t * size) list
       }
   | Alloc of int
   | Calloc of
@@ -188,13 +170,12 @@ type block =
 type fspace =
   { fname : Symbol.t
   ; args : Temp.t list
-  ; fdef_block : block list
+  ; fdef_blocks : block list
   }
 
 type program = fspace list
 
 val mem_fail_lab : Label.t
-val arg_i_to_reg : int -> reg
 val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program : program -> string
