@@ -35,7 +35,6 @@ let arg_i_to_reg = function
 ;;
 
 type local =
-  | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
 [@@deriving equal, sexp, compare]
@@ -61,6 +60,7 @@ type addr =
 [@@deriving equal, sexp, compare]
 
 type roperand =
+  | Imm of Int32.t
   | Local of local
   | Remote of addr
   | Addr of addr
@@ -164,11 +164,8 @@ type instr =
       { typ : int
       ; len : operand
       }
-  | CheckNull of local
-  | CheckBound of
-      { base : local
-      ; idx : int
-      }
+  | CheckNull of ptraddr
+  | CheckBound of arraddr
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)

@@ -24,34 +24,30 @@ type reg =
   | RBX
 [@@deriving equal, sexp, compare, enum, hash]
 
-type local =
+type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
+[@@deriving equal, sexp, compare]
 
 type ptraddr =
-  { start : local
+  { start : operand
   ; off : int
   }
+[@@deriving equal, sexp, compare]
 
 type arraddr =
-  { head : local
-  ; idx : local
+  { head : operand
+  ; idx : operand
   ; typ : int
   ; extra : int
   }
+[@@deriving equal, sexp, compare]
 
 type addr =
   | Ptr of ptraddr
   | Arr of arraddr
-  | Null 
-
-type roperand =
-  | Local of local
-  | Remote of addr
-  | Addr of addr 
-
-type operand = roperand * int [@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare]
 
 type pure_operation =
   | Add
@@ -99,10 +95,15 @@ type set_t =
   | Setle
 [@@deriving equal, sexp, compare]
 
+type size =
+  | L
+  | S
+
 type instr =
   (* dest <- lhs op rhs *)
   | PureBinop of
       { op : pure_operation
+      ; size : size
       ; dest : operand
       ; lhs : operand
       ; rhs : operand
@@ -120,6 +121,17 @@ type instr =
   (* dest <- src *)
   | Mov of
       { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | MovFrom of
+      { dest : operand
+      ; size : size
+      ; src : addr
+      }
+  | MovTo of
+      { dest : addr
+      ; size : size
       ; src : operand
       }
   (*_ unconditional jump *)
@@ -135,7 +147,11 @@ type instr =
       }
   | Ret
   | Lab of Label.t
-  | Cmp of operand * operand
+  | Cmp of
+      { size : size
+      ; lhs : operand
+      ; rhs : operand
+      }
   | AssertFail
   (* this is in the third assem *)
   | LoadFromStack of Temp.t list
@@ -148,11 +164,6 @@ type instr =
   | Calloc of
       { typ : int
       ; len : operand
-      }
-  | CheckNull of local
-  | CheckBound of
-      { base : local
-      ; idx : int
       }
   (* Assembly directive. *)
   | Directive of string
@@ -182,6 +193,7 @@ type fspace =
 
 type program = fspace list
 
+val mem_fail_lab : Label.t
 val arg_i_to_reg : int -> reg
 val format_reg : reg -> string
 val format_instr : instr -> string

@@ -449,24 +449,52 @@ let rec static_semantic_stm
        ; res = A'.Declare { var; typ_size = size; assign = Some eres; body }
        ; used = SS.union us ue
        })
-  | A.Asop { dest; op; exp } ->
-    let { res = rd; typ = td; used = ud } =
-      static_semantic_exp dest { fdec; tdef; vdef; vdec; sdec; sdef; suse }
+  | A.Asop { dest; op = Some o; exp } ->
+    let stm_ctx = { fdec; tdef; vdef; vdec; sdec; sdef; suse } in
+    let { res = rd, _; typ = td; used = ud } = static_semantic_exp dest stm_ctx in
+    let { res = re; typ = te; used = ue } = static_semantic_exp exp stm_ctx in
+    let dest = Symbol.symbol "lvalue" in
+    (*_ depends on the shape of rd, do differently *)
+    let lvalue =
+      match rd with
+      | A'.Deref ptraddr -> A'.PtrAddr ptraddr
+      | A'.ArrayAccess arraddr -> A'.ArrAddr arraddr
+      | A'.StructAccess ptraddr -> A'.PtrAddr ptraddr
+      | _ -> failwith "incorrect lvalue shape for in statsem"
     in
-    let { res = re; typ = te; used = ue } =
-      static_semantic_exp exp { fdec; tdef; vdef; vdec; sdec; sdef; suse }
+    let res =
+      A'.Declare
+        { var = dest
+        ; typ_size = 8
+        ; assign = Some (lvalue, 8)
+        ; body = A'.AssignMem { dest; op = Some (A'.intop o); exp=re }
+        }
     in
-    (match op with
-     | Some o ->
-       type_unify_exn td T.Int;
-       type_unify_exn te T.Int;
-       { vdef
-       ; res = A'.Asop { dest = rd; op = Some (A'.intop o); exp = re }
-       ; used = SS.union ud ue
-       }
-     | None ->
-       type_unify_exn td te;
-       { vdef; res = A'.Asop { dest = rd; op = None; exp = re }; used = SS.union ud ue })
+    type_unify_exn td T.Int;
+    type_unify_exn te T.Int;
+    { vdef; res; used = SS.union ud ue }
+  | A.Asop { dest; op = None; exp } ->
+    let stm_ctx = { fdec; tdef; vdef; vdec; sdec; sdef; suse } in
+    let { res = rd, _; typ = td; used = ud } = static_semantic_exp dest stm_ctx in
+    let { res = re; typ = te; used = ue } = static_semantic_exp exp stm_ctx in
+    let dest = Symbol.symbol "lvalue" in
+    let lvalue =
+      match rd with
+      | A'.Deref ptraddr -> A'.PtrAddr ptraddr
+      | A'.ArrayAccess arraddr -> A'.ArrAddr arraddr
+      | A'.StructAccess ptraddr -> A'.PtrAddr ptraddr
+      | _ -> failwith "incorrect lvalue shape for in statsem"
+    in
+    let res =
+      A'.Declare
+        { var = dest
+        ; typ_size = 8
+        ; assign = Some (lvalue, 8)
+        ; body = A'.AssignMem { dest; op = None; exp = re }
+        }
+    in
+    type_unify_exn td te;
+    { vdef; res; used = SS.union ud ue }
   | A.Assign { var; exp } ->
     let t, size = SM.find_exn vdec var in
     let { res; typ; used } =

@@ -47,8 +47,6 @@ type pexp =
       { op : unop
       ; p : mpexp
       }
-  | PtrAddr of ptraddr
-  | ArrAddr of arraddr
   | Mem of addr (*_ deref of address *)
   | Addr of addr (*_ just the raw address *)
   | Alloc of int
@@ -78,6 +76,7 @@ and mpexp = pexp * int
 
 type cond =
   { cmp : cbop
+  ; size : int
   ; p1 : mpexp
   ; p2 : mpexp
   }
@@ -101,26 +100,15 @@ type stm =
       ; src : mpexp
       }
   | MovFuncApp of
-      { dest : Temp.t option
+      { dest : (Temp.t * int) option
       ; fname : Symbol.t
       ; args : mpexp list
       }
-  | MovToMemPure of
-      { mem : mpexp
+  | MovToMem of (*_ move src to deref mem *)
+      { mem : Temp.t
       ; src : mpexp
       }
-  | MovToMemEfkt of
-      { mem : mpexp
-      ; ebop : ebop
-      ; lhs : mpexp
-      ; rhs : mpexp
-      }
-  | MovToMemFunc of
-      { mem : mpexp
-      ; fname : Symbol.t
-      ; args : mpexp list
-      }
-  | Return of mpexp option
+  | Return of (pexp * int) option
   | AssertFail
 
 type jump_t =
@@ -139,11 +127,13 @@ type block =
 
 type fspace_block =
   { fname : Symbol.t
-  ; args : Temp.t list
+  ; args : (Temp.t * int) list
   ; fdef : block list
   }
 
 type program = fspace_block list
+
+val size : mpexp -> int
 
 module Print : sig
   val pp_pexp : pexp -> string
