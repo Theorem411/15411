@@ -151,8 +151,8 @@ type stm =
       ; typ_size : int
       ; exp : mexp
       }
-  | Asop of
-      { dest : mexp
+  | AssignMem of
+      { dest : Symbol.t
       ; op : intop option
       ; exp : mexp
       }
@@ -305,9 +305,9 @@ module Print = struct
            (pp_stm body))
     | Assign { var; typ_size; exp } ->
       sprintf "%s[%s] = %s;" (Symbol.name var) (Int.to_string typ_size) (pp_mexp exp)
-    | Asop { dest; op = None; exp } -> sprintf "(%s) = %s" (pp_mexp dest) (pp_mexp exp)
-    | Asop { dest; op = Some o; exp } ->
-      sprintf "(%s) %s= %s" (pp_mexp dest) (pp_binop o) (pp_mexp exp)
+    | AssignMem { dest; op = None; exp } -> sprintf "(%s) = %s" (Symbol.name dest) (pp_mexp exp)
+    | AssignMem { dest; op = Some o; exp } ->
+      sprintf "(%s) %s= %s" (Symbol.name dest) (pp_binop o) (pp_mexp exp)
     | If { cond; lb; rb } ->
       sprintf "if (%s) {\n%s\n}\nelse {\n%s\n}" (pp_mexp cond) (pp_stm lb) (pp_stm rb)
     | While { cond; body } -> sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_stm body)

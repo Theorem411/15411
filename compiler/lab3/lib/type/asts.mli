@@ -110,8 +110,9 @@ type stm =
       ; typ_size : int
       ; exp : mexp
       }
-  | Asop of
-      { dest : mexp
+  | AssignMem of (*_ assign to mem of dest *)
+      { dest : Symbol.t
+      ; typ_size : int
       ; op : intop option
       ; exp : mexp
       }

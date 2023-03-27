@@ -25,7 +25,6 @@ type reg =
 [@@deriving equal, sexp, compare, enum, hash]
 
 type local =
-  | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
 
@@ -47,6 +46,7 @@ type addr =
   | Null 
 
 type roperand =
+  | Imm of Int32.t
   | Local of local
   | Remote of addr
   | Addr of addr 
