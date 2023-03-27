@@ -44,10 +44,12 @@ type arraddr =
 type addr =
   | Ptr of ptraddr
   | Arr of arraddr
+  | Null 
 
 type roperand =
   | Local of local
   | Remote of addr
+  | Addr of addr 
 
 type operand = roperand * int [@@deriving equal, sexp, compare]
 

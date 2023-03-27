@@ -129,7 +129,7 @@ let rec tr_exp_rev
       { b with code = T.MovFuncApp { dest = Some t; fname = name; args = es } :: b.code }
     in
     (T.Temp t, esize), acc, b
-  | A.Deref (A.Ptr { start; off }) | A.StructAccess A.Ptr { start; off } ->
+  | A.Deref (A.Ptr { start; off }) | A.StructAccess (A.Ptr { start; off }) ->
     let e, acc, b = tr_exp_rev env start acc_rev block_rev in
     let t = Temp.create () in
     let b =
@@ -155,22 +155,95 @@ let rec tr_exp_rev
     let src = T.Mem (T.Arr { head = ehead; idx = eidx; typ_size = size; extra }), esize in
     let b = { b with code = T.MovPureExp { dest = t; src } :: b.code } in
     (T.Temp t, esize), acc, b
-  | A.Alloc i -> failwith "no"
-  | A.Alloc_array { type_size; len } -> failwith "no"
-  | A.PtrAddr paddr -> failwith "no"
-  | A.ArrAddr aaddr -> failwith "no"
+  | A.Alloc i -> (T.Alloc i, esize), acc_rev, block_rev
+  | A.Alloc_array { type_size; len } ->
+    let elen, acc, b = tr_exp_rev env len acc_rev block_rev in
+    (T.Calloc { len = elen; typ = type_size }, esize), acc, b
+  | A.PtrAddr (A.Ptr { start; off }) ->
+    let e, acc, b = tr_exp_rev env start acc_rev block_rev in
+    (T.Addr (T.Ptr { start = e; off }), esize), acc, b
+  | A.PtrAddr A.Null -> (T.Addr T.Null, esize), acc_rev, block_rev
+  | A.ArrAddr { head; idx; size; extra } ->
+    let ehead, acc, b = tr_exp_rev env head acc_rev block_rev in
+    let eidx, acc, b = tr_exp_rev env idx acc b in
+    (T.Addr (T.Arr { head = ehead; idx = eidx; typ_size = size; extra }), esize), acc, b
 ;;
 
-type tr_stm_t = T.block list * T.block
+type tr_stm_t = T.block list * block_tobe
 
 let rec tr_stm_rev
   (env : Temp.t S.t)
   (stm : A.stm)
   (acc_rev : T.block list)
-  (block_rev : T.block)
+  (block_rev : block_tobe)
   : tr_stm_t
   =
-  failwith "not implemented"
+  match stm with
+  | Declare { var; typ_size; assign; body } -> failwith "no"
+  | Assign { var; typ_size; exp } -> failwith "no"
+  | Asop { dest; op; exp } -> failwith "no"
+  | If { cond = A.True, _; lb; _ } -> tr_stm_rev env lb acc_rev block_rev
+  | If { cond = A.False, _; rb; _ } -> tr_stm_rev env rb acc_rev block_rev
+  | If { cond = A.Unop { op = A.LogNot; operand }, _; lb; rb } ->
+    tr_stm_rev env (If { cond = operand; rb; lb }) acc_rev block_rev
+  | If { cond = A.CmpBinop { op; size; lhs; rhs }, _; lb; rb } ->
+    let l1 = Label.create () in
+    let l2 = Label.create () in
+    let l3 = Label.create () in
+    (*_ translate cond *)
+    let el, acc, b = tr_exp_rev env lhs acc_rev block_rev in
+    let er, acc, b = tr_exp_rev env rhs acc b in
+    let cond : T.cond = { cmp = intop_to_cbop op; p1 = el; p2 = er } in
+    let finisher = T.If { cond; lt = l1; lf = l2 } in
+    let new_block = to_block b ~finisher in
+    (*_ translate lb *)
+    let b = { l = l1; code = [] } in
+    let acc = new_block :: acc in
+    let acc, b = tr_stm_rev env lb acc b in
+    let new_block = to_block b ~finisher:(T.Goto l3) in
+    (*_ translate rb *)
+    let b = { l = l2; code = [] } in
+    let acc = new_block :: acc in
+    let acc, b = tr_stm_rev env rb acc b in
+    let new_block = to_block b ~finisher:(T.Goto l3) in
+    (*_ result*)
+    let b = { l = l3; code = [] } in
+    let acc = new_block :: acc in
+    acc, b
+  | If { cond; lb; rb } ->
+    let l1 = Label.create () in
+    let l2 = Label.create () in
+    let l3 = Label.create () in
+    (*_ translate cond *)
+    let ec, acc, b = tr_exp_rev env cond acc_rev block_rev in
+    let cond : T.cond = { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4 } in
+    let finisher = T.If { cond; lt = l1; lf = l2 } in
+    let new_block = to_block b ~finisher in
+    (*_ translate lb *)
+    let b = { l = l1; code = [] } in
+    let acc = new_block :: acc in
+    let acc, b = tr_stm_rev env lb acc b in
+    let new_block = to_block b ~finisher:(T.Goto l3) in
+    (*_ translate rb *)
+    let b = { l = l2; code = [] } in
+    let acc = new_block :: acc in
+    let acc, b = tr_stm_rev env rb acc b in
+    let new_block = to_block b ~finisher:(T.Goto l3) in
+    (*_ result*)
+    let b = { l = l3; code = [] } in
+    let acc = new_block :: acc in
+    acc, b
+  | While { cond = A.True, _; body } -> failwith "no"
+  | While { cond = A.False, _; body } -> tr_stm_rev env body acc_rev block_rev
+  | While { cond = A.CmpBinop { op; size; lhs; rhs }, _; body } -> failwith "no"
+  | While { cond; body } -> failwith "no"
+  | Return None -> failwith "no"
+  | Return (Some e) -> failwith "no"
+  | Nop -> failwith "no"
+  | Seq (s1, s2) -> failwith "no"
+  | NakedExpr e -> failwith "no"
+  | AssertFail -> failwith "no"
+  | NakedCall { name; args } -> failwith "no"
 ;;
 
 let args_tag (sl : Symbol.t list) =
