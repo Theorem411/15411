@@ -142,11 +142,6 @@ type instr =
       ; args_in_regs : (reg * size) list
       ; args_overflow : (Temp.t * size) list
       }
-  | Alloc of int
-  | Calloc of
-      { typ : int
-      ; len : operand
-      }
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)

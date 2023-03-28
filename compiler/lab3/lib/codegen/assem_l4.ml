@@ -144,11 +144,6 @@ type instr =
       ; args_in_regs : (reg * size) list
       ; args_overflow : (Temp.t * size) list
       }
-  | Alloc of int
-  | Calloc of
-      { typ : int
-      ; len : operand
-      }
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
@@ -269,8 +264,6 @@ let format_instr' = function
     sprintf
       "loadfromstack {%s}"
       (List.map ts ~f:format_temp_size |> String.concat ~sep:", ")
-  | Alloc sz -> sprintf "alloc(%d)" sz
-  | Calloc { typ; len } -> sprintf "alloc_array[%s] of %d" (format_operand len) typ
 ;;
 
 let format_instr i = format_instr' i ^ "\n"
