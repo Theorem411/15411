@@ -1,4 +1,5 @@
-(* module A = Asts
+module A = Asts
+module B = Block
 
 type pbop =
   | Add
@@ -75,11 +76,16 @@ and addr =
 and mpexp = pexp * int
 
 type cond =
-  { cmp : cbop
-  ; size : int
-  ; p1 : mpexp
-  ; p2 : mpexp
-  }
+  | LCond of
+      { cmp : cbop
+      ; p1 : mpexp
+      ; p2 : mpexp
+      }
+  | SCond of
+      { cmp : cbop
+      ; p1 : mpexp
+      ; p2 : mpexp
+      }
 
 type stm =
   | If of
@@ -104,23 +110,24 @@ type stm =
       ; fname : Symbol.t
       ; args : mpexp list
       }
-  | MovToMem of (*_ move src to deref mem *)
-      { mem : Temp.t
+  | MovToMem of
+      { (*_ move src to deref mem *)
+        mem : Temp.t
       ; src : mpexp
       }
-  | Return of (pexp * int) option
+  | Return of mpexp option
   | AssertFail
 
 type jump_t =
-  | Ret
-  | Uncon of Label.t
-  | Cond of
+  | JRet
+  | JCon of
       { lt : Label.t
       ; lf : Label.t
       }
+  | JUncon of Label.t
 
 type block =
-  { label : Label.t
+  { label : Label.bt
   ; block : stm list
   ; jump : jump_t
   }
