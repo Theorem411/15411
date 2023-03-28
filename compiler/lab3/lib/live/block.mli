@@ -1,9 +1,12 @@
 module A = Assem
 
-type block_label_t =
-  | BlockLabel of Label.t
-  | FunName of (Symbol.t * Temp.t list)
-  [@@deriving compare, sexp, equal, hash]
+type bt =
+  | BlockLbl of Label.t
+  | FunName of
+      { fname : Symbol.t
+      ; args : Temp.t list
+      }
+      [@@deriving compare, sexp, equal, hash]
 
 type jump_tag_t =
   | JRet
@@ -14,7 +17,7 @@ type jump_tag_t =
   | JUncon of Label.t
 
 type block =
-  { label : block_label_t
+  { label : bt
   ; block : (int * A.instr) list
   ; jump : jump_tag_t
   }

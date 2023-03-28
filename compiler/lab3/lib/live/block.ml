@@ -3,9 +3,12 @@ module A = Assem
 
 let format_args args = List.map ~f:Temp.name args |> String.concat ~sep:","
 
-type block_label_t =
-  | BlockLabel of Label.t
-  | FunName of (Symbol.t * Temp.t list)
+type bt =
+  | BlockLbl of Label.t
+  | FunName of
+      { fname : Symbol.t
+      ; args : Temp.t list
+      }
 [@@deriving compare, sexp, equal, hash]
 
 let format_block_label_t = function
