@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module Tree = Tree
 
 type reg =
@@ -286,4 +286,4 @@ module T = struct
   type t = operand [@@deriving compare, equal, sexp]
 end
 
-include Comparable.Make (T)
+include Comparable.Make (T) *)

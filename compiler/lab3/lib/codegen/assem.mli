@@ -1,4 +1,4 @@
-open Core
+(* open Core
 type reg =
   | EAX
   | EDX
@@ -166,4 +166,4 @@ val format_instr : instr -> string
 val format_program_block : program_block -> string
 val format_program : program -> string
 
-include Comparable.S with type t := operand
+include Comparable.S with type t := operand *)

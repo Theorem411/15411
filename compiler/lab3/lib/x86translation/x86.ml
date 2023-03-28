@@ -39,7 +39,14 @@ let format_operand = function
   | Stack n -> string_of_int n ^ "(%rsp)"
 ;;
 
-type mem = | Mem of { disp: int option ; base_reg: R.reg ; idx_reg: R.reg  option ; scale: int };;
+type mem =
+  | Mem of
+      { disp : int option
+      ; base_reg : R.reg
+      ; idx_reg : R.reg option
+      ; scale : int option
+      }
+[@@deriving equal, compare, sexp]
 
 type operation =
   | Add
@@ -70,6 +77,21 @@ type operation =
   | Test
   | Div
 [@@deriving equal, compare, sexp]
+
+type size =
+  | Q
+  | L
+[@@deriving equal, compare, sexp]
+
+let to_size = function
+  | AS.L -> Q
+  | AS.S -> L
+;;
+
+let format_size = function
+  | Q -> "q"
+  | L -> "s"
+;;
 
 let format_operation = function
   | Add -> "addl"
@@ -125,34 +147,39 @@ let format_set = function
   | AS.Setle -> "setle"
 ;;
 
-let format_mem = function | Mem { disp; base_reg; idx_reg; scale } ->
-  (match idx_reg, scale, disp with
-  | Some idx, Some sc, Some disp ->
-    let sign1, sc = integer_formatting sc in
-    let sign2, disp = integer_formatting disp in
-    sprintf
-      "[%s %s %d*%s %s %d]"
-      (R.format_reg base_reg)
-      sign1
-      sc
-      (R.format_reg idx)
-      sign2
-      disp
-  | Some idx, Some sc, None ->
-    let sign1, sc = integer_formatting sc in
-    sprintf "[%s %s %d*%s]" (R.format_reg base_reg) sign1 sc (R.format_reg idx)
-  | Some _, None, _ -> failwith "no scale when idx is at memory"
-  | None, Some _, _ -> failwith "no index register when given scale"
-  | None, None, Some disp ->
-    let sign1, disp = integer_formatting disp in
-    sprintf "[%s %s %d]" (R.format_reg base_reg) sign1 disp
-  | None, None, None -> sprintf "[%s]" (R.format_reg base_reg))
+let integer_formatting (d : int) = if d < 0 then "-", -d else "+", d
+
+let format_mem = function
+  | Mem { disp; base_reg; idx_reg; scale } ->
+    (match idx_reg, scale, disp with
+    | Some idx, Some sc, Some disp ->
+      let sign1, sc = integer_formatting sc in
+      let sign2, disp = integer_formatting disp in
+      sprintf
+        "[%s %s %d*%s %s %d]"
+        (R.format_reg base_reg)
+        sign1
+        sc
+        (R.format_reg idx)
+        sign2
+        disp
+    | Some idx, Some sc, None ->
+      let sign1, sc = integer_formatting sc in
+      sprintf "[%s %s %d*%s]" (R.format_reg base_reg) sign1 sc (R.format_reg idx)
+    | Some _, None, _ -> failwith "no scale when idx is at memory"
+    | None, Some _, _ -> failwith "no index register when given scale"
+    | None, None, Some disp ->
+      let sign1, disp = integer_formatting disp in
+      sprintf "[%s %s %d]" (R.format_reg base_reg) sign1 disp
+    | None, None, None -> sprintf "[%s]" (R.format_reg base_reg))
+;;
 
 type instr =
   | BinCommand of
       { op : operation
       ; dest : operand
       ; src : operand
+      ; size : size
       }
   | UnCommand of
       { op : operation
@@ -163,14 +190,17 @@ type instr =
   | Cmp of
       { rhs : operand
       ; lhs : operand
+      ; size : size
       }
   | Test of
       { rhs : operand
       ; lhs : operand
+      ; size : size
       }
   | Lea of
       { dest : operand
-      ; src : operand
+      ; src : mem
+      ; size : size
       }
   | Lbl of Label.t
   | Jump of
@@ -185,17 +215,40 @@ type instr =
   | FunName of string
   | Call of string
   | Ret
+  | MovFrom of
+      { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | MovTo of
+      { dest : operand
+      ; size : size
+      ; src : operand
+      }
 [@@deriving equal, compare, sexp]
 
 let format = function
-  | BinCommand { op = (Addq | Subq) as bop; src = s; dest = d } ->
+  | BinCommand { op = (Addq | Subq) as bop; src = s; dest = d; _ } ->
     sprintf "\t%s\t%s, %s" (format_operation bop) (format_operand s) (format_operand d)
-  | BinCommand { op = (Sal | Sar | Movzx) as bop; src = s; dest = d } ->
+  | BinCommand { op = (Sal | Sar | Movzx) as bop; src = s; dest = d; _ } ->
     sprintf "\t%s\t%s, %s" (format_operation bop) (format_operand s) (format_operand d)
   | BinCommand binop ->
     sprintf
-      "\t%s\t%s, %s"
+      "\t%s%s\t%s, %s"
       (format_operation binop.op)
+      (format_size binop.size)
+      (format_operand binop.src)
+      (format_operand binop.dest)
+  | MovTo binop ->
+    sprintf
+      "\tmov%s\t(%s), %s"
+      (format_size binop.size)
+      (format_operand binop.src)
+      (format_operand binop.dest)
+  | MovFrom binop ->
+    sprintf
+      "\tmov%s\t%s, (%s)"
+      (format_size binop.size)
       (format_operand binop.src)
       (format_operand binop.dest)
   | UnCommand { op = (Pushq | Popq) as unop; src = s } ->
@@ -207,11 +260,16 @@ let format = function
   | Comment comment -> sprintf "/* %s */" comment
   | FunName s -> sprintf "%s:" s
   | Ret -> sprintf "\t%s" "ret"
-  | Cmp { rhs; lhs } -> sprintf "\tcmp\t%s, %s" (format_operand lhs) (format_operand rhs)
-  | Test { rhs; lhs } ->
-    sprintf "\ttest\t%s, %s" (format_operand lhs) (format_operand rhs)
-  | Lea { dest; src } ->
-    sprintf "\ttest\t%s, %s" (format_operand dest) (format_operand src)
+  | Cmp { rhs; lhs; size } ->
+    sprintf "\tcmp%s\t%s, %s" (format_size size) (format_operand lhs) (format_operand rhs)
+  | Test { rhs; lhs; size } ->
+    sprintf
+      "\ttest%s\t%s, %s"
+      (format_size size)
+      (format_operand lhs)
+      (format_operand rhs)
+  | Lea { dest; src; size } ->
+    sprintf "\tlea%s\t%s, %s" (format_size size) (format_operand dest) (format_mem src)
   | Lbl l -> Label.name l ^ ":"
   | Jump { op; label } -> sprintf "\t%s\t%s" (format_jump op) (Label.name label)
   | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand src)
@@ -272,4 +330,12 @@ let is_reg = function
   | _ -> false
 ;;
 
-let __FREE_REG (sz : int) : operand = Reg { reg = R.R11D; size = sz }
+let get_free (sz : size) : operand =
+  Reg
+    { reg = R.R11D
+    ; size =
+        (match sz with
+        | L -> 4
+        | Q -> 8)
+    }
+;;

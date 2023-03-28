@@ -1,4 +1,4 @@
-module A = Assem
+(* module A = Assem
 
 type block_label_t =
   | BlockLabel of Label.t
@@ -30,4 +30,4 @@ type block_program = fspace_block list
 val of_block : A.fspace -> fspace_block
 val blocks_former : A.program -> block_program
 val pp_all_blocks : fspace_block list -> string
-val format_block : block -> string
+val format_block : block -> string *)

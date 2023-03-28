@@ -9,7 +9,7 @@ val reg_alloc : AS.block list -> X86.operand AS.Map.t * int
 
 (* returns the function enter, exit and return label *)
 val get_function_be
-  :  Symbol.t * Temp.t list * AS.instr list
+  :  Symbol.t * Temp.t list
   -> X86.operand AS.Map.t
   -> color
   -> X86.instr list * X86.instr list * Label.t

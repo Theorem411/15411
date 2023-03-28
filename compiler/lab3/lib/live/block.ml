@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module A = Assem
 
 let format_args args = List.map ~f:Temp.name args |> String.concat ~sep:","
@@ -146,4 +146,4 @@ let pp_fspace (b : fspace_block) : string = format_fspace_block b
 
 let pp_all_blocks (blocks : fspace_block list) : string =
   "---Blocks---\n\n" ^ (List.map ~f:pp_fspace blocks |> String.concat ~sep:";\n\n\n")
-;;
+;; *)
