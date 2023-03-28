@@ -8,10 +8,6 @@ module Custom = CustomAssembly
 type fspace = X86.instr list
 type program = fspace list
 
-let checks_on = true
-
-(* let debug_mode_translate = true *)
-
 let translate_pure get_final = function
   | AS.PureBinop { op; dest = d; lhs; rhs; size } ->
     let size = X86.to_size size in
@@ -342,7 +338,7 @@ let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr lis
   | { fname; fdef_blocks; args = __args } ->
     (* has to be changed to the global one *)
     let (reg_map, mem_cell_count) : X86.operand AS.Map.t * int =
-      Helper.reg_alloc fdef_blocks
+      Helper.reg_alloc fspace
     in
     let final = get_final reg_map in
     let b, e, retLabel = Helper.get_function_be (fname, __args) reg_map mem_cell_count in

@@ -7,7 +7,12 @@ let no_reg_alloc = true
 
 type color = int [@@deriving compare, equal, sexp]
 
-let templist_to_operand l = List.map ~f:(fun t -> AS.Temp t) l
+(* let templist_to_opr l = List.map ~f:(fun t -> AS.Temp t) l *)
+let tempsize_list_to_opr l = List.map ~f:(fun (t, _) -> AS.Temp t) l
+
+let templist_to_op_size l =
+  List.map ~f:(fun ((t, sz) : Temp.t * AS.size) -> AS.Temp t, X86.to_size sz) l
+;;
 
 let get_all_addressable_line instr =
   let all_ops : AS.instr -> AS.operand list = function
@@ -16,10 +21,12 @@ let get_all_addressable_line instr =
     | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
     | Unop u -> [ u.dest ]
     | Jmp _ | Cjmp _ | Lab _ | AssertFail | AS.Directive _ | AS.Comment _ | Ret -> []
-    | LoadFromStack t -> templist_to_operand t
-    | Cmp (l, r) -> [ l; r ]
+    | LoadFromStack t -> tempsize_list_to_opr t
+    | Cmp { lhs; rhs; _ } -> [ lhs; rhs ]
     | Set { src; _ } -> [ src; AS.Reg EAX ]
-    | Call { args_overflow; _ } -> templist_to_operand args_overflow
+    | Call { args_overflow; _ } -> tempsize_list_to_opr args_overflow
+    | AS.MovFrom m -> [ m.dest; m.src ]
+    | AS.MovTo m -> [ m.dest; m.src ]
   in
   List.filter (all_ops instr) ~f:(fun i ->
       match i with
@@ -51,18 +58,24 @@ let __coloring_debug (program : AS.instr list) : (V.t * color) list =
 ;;
 
 (*_ COLORING USING REG ALLOCATOR *)
+
+let concat_blocks : AS.block list -> AS.instr list =
+  List.concat_map ~f:(fun (b : AS.block) : AS.instr list -> b.block)
+;;
+
 let __coloring ?(debug_mode_translate = no_reg_alloc) (fspace : AS.fspace)
     : (V.t * color) list
   =
   match fspace with
-  | { fdef = program; _ } ->
+  | { fdef_blocks; _ } ->
     if debug_mode_translate
-    then
-      __coloring_debug program
-      (* else (
-      let graph = Live.mk_graph_fspace (Block.of_block fspace) in
-      Graph.coloring graph) *)
-    else failwith "reg alloc is not implemented yet."
+    then (
+      let program : AS.instr list = concat_blocks fdef_blocks in
+      __coloring_debug program)
+      else (
+      let graph = Live.mk_graph_fspace (Block.of_fspace fspace) in
+      Graph.coloring graph)
+    (* else failwith "reg alloc is not implemented yet." *)
 ;;
 
 (* pattern *)
@@ -222,30 +235,48 @@ let reg_alloc (fspace : AS.fspace) =
   reg_map, mem_cell_count
 ;;
 
-let do_arg_moves (reg_map : X86.operand AS.Map.t) (args : AS.operand list) total_size =
+let sz_to_reg_size_int (sz : X86.size) =
+  match sz with
+  | X86.L -> 4
+  | X86.Q -> 8
+;;
+
+let do_arg_moves
+    (reg_map : X86.operand AS.Map.t)
+    (args : (AS.operand * X86.size) list)
+    total_size
+  =
   let reg_args, stack_args = List.take args 6, List.drop args 6 in
   let reg_moves =
-    let srcs = List.mapi reg_args ~f:(fun i _ -> X86.Reg (R.arg_i_to_reg i 8)) in
-    let dests = List.map reg_args ~f:(AS.Map.find_exn reg_map) in
-    let create d s = X86.BinCommand { op = Mov; dest = d; src = s } in
+    let srcs =
+      List.mapi reg_args ~f:(fun i (_, sz) ->
+          sz, X86.Reg (R.arg_i_to_reg (sz_to_reg_size_int sz) i))
+    in
+    let dests = List.map reg_args ~f:(fun (r, _) -> AS.Map.find_exn reg_map r) in
+    let create d (sz, s) = X86.BinCommand { op = Mov; dest = d; src = s; size = sz } in
     List.map2_exn dests srcs ~f:create
   in
   let stack_refs =
-    List.concat_mapi stack_args ~f:(fun i t ->
+    List.concat_mapi stack_args ~f:(fun i (t, sz) ->
         let d = AS.Map.find_exn reg_map t in
         match d with
         | X86.Reg _ ->
           [ X86.BinCommand
-              { op = Mov; dest = d; src = X86.Stack (total_size + 16 + (8 * i)) }
+              { op = Mov
+              ; dest = d
+              ; src = X86.Stack (total_size + 16 + (8 * i))
+              ; size = sz
+              }
           ]
         | X86.Imm _ -> failwith "dest is Imm"
         | X86.Stack _ ->
           [ X86.BinCommand
               { op = Mov
-              ; dest = X86.__FREE_REG 8
+              ; dest = X86.get_free sz
               ; src = X86.Stack (total_size + 16 + (8 * i))
+              ; size = sz
               }
-          ; X86.BinCommand { op = Mov; dest = d; src = X86.__FREE_REG 8 }
+          ; X86.BinCommand { op = Mov; dest = d; src = X86.get_free sz; size = sz }
           ])
   in
   reg_moves @ stack_refs
@@ -256,8 +287,12 @@ let do_arg_moves (reg_map : X86.operand AS.Map.t) (args : AS.operand list) total
 let rbp = X86.Reg { reg = R.RBP; size = 8 }
 let rsp = X86.Reg { reg = R.RBP; size = 8 }
 
-let get_function_be (fname, __args) reg_map mem_cell_count =
-  let args = templist_to_operand __args in
+let get_function_be
+    ((fname, __args) : Symbol.t * (Temp.t * AS.size) list)
+    reg_map
+    mem_cell_count
+  =
+  let args = templist_to_op_size __args in
   let local_count = mem_cell_count in
   let cee_regs, cee_start, cee_finish = callee_handle reg_map in
   (* let cee_count = List.length cee_regs in  *)
@@ -276,19 +311,25 @@ let get_function_be (fname, __args) reg_map mem_cell_count =
     ; X86.Directive (sprintf ".type\t%s, @function" (Symbol.name fname))
     ; X86.FunName (Symbol.name fname)
     ; X86.UnCommand { op = X86.Pushq; src = rbp }
-    ; X86.BinCommand { op = Movq; dest = rbp; src = rsp }
+    ; X86.BinCommand { op = Mov; dest = rbp; src = rsp; size = X86.Q }
     ]
     @ cee_start
     @ (if __sub_count = 0
       then []
-      else [ X86.BinCommand { op = X86.Subq; dest = rsp; src = X86.Imm sub_count } ])
+      else
+        [ X86.BinCommand
+            { op = X86.Sub; dest = rsp; src = X86.Imm sub_count; size = X86.Q }
+        ])
     @ locals
   in
   let exit =
     [ X86.Comment ("return label of " ^ Symbol.name fname); X86.Lbl ret_label ]
     @ (if __sub_count = 0
       then []
-      else [ X86.BinCommand { op = X86.Addq; dest = rsp; src = X86.Imm sub_count } ])
+      else
+        [ X86.BinCommand
+            { op = X86.Add; dest = rsp; src = X86.Imm sub_count; size = X86.Q }
+        ])
     @ cee_finish
     @ [ X86.UnCommand { op = X86.Popq; src = rbp }; X86.Ret ]
   in

@@ -1,7 +1,7 @@
 open Core
 module B = Block
 module V = Graph.Vertex
-module AS = Assem
+module AS = Assem_l4
 module IntTable = Hashtbl.Make (Int)
 
 let dump_liveness : bool ref = ref false
@@ -14,7 +14,7 @@ let dump_liveness : bool ref = ref false
     prerr_endline)
 ;; *)
 
-let print_info _ = ();;
+let print_info _ = ()
 
 type ht_entry =
   { d : V.Set.t
@@ -50,7 +50,9 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     | None -> V.Set.empty
   in
   match instr with
-  | AS.Mov { dest; src } -> op_to_vset dest, op_to_vset src
+  | AS.Mov { dest; src; _ } -> op_to_vset dest, op_to_vset src
+  | AS.MovFrom { dest; src; _ } -> op_to_vset dest, op_to_vset src
+  | AS.MovTo { dest; src; _ } -> op_to_vset dest, op_to_vset src
   | AS.Unop { dest; _ } -> op_to_vset dest, op_to_vset dest
   | AS.PureBinop { dest; lhs; rhs; _ } ->
     op_to_vset dest, V.Set.union_list [ op_to_vset lhs; op_to_vset rhs ]
@@ -63,19 +65,21 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   | AS.Jmp _ | AS.Cjmp _ -> V.Set.empty, V.Set.empty
   | AS.Ret -> V.Set.empty, V.Set.singleton (V.R AS.EAX)
   | AS.Lab _ -> V.Set.empty, V.Set.empty
-  | AS.Cmp (o1, o2) -> V.Set.empty, V.Set.union_list [ op_to_vset o1; op_to_vset o2 ]
+  | AS.Cmp { lhs; rhs; _ } ->
+    V.Set.empty, V.Set.union_list [ op_to_vset lhs; op_to_vset rhs ]
   | AS.AssertFail -> V.Set.empty, V.Set.empty
-  | AS.Set { src; _ } -> V.Set.union_list (List.map ~f:op_to_vset [ src; AS.Reg AS.EAX;]), V.Set.empty
+  | AS.Set { src; _ } ->
+    V.Set.union_list (List.map ~f:op_to_vset [ src; AS.Reg AS.EAX ]), V.Set.empty
   (* defines a lot of registers *)
   | AS.Call { args_in_regs; _ } ->
     ( V.Set.of_list
         (List.map
            ~f:(fun r -> V.R r)
            [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D; AS.R10D; AS.R11D ])
-    , V.Set.of_list (List.map ~f:(fun r -> V.R r) args_in_regs) )
+    , V.Set.of_list (List.map ~f:(fun (r, _) -> V.R r) args_in_regs) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->
-    V.Set.of_list (List.map ~f:(fun t -> V.T t) stack_args), V.Set.empty
+    V.Set.of_list (List.map ~f:(fun (t, _) -> V.T t) stack_args), V.Set.empty
 ;;
 
 let format_v_set s =
@@ -107,7 +111,7 @@ let print_table (table : t) : string =
        keys)
 ;;
 
-let initialize_blocks table (fargs : Temp.t list) (x : B.block)  =
+let initialize_blocks table (fargs : Temp.t list) (x : B.block) =
   let b = x.block in
   List.iter b ~f:(fun (i, instr) ->
       let d, u = def_n_use instr in
@@ -123,10 +127,10 @@ let initialize_blocks table (fargs : Temp.t list) (x : B.block)  =
       Hashtbl.add_exn table ~key:i ~data:record)
 ;;
 
-let init_table (f : B.fspace_block) =
+let init_table (f : B.fspace) =
   let table : t = IntTable.create () in
-  let helper = initialize_blocks table (f.args) in
-  List.iter f.fdef_block ~f:helper;
+  let helper = initialize_blocks table f.args in
+  List.iter f.fdef_blocks ~f:helper;
   print_info (print_table table);
   table
 ;;
@@ -186,7 +190,7 @@ let handle_instrs
   IntTable.find_exn live_in first_index
 ;;
 
-(* let singlepass : (int, ht_entry) Hashtbl.t -> B.fspace_block -> V.Set.t -> V.Set.t *)
+(* let singlepass : (int, ht_entry) Hashtbl.t -> B.fspace -> V.Set.t -> V.Set.t *)
 let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.t)
     : V.Set.t
   =
@@ -234,8 +238,8 @@ let get_block_vertices (b : B.block) =
   V.Set.union args set_list
 ;;
 
-let get_all_vertices (b : B.fspace_block) =
-  V.Set.union_list (List.map b.fdef_block ~f:get_block_vertices)
+let get_all_vertices (b : B.fspace) =
+  V.Set.union_list (List.map b.fdef_blocks ~f:get_block_vertices)
 ;;
 
 let get_edges (table : t) : (V.t * V.t) list =

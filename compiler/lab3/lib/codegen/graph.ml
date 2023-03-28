@@ -20,9 +20,9 @@ module Vertex = struct
   include T
   include Comparable.Make (T)
 
-  let op_to_vertex_opt:AS.operand -> t option = function
-    | AS.Reg r, _ -> Some (R r)
-    | AS.Temp t, _ -> Some (T t)
+  let op_to_vertex_opt = function
+    | AS.Reg r -> Some (R r)
+    | AS.Temp t -> Some (T t)
     | _ -> None
   ;;
 
@@ -60,6 +60,7 @@ let to_list (graph : t) : (Vertex.t * Vertex.t list) list =
 (* 
 (*_ 
     graph coloring 
+  *)
   *)
 type color_palette_t = int option Vertex.Map.t [@@deriving sexp]
 
@@ -136,19 +137,6 @@ let ordering (graph : t) : Vertex.t list =
   aux wkset weights n
 ;;
 
-(*_ 
-    greedy coloring 
-    *)
-
-(* let print_vertex_set (vset : Vertex.Set.t) (title : string) = 
-  let print_aux v = 
-    let v_str = Vertex._to_string v^", "in
-      print_string v_str
-  in
-  let () = print_string ("\n" ^ title ^ " [") in
-  let () = Vertex.Set.iter vset ~f:print_aux in
-    print_string ("]\n")
-;; *)
 let unused_color_in_nbrs (graph : t) (color_palette : color_palette_t) (v : Vertex.t) =
   let nbrs = Vertex.Map.find_exn graph v in
   (* let () = print_vertex_set nbrs ("this is nbrs of v="^Vertex._to_string v) in *)
@@ -184,216 +172,8 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
       (v, c_new) :: coloring_aux graph color_palette' vs)
 ;;
 
-type debug_2 = (Vertex.t * Vertex.t) list [@@deriving sexp]
-type debug_3 = Vertex.t list [@@deriving sexp]
-
 let coloring (graph : t) : (Vertex.t * int) list =
   let vertex_order = ordering graph in
   let color_palette = precolor graph in
   coloring_aux graph color_palette vertex_order
 ;;
-
-(*_ Liveness type: liveinfo_t
-    *)
-type liveinfo_t = Vertex.Set.t * Vertex.Set.t [@@deriving sexp]
-(*_ init live in & out: [{EAX}, {}]*)
-
-(*_ let print_liveinfo (live_res : liveinfo_t list) = 
-  let print_aux (lif : liveinfo_t) = 
-    let lif_str = ""
-  in
-  
-;; *)
-
-(* let is_use_1 (op:AS.operand) : Vertex.Set.t = 
-  match op with 
-    AS.Reg r -> Vertex.Set.singleton (Vertex.R r)
-  | AS.Temp t -> Vertex.Set.singleton (Vertex.T t)
-  | _ -> Vertex.Set.empty
-;;
-let is_use_2 (op1, op2) =  Vertex.Set.union (is_use_1 op1) (is_use_1 op2)
-;; *)
-let is_use (op_lst : AS.operand list) =
-  List.filter
-    ~f:(fun op ->
-      match op with
-      | AS.Reg _ -> true
-      | AS.Temp _ -> true
-      | _ -> false)
-    op_lst
-  |> List.filter_map ~f:Vertex.op_to_vertex_opt
-  |> Vertex.Set.of_list
-;;
-
-(* let uses (l : AS.instr) =
-  match l with
-  | AS.Binop binop ->
-    let op_lst =
-      match binop.op with
-      | AS.Div -> [ AS.Reg AS.EAX; AS.Reg AS.EDX ]
-      | _ -> []
-    in
-    is_use (binop.lhs :: binop.rhs :: op_lst)
-  | AS.Mov mv ->
-    let op_lst = [ mv.src ] in
-    is_use op_lst
-  | _ -> Vertex.Set.empty
-;; *)
-
-(* let is_def (d : AS.operand) : Vertex.Set.t = (*_ result is either empty or singleton*)
-  match (Vertex.op_to_vertex_opt d) with 
-  None -> Vertex.Set.empty | Some v -> Vertex.Set.singleton v
-;; *)
-let def_opt = failwith "old code";;
-
-(* = function
-  | AS.Binop binop -> Vertex.op_to_vertex_opt binop.dest
-  | AS.Mov mv -> Vertex.op_to_vertex_opt mv.dest
-  | _ -> None
-;; *)
-
-(* let defs (l : AS.instr) =
-  match def_opt l with
-  | None -> Vertex.Set.empty
-  | Some v -> Vertex.Set.singleton v
-;; *)
-
-let not_live = failwith "old code";;
-  (* function
-  | AS.Binop binop ->
-    (match binop.dest with
-    | AS.Reg r -> Vertex.Set.singleton (Vertex.R r)
-    | AS.Temp t -> Vertex.Set.singleton (Vertex.T t)
-    | _ -> Vertex.Set.empty)
-  | AS.Mov mv ->
-    List.filter_map [ mv.dest; mv.src ] ~f:Vertex.op_to_vertex_opt |> Vertex.Set.of_list
-  | _ -> Vertex.Set.empty
-;; *)
-
-type liveinfo_line_t =
-  { line : AS.instr option
-  ; def : Vertex.t option
-  ; edge_with : Vertex.Set.t
-  ; livein : Vertex.Set.t
-  ; liveout : Vertex.Set.t
-  }
-
-(* let liveinfo_line_init =
-  { line = None
-  ; def = None
-  ; edge_with = Vertex.Set.empty
-  ; livein = Vertex.Set.singleton (Vertex.R AS.EAX)
-  ; liveout = Vertex.Set.empty
-  }
-;; *)
-
-(* let live_analysis_aux (l : AS.instr) acc =
-  match acc with
-  | [] -> raise (Failure "live_analysis_aux should not take in empty initial liveinfo")
-  | liveinfo_line :: _ ->
-    let livein, liveout = liveinfo_line.livein, liveinfo_line.liveout in
-    let livein' = Vertex.Set.diff liveout (defs l) |> Vertex.Set.union (uses l) in
-    let liveout' = livein in
-    let edge_with' = Vertex.Set.diff liveout' (not_live l) in
-    { line = Some l
-    ; def = def_opt l
-    ; edge_with = edge_with'
-    ; livein = livein'
-    ; liveout = liveout'
-    }
-    :: acc
-;; *)
-
-(* let live_analysis_aux (l : AS.instr) in_out = 
-  match in_out with 
-      [] -> [] (*_ should not get here *)
-    | (_, (_, live_info))::_ -> 
-        let (live_in, live_out) = live_info in
-        let live_in' = (Vertex.Set.diff live_out (defs l)) |> Vertex.Set.union (uses l) in 
-        let live_out' = live_in in (*_ will modify when branching *)
-        let live_set = Vertex.Set.diff live_out' (not_live l) in
-        (match l with 
-          AS.Binop binop -> 
-            let v_cur = Vertex.op_to_vertex_opt (binop.dest) in
-              (v_cur, (live_set, (live_in', live_out')))::in_out
-        | AS.Mov mv -> 
-            let v_cur = Vertex.op_to_vertex_opt (mv.dest) in
-              (v_cur, (live_set, (live_in', live_out')))::in_out
-        | _ -> in_out
-        )
-;; *)
-(* let live_analysis (prog : AS.instr list) =
-  List.fold_right prog ~f:live_analysis_aux ~init:[ liveinfo_line_init ]
-;; *)
-
-(* type debug_1 = (Vertex.t option * (Vertex.Set.t * liveinfo_t)) list [@@deriving sexp] *)
-
-(*_ Live ranges: an alternative way to create interference graph (banished)
-    *)
-
-(*_ mk interference graph using livenes
-    *)
-let all_vertex_in_line (line : AS.instr) =
-  match line with
-  | AS.PureBinop binop ->
-    List.filter_map ~f:Vertex.op_to_vertex_opt [ binop.dest; binop.rhs; binop.rhs ]
-  | AS.EfktBinop binop ->
-    List.filter_map ~f:Vertex.op_to_vertex_opt [ binop.dest; binop.rhs; binop.rhs ]
-  | AS.Unop unop -> List.filter_map ~f:Vertex.op_to_vertex_opt [ unop.dest ]
-  | AS.Mov mv -> List.filter_map ~f:Vertex.op_to_vertex_opt [ mv.dest; mv.src ]
-  | _ -> []
-;;
-
-let all_vertex_in_prog (prog : AS.instr list) =
-  let fold_f acc line =
-    Vertex.Set.union acc (all_vertex_in_line line |> Vertex.Set.of_list)
-  in
-  List.fold_left prog ~init:Vertex.Set.empty ~f:fold_f
-;;
-
-let graph_empty (vertex_set : Vertex.Set.t) =
-  Vertex.Map.of_key_set vertex_set ~f:(fun _ -> Vertex.Set.empty)
-;;
-
-let add_edge (graph : t) ((u, v) : Vertex.t * Vertex.t) =
-  let graph =
-    Vertex.Map.update graph u ~f:(fun o ->
-        match o with
-        | None -> Vertex.Set.singleton v
-        | Some s -> Vertex.Set.add s v)
-  in
-  let graph =
-    Vertex.Map.update graph v ~f:(fun o ->
-        match o with
-        | None -> Vertex.Set.singleton u
-        | Some s -> Vertex.Set.add s u)
-  in
-  graph
-;;
-
-let from_list graph_init (edge_list : (Vertex.t * Vertex.t) list) =
-  List.fold edge_list ~init:graph_init ~f:add_edge
-;;
-(* 
-let mk_interfere_graph (prog : AS.instr list) =
-  let live_info = live_analysis prog in
-  let map_f liveinfo_line =
-    match liveinfo_line.def with
-    | None -> None
-    | Some v -> Some (v, liveinfo_line.edge_with)
-  in
-  let live_edge = List.map live_info ~f:map_f in
-  let fold_f acc inter_info =
-    match inter_info with
-    | None -> acc
-    | Some (v, inter_set) ->
-      let new_edges = Vertex.Set.to_list inter_set |> List.map ~f:(fun u -> v, u) in
-      new_edges :: acc
-  in
-  let edge_list_list = List.fold live_edge ~init:[] ~f:fold_f in
-  let edge_list = List.concat edge_list_list in
-  let all_vertex = all_vertex_in_prog prog in
-  let graph_init = graph_empty all_vertex in
-  (* let () = CustomDebug.print_with_name "\nedge_list" [sexp_of_debug_2 edge_list] in *)
-  from_list graph_init edge_list
-;; *) *)

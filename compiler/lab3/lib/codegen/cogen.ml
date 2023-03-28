@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module T = Tree
 module A = Assem
 
@@ -163,4 +163,4 @@ let munch_fspace ({ fname; args; fdef } : T.fspace) : A.fspace =
   { fname; args; fdef = prolog @ List.concat_map ~f:munch_stm fdef }
 ;;
 
-let cogen (prog : T.program) : A.program = List.map ~f:munch_fspace prog
+let cogen (prog : T.program) : A.program = List.map ~f:munch_fspace prog *)

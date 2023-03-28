@@ -44,7 +44,7 @@ let block_receive_update_and_check
 ;;
 
 (*_ build predecessor mapping *)
-let predecessors ({ fdef_block; _ } : B.fspace_block) =
+let predecessors ({ fdef_blocks; _ } : B.fspace) =
   let fold_f (ls, acc) (block : B.block) =
     match block.jump with
     | B.JCon { jt; jf } ->
@@ -54,17 +54,17 @@ let predecessors ({ fdef_block; _ } : B.fspace_block) =
     | B.JUncon l -> block.label :: ls, LM.add_multi ~key:(B.BlockLabel l) ~data:block acc
     | B.JRet -> block.label :: ls, acc
   in
-  List.fold fdef_block ~init:([], LM.empty) ~f:fold_f
+  List.fold fdef_blocks ~init:([], LM.empty) ~f:fold_f
 ;;
 
-let mk_liveness_fspace (fspace : B.fspace_block) =
+let mk_liveness_fspace (fspace : B.fspace) =
   (*_ determine predecessors of all the blocks *)
   let labs_rev, preds = predecessors fspace in
   (*_ init major hashtbl's *)
   let give_to_block = give_to_block_init labs_rev in
   let block_receive = block_recieve_init labs_rev in
   (* init wq *)
-  let wq = Queue.of_list (List.rev fspace.fdef_block) in
+  let wq = Queue.of_list (List.rev fspace.fdef_blocks) in
   (* init final result, which is a SP.t *)
   let singlepass_tbl = SP.init_table fspace in
   let rec wq_loop wq =
@@ -97,7 +97,7 @@ let mk_liveness_fspace (fspace : B.fspace_block) =
 (*_ the final mk_graph_fspace function *)
 module VertexTable = Hashtbl.Make (V)
 
-let mk_graph_fspace (fspace : B.fspace_block) = 
+let mk_graph_fspace (fspace : B.fspace) = 
   (*_ run liveness algorithm and extracts vertices and edges *)
   let live_table = mk_liveness_fspace fspace in
   let vertices, edges = SP.get_edges_vertices live_table fspace in
