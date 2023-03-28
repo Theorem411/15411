@@ -206,8 +206,8 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
   (* handling arguments *)
   let args, black_list =
     match b.label with
-    | Block.BlockLabel _ -> None, V.Set.empty
-    | Block.FunName (_, args) ->
+    | Label.BlockLbl _ -> None, V.Set.empty
+    | Label.FunName { args; _ } ->
       Some args, V.Set.of_list (List.map ~f:(fun t -> V.T t) args)
   in
   let out_raw = handle_instrs table (b.block, args) input in
@@ -224,8 +224,8 @@ let get_block_vertices (b : B.block) =
   let instrs = List.map ~f:(fun (_, instr) -> instr) b.block in
   let args =
     match b.label with
-    | Block.BlockLabel _ -> V.Set.empty
-    | Block.FunName (_, args) -> V.Set.of_list (List.map ~f:(fun t -> V.T t) args)
+    | Label.BlockLbl _ -> V.Set.empty
+    | Label.FunName { args; _ } -> V.Set.of_list (List.map ~f:(fun t -> V.T t) args)
   in
   let set_list =
     V.Set.union_list

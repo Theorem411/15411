@@ -4,7 +4,7 @@ module V = Graph.Vertex
 module SP = Singlepass
 
 module T = struct
-  type t = B.block_label_t [@@deriving compare, equal, sexp, hash]
+  type t = Label.bt [@@deriving compare, equal, sexp, hash]
 end
 
 module LM = Map.Make (T)
@@ -14,28 +14,28 @@ type give_to_block_t = V.Set.t LT.t (*_ update by union *)
 type block_receive_t = V.Set.t LT.t (*_ update by replace *)
 
 (*_ give_live_to and receive_live_from *)
-let give_to_block_init (ls : B.block_label_t list) =
+let give_to_block_init (ls : Label.bt list) =
   LT.of_alist_exn (List.map ls ~f:(fun l -> l, V.Set.empty))
 ;;
 
 (*_ update by union new with old values *)
-let give_to_block_update (giveto : give_to_block_t) (l : B.block_label_t) (vnew : V.Set.t)
+let give_to_block_update (giveto : give_to_block_t) (l : Label.bt) (vnew : V.Set.t)
   =
   LT.update giveto l ~f:(fun vsopt ->
-    match vsopt with
-    | None -> vnew
-    | Some vs -> V.Set.union vs vnew)
+      match vsopt with
+      | None -> vnew
+      | Some vs -> V.Set.union vs vnew)
 ;;
 
 (*_ update by replacing old values with new ones *)
-let block_recieve_init (ls : B.block_label_t list) =
+let block_recieve_init (ls : Label.bt list) =
   LT.of_alist_exn (List.map ls ~f:(fun l -> l, V.Set.empty))
 ;;
 
 let block_receive_update_and_check
-  (recv : block_receive_t)
-  (l : B.block_label_t)
-  (vnew : V.Set.t)
+    (recv : block_receive_t)
+    (l : Label.bt)
+    (vnew : V.Set.t)
   =
   let vold = LT.find_exn recv l in
   let changed = not (V.Set.equal vold vnew) in
@@ -48,10 +48,10 @@ let predecessors ({ fdef_blocks; _ } : B.fspace) =
   let fold_f (ls, acc) (block : B.block) =
     match block.jump with
     | B.JCon { jt; jf } ->
-      let res = LM.add_multi ~key:(B.BlockLabel jt) ~data:block acc in
-      let res' = LM.add_multi ~key:(B.BlockLabel jf) ~data:block res in
+      let res = LM.add_multi ~key:(Label.BlockLbl jt) ~data:block acc in
+      let res' = LM.add_multi ~key:(Label.BlockLbl jf) ~data:block res in
       block.label :: ls, res'
-    | B.JUncon l -> block.label :: ls, LM.add_multi ~key:(B.BlockLabel l) ~data:block acc
+    | B.JUncon l -> block.label :: ls, LM.add_multi ~key:(Label.BlockLbl l) ~data:block acc
     | B.JRet -> block.label :: ls, acc
   in
   List.fold fdef_blocks ~init:([], LM.empty) ~f:fold_f
@@ -97,7 +97,7 @@ let mk_liveness_fspace (fspace : B.fspace) =
 (*_ the final mk_graph_fspace function *)
 module VertexTable = Hashtbl.Make (V)
 
-let mk_graph_fspace (fspace : B.fspace) = 
+let mk_graph_fspace (fspace : B.fspace) =
   (*_ run liveness algorithm and extracts vertices and edges *)
   let live_table = mk_liveness_fspace fspace in
   let vertices, edges = SP.get_edges_vertices live_table fspace in

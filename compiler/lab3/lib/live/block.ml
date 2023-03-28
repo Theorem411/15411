@@ -1,17 +1,8 @@
 open Core
 module AS = Assem_l4
+module Temp = Temp
 
 let format_args args = List.map ~f:Temp.name args |> String.concat ~sep:","
-
-type block_label_t =
-  | BlockLabel of Label.t
-  | FunName of (Symbol.t * Temp.t list)
-[@@deriving compare, sexp, equal, hash]
-
-let format_block_label_t = function
-  | BlockLabel l -> sprintf "BlockLbl(%s):" (Label.name l)
-  | FunName (f, args) -> sprintf "FunLbl %s(%s):" (Symbol.name f) (format_args args)
-;;
 
 type jump_tag_t =
   | JRet
@@ -22,7 +13,7 @@ type jump_tag_t =
   | JUncon of Label.t
 
 type block =
-  { label : block_label_t
+  { label : Label.bt
   ; block : (int * AS.instr) list
   ; jump : jump_tag_t
   }
@@ -36,7 +27,7 @@ let format_jump_tag = function
 let format_block f =
   sprintf
     "[\n%s\n|\n  %s|\n%s\n]\n\n"
-    (format_block_label_t f.label)
+    (Label.format_bt f.label)
     (List.map ~f:(fun (j, instr) -> Int.to_string j ^ ":" ^ AS.format_instr instr) f.block
     |> String.concat ~sep:"  ")
     (format_jump_tag f.jump)
@@ -81,19 +72,12 @@ let to_bjump = function
 ;;
 
 let of_block ({ label; block; jump } : AS.block) : block =
-  { label = BlockLabel label; jump = to_bjump jump; block = numerate block }
+  { label; jump = to_bjump jump; block = numerate block }
 ;;
 
-let of_fspace ({ fname; args; fdef_blocks } as f : AS.fspace) : fspace =
-  let b = List.nth_exn f.fdef_blocks 0 in
+let of_fspace ({ fname; args; fdef_blocks } : AS.fspace) : fspace =
   let args = List.map ~f:(fun (t, _) -> t) args in
-  let first_block =
-    { label = FunName (f.fname, args); jump = to_bjump b.jump; block = numerate b.block }
-  in
-  { fname
-  ; args
-  ; fdef_blocks = first_block :: List.map ~f:of_block (List.drop fdef_blocks 1)
-  }
+  { fname; args; fdef_blocks = List.map ~f:of_block fdef_blocks }
 ;;
 
 let blocks_former (funcs : AS.fspace list) = List.map ~f:of_fspace funcs

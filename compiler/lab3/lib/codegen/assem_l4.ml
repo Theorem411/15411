@@ -150,7 +150,7 @@ type instr =
   | Comment of string
 [@@deriving equal, sexp, compare]
 
-type jump_tag_t =
+type assem_jump_tag_t =
   | JRet
   | JCon of
       { jt : Label.t
@@ -159,9 +159,9 @@ type jump_tag_t =
   | JUncon of Label.t
 
 type block =
-  { label : Label.t
+  { label : Label.bt
   ; block : instr list
-  ; jump : jump_tag_t
+  ; jump : assem_jump_tag_t
   }
 
 type fspace =
@@ -277,7 +277,7 @@ let format_jump_tag = function
 let format_block ({ label; block; jump } : block) : string =
   sprintf
     "\n%s:\n%s\n%s\n"
-    (Label.name label)
+    (Label.format_bt label)
     (List.map block ~f:format_instr |> String.concat)
     (format_jump_tag jump)
 ;;

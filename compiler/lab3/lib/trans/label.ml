@@ -2,12 +2,13 @@ open Core
 
 type t = int [@@deriving compare, sexp, hash]
 
-type bt = 
-| BlockLbl of t
-| FunName of {
-  fname : Symbol.t
-; args : Temp.t list
-}
+type bt =
+  | BlockLbl of t
+  | FunName of
+      { fname : Symbol.t
+      ; args : Temp.t list
+      }
+[@@deriving compare, equal, sexp, hash]
 
 include Comparable.Make (Int)
 
@@ -21,3 +22,10 @@ let create () =
 ;;
 
 let name t = ".L" ^ string_of_int t
+let format_args args = List.map ~f:Temp.name args |> String.concat ~sep:","
+
+let format_bt : bt -> string = function
+  | BlockLbl l -> sprintf "BlockLbl(%s):" (name l)
+  | FunName { fname = f; args } ->
+    sprintf "FunLbl %s(%s):" (Symbol.name f) (format_args args)
+;;

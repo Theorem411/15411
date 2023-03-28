@@ -148,7 +148,7 @@ type instr =
   | Comment of string
 [@@deriving equal, sexp, compare]
 
-type jump_tag_t =
+type assem_jump_tag_t =
   | JRet
   | JCon of
       { jt : Label.t
@@ -157,9 +157,9 @@ type jump_tag_t =
   | JUncon of Label.t
 
 type block =
-  { label : Label.t
+  { label : Label.bt
   ; block : instr list
-  ; jump : jump_tag_t
+  ; jump : assem_jump_tag_t
   }
 
 type fspace =
@@ -174,6 +174,5 @@ val mem_fail_lab : Label.t
 val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program : program -> string
-val format_jump_tag : jump_tag_t -> string
 
 include Comparable.S with type t := operand
