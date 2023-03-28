@@ -210,8 +210,8 @@ let format_size = function
   | S -> "S"
 ;;
 
-let format_temp_size = (fun (t, sz) -> (sprintf "%s[%s]" (Temp.name t) (format_size sz)))
-let format_reg_size = (fun (r, sz) -> (sprintf "%s[%s]" (format_reg r) (format_size sz)))
+let format_temp_size (t, sz) = sprintf "%s[%s]" (Temp.name t) (format_size sz)
+let format_reg_size (r, sz) = sprintf "%s[%s]" (format_reg r) (format_size sz)
 
 let format_instr' = function
   | PureBinop binop ->
