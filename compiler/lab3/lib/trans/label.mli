@@ -2,6 +2,12 @@ open Core
 
 type t [@@deriving compare, sexp, hash]
 
+type bt = 
+| BlockLbl of t
+| FunName of {
+  fname : Symbol.t
+; args : Temp.t list
+}
 include Comparable.S with type t := t
 
 (* resets label numbering *)
