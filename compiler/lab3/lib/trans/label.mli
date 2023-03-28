@@ -20,4 +20,5 @@ val create : unit -> t
 
 (* returns the name of a label *)
 val name : t -> string
+val name_bt : bt -> string
 val format_bt : bt -> string

@@ -22,6 +22,14 @@ let create () =
 ;;
 
 let name t = ".L" ^ string_of_int t
+
+let name_bt = function 
+  | BlockLbl l -> name l
+  | FunName { fname; args } -> 
+    sprintf ".%s(%s)"
+    (Symbol.name fname)
+    (List.map args ~f:(fun t -> Temp.name t) |> String.concat ~sep:", ")
+  ;;
 let format_args args = List.map ~f:Temp.name args |> String.concat ~sep:","
 
 let format_bt : bt -> string = function

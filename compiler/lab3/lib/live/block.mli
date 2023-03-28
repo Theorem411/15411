@@ -1,5 +1,4 @@
 module AS = Assem_l4
-module Temp = Temp
 
 type jump_tag_t =
   | JRet

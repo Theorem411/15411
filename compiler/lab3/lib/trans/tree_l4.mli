@@ -1,5 +1,4 @@
 module A = Asts
-module B = Block
 
 type pbop =
   | Add
@@ -147,4 +146,4 @@ module Print : sig
   val pp_mpexp : mpexp -> string
   val pp_stm : stm -> string
   val pp_program : program -> string
-end *)
+end

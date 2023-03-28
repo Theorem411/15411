@@ -155,18 +155,21 @@ type assem_jump_tag_t =
       ; jf : Label.t
       }
   | JUncon of Label.t
+  [@@deriving equal, sexp, compare]
 
 type block =
   { label : Label.bt
   ; block : instr list
   ; jump : assem_jump_tag_t
   }
+  [@@deriving equal, sexp, compare]
 
 type fspace =
   { fname : Symbol.t
   ; args : (Temp.t * size) list
   ; fdef_blocks : block list
   }
+  [@@deriving equal, sexp, compare]
 
 type program = fspace list
 

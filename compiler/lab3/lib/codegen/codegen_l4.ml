@@ -1,4 +1,4 @@
-(* module T = Tree_l4
+module T = Tree_l4
 module A = Assem_l4
 
 let munch_exp : Temp.t -> T.mpexp -> A.instr list = 
@@ -37,25 +37,26 @@ let munch_exp : Temp.t -> T.mpexp -> A.instr list =
 ;;
 
 let munch_stm : T.stm -> A.instr list = function  
-| If { cond; lt; lf } ->
+| T.If { cond; lt; lf } ->
   failwith "Not implemented"
-| Goto label ->
+| T.Goto label ->
   failwith "Not implemented"
-| Label label ->
+| T.Label label ->
   failwith "Not implemented"
-| MovEfktExp { dest; ebop; lhs; rhs } ->
+| T.MovEfktExp { dest; ebop; lhs; rhs } ->
   failwith "Not implemented"
-| MovPureExp { dest; src } ->
+| T.MovPureExp { dest; src } ->
   failwith "Not implemented"
-| MovFuncApp { dest; fname; args } ->
+| T.MovFuncApp { dest; fname; args } ->
   failwith "Not implemented"
-| MovToMem { mem; src } ->
+| T.MovToMem { mem; src } ->
   failwith "Not implemented"
-| Return mpexp_opt ->
+| T.Return mpexp_opt ->
   failwith "Not implemented"
-| AssertFail ->
+| T.AssertFail ->
   failwith "Not implemented"
 ;;
+
 let munch_block : T.block -> A.block = 
   failwith "no"
 ;;
