@@ -15,6 +15,7 @@
 
 open Core
 module TranslationM = Trans
+module Aste = Aste_l4
 module AssemM = Assem
 module Cogen = Cogen
 module TreeM = Tree
@@ -212,14 +213,21 @@ let compile (cmd : cmd_line_args) : unit =
   (* TODO check that ast_h has the only fdecl or typedef *)
   (* TODO rename functions in ast_h *)
   let ast = Parse.parse cmd.filename in
+  say_if cmd.dump_parsing (fun () -> " dump_parsing... ");
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
+  (* if cmd.dump_parsing then exit 0; *)
   (* Elaborate *)
-  (* let elab_h, elab = elaboration_step (ast, ast_h) cmd in *)
   let elab_h, elab_raw = elaboration_step (ast, ast_h) cmd in
-  (*if cmd.dump_ast then ignore ((exit 0): unit); *)
-  say_if cmd.verbose (fun () -> "doing type Checking...");
+  if cmd.dump_ast then ignore (exit 0 : unit);
+  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
+  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
+  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
+  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw)
+;;
+
+(* say_if cmd.verbose (fun () -> "doing type Checking...");
   let (() : unit) = Statsem.static_semantic ~hdr:elab_h ~src:elab_raw in
   let (() : unit) = Return.ret_checker elab_raw in
   say_if cmd.verbose (fun () -> "renaming what is necc...");
@@ -264,8 +272,8 @@ let compile (cmd : cmd_line_args) : unit =
         let union = Translate.get_string_list translated in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");
-        List.iter ~f:output_x86_instr union)
-;;
+        Out_channel.fprintf out "%s\n" X86.alloc_javaway_res;
+        List.iter ~f:output_x86_instr union) *)
 
 let run (cmd : cmd_line_args) : unit =
   try if cmd.regalloc_only then regalloc cmd else compile cmd with
@@ -288,3 +296,4 @@ let main () =
   | Ok `Help -> Stdlib.exit Cmd.Exit.ok
   | Error _ -> Stdlib.exit Cmd.Exit.cli_error
 ;;
+

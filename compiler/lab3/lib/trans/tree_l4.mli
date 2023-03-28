@@ -1,5 +1,4 @@
 module A = Asts
-module B = Block
 
 type pbop =
   | Add

@@ -20,10 +20,10 @@ let block_in_out_init (ls : B.block_label_t list) =
 ;;
 
 (*_ for each ret block, add it to predecessor of Exit block *)
-let predecessors ({ fdef_block; _ } : B.fspace_block) = failwith "not implemented"
+let predecessors ({ fdef_block; _ } : B.fspace) = failwith "not implemented"
 ;;
 (*_ the general passing algorithm *)
-let mk_liveness_fspace (fspace : B.fspace_block) =
+let mk_liveness_fspace (fspace : B.fspace) =
   let singlepass_tbl = SP.init_table fspace in
   (* precompute block_def_use *)
   let fold_f acc (b : B.block) = LM.add_exn acc ~key:b.label ~data:(SP.block_defs_uses singlepass_tbl b) in
@@ -35,5 +35,5 @@ let mk_liveness_fspace (fspace : B.fspace_block) =
 
 (*_ the final mk_graph_fspace function *)
 module VertexTable = Hashtbl.Make (V)
-let mk_graph_fspace (fspace : B.fspace_block) = failwith "not implemented"
+let mk_graph_fspace (fspace : B.fspace) = failwith "not implemented"
 ;; *)

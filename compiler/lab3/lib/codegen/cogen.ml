@@ -1,6 +1,7 @@
-open Core
+(* open Core
 module T = Tree
 module A = Assem
+
 
 let if_cond_to_rev_jump_t (cond : T.cond) =
   match cond.cmp with
@@ -162,4 +163,4 @@ let munch_fspace ({ fname; args; fdef } : T.fspace) : A.fspace =
   { fname; args; fdef = prolog @ List.concat_map ~f:munch_stm fdef }
 ;;
 
-let cogen (prog : T.program) : A.program = List.map ~f:munch_fspace prog
+let cogen (prog : T.program) : A.program = List.map ~f:munch_fspace prog *)

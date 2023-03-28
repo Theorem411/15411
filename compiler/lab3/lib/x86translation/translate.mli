@@ -1,4 +1,4 @@
-module AS = Assem
+module AS = Assem_l4
 
 type fspace = X86.instr list
 type program = fspace list

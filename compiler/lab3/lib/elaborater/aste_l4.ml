@@ -23,7 +23,9 @@ type binop_efkt =
   | ShiftL
   | ShiftR
 
-type binop = Pure of binop_pure | Efkt of binop_efkt
+type binop =
+  | Pure of binop_pure
+  | Efkt of binop_efkt
 
 type unop =
   | BitNot (*bitwise not*)
@@ -298,7 +300,7 @@ module Print = struct
         "struct %s {%s}"
         (Symbol.name sname)
         (List.map ssig ~f:(fun (f, tau) ->
-           sprintf "%s:%s" (Symbol.name f) (Typ._tau_tostring tau))
+             sprintf "%s:%s" (Symbol.name f) (Typ._tau_tostring tau))
         |> String.concat ~sep:",\n")
   ;;
 

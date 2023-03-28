@@ -6,19 +6,20 @@
 
 open Core
 
-module AS = Assem
+module AS = Assem_l4
 module Vertex : sig
    type reg [@@deriving compare, sexp]
    type t = R of AS.reg | T of Temp.t [@@deriving compare, sexp, hash]
    include Comparable.S with type t := t
    val op_to_vertex_opt : AS.operand -> t option
+   val _to_string: t -> string
    val print : t -> unit
 end
 (*_ the graph type *)
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 (*_ graph utilities *)
 val to_list: t -> (Vertex.t * Vertex.t list) list
-(* val coloring: t -> (Vertex.t * int) list *)
+val coloring: t -> (Vertex.t * int) list
 (*_ liveness *)
 (* val mk_interfere_graph : AS.instr list -> t *)
 
