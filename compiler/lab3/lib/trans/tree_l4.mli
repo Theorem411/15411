@@ -1,4 +1,5 @@
 module A = Asts
+module B = Block
 
 type pbop =
   | Add
@@ -108,21 +109,13 @@ type stm =
       { mem : Temp.t
       ; src : mpexp
       }
-  | Return of (pexp * int) option
+  | Return of mpexp option
   | AssertFail
 
-type jump_t =
-  | Ret
-  | Uncon of Label.t
-  | Cond of
-      { lt : Label.t
-      ; lf : Label.t
-      }
-
 type block =
-  { label : Label.t
+  { label : B.bt
   ; block : stm list
-  ; jump : jump_t
+  ; jump : B.jump_tag_t
   }
 
 type fspace_block =
