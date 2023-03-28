@@ -49,10 +49,15 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     | Some v -> V.Set.singleton v
     | None -> V.Set.empty
   in
+  let op_to_vset_mem_mov (op : AS.operand) : V.Set.t =
+    match V.op_to_vertex_opt op with
+    | Some v -> V.Set.of_list [ v; V.R AS.R12D ]
+    | None -> V.Set.singleton (V.R AS.R12D)
+  in
   match instr with
   | AS.Mov { dest; src; _ } -> op_to_vset dest, op_to_vset src
-  | AS.MovFrom { dest; src; _ } -> op_to_vset dest, op_to_vset src
-  | AS.MovTo { dest; src; _ } -> op_to_vset dest, op_to_vset src
+  | AS.MovFrom { dest; src; _ } -> op_to_vset_mem_mov dest, op_to_vset src
+  | AS.MovTo { dest; src; _ } -> op_to_vset_mem_mov dest, op_to_vset src
   | AS.Unop { dest; _ } -> op_to_vset dest, op_to_vset dest
   | AS.PureBinop { dest; lhs; rhs; _ } ->
     op_to_vset dest, V.Set.union_list [ op_to_vset lhs; op_to_vset rhs ]
