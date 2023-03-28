@@ -164,7 +164,7 @@ type block =
 
 type fspace =
   { fname : Symbol.t
-  ; args : Temp.t list
+  ; args : (Temp.t * size) list
   ; fdef_blocks : block list
   }
 
@@ -174,5 +174,6 @@ val mem_fail_lab : Label.t
 val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program : program -> string
+val format_jump_tag : jump_tag_t -> string
 
 include Comparable.S with type t := operand

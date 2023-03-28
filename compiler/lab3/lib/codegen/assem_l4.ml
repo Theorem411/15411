@@ -166,7 +166,7 @@ type block =
 
 type fspace =
   { fname : Symbol.t
-  ; args : Temp.t list
+  ; args : (Temp.t * size) list
   ; fdef_blocks : block list
   }
 
@@ -287,7 +287,7 @@ let format_program prog =
     sprintf
       "%s(%s): \n%s"
       (Symbol.name fname)
-      (List.map args ~f:Temp.name |> String.concat)
+      (List.map args ~f:format_temp_size |> String.concat)
       (List.map fdef_blocks ~f:format_block |> String.concat)
   in
   List.map prog ~f:format_fspace_block |> String.concat
