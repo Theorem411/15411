@@ -158,7 +158,7 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
     let doc = "The library file with option -l" in
     opt
       HeaderFilename.conv
-      ~default:"../runtime/15411-l3.h0"
+      ~default:"../runtime/15411-l4.h0"
       (Arg.info [ "l" ] ~doc ~docv:"FILE")
   in
   { verbose
