@@ -144,11 +144,6 @@ type instr =
       ; args_in_regs : (reg * size) list
       ; args_overflow : (Temp.t * size) list
       }
-  | Alloc of int
-  | Calloc of
-      { typ : int
-      ; len : operand
-      }
   (* Assembly directive. *)
   | Directive of string
   (* Human-friendly comment. *)
@@ -171,7 +166,7 @@ type block =
 
 type fspace =
   { fname : Symbol.t
-  ; args : Temp.t list
+  ; args : (Temp.t * size) list
   ; fdef_blocks : block list
   }
 
@@ -210,8 +205,8 @@ let format_size = function
   | S -> "S"
 ;;
 
-let format_temp_size = (fun (t, sz) -> (sprintf "%s[%s]" (Temp.name t) (format_size sz)))
-let format_reg_size = (fun (r, sz) -> (sprintf "%s[%s]" (format_reg r) (format_size sz)))
+let format_temp_size (t, sz) = sprintf "%s[%s]" (Temp.name t) (format_size sz)
+let format_reg_size (r, sz) = sprintf "%s[%s]" (format_reg r) (format_size sz)
 
 let format_instr' = function
   | PureBinop binop ->
@@ -269,8 +264,6 @@ let format_instr' = function
     sprintf
       "loadfromstack {%s}"
       (List.map ts ~f:format_temp_size |> String.concat ~sep:", ")
-  | Alloc sz -> sprintf "alloc(%d)" sz
-  | Calloc { typ; len } -> sprintf "alloc_array[%s] of %d" (format_operand len) typ
 ;;
 
 let format_instr i = format_instr' i ^ "\n"
@@ -294,7 +287,7 @@ let format_program prog =
     sprintf
       "%s(%s): \n%s"
       (Symbol.name fname)
-      (List.map args ~f:Temp.name |> String.concat)
+      (List.map args ~f:format_temp_size |> String.concat)
       (List.map fdef_blocks ~f:format_block |> String.concat)
   in
   List.map prog ~f:format_fspace_block |> String.concat
