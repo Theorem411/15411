@@ -99,7 +99,7 @@ let format_operation = function
   | Addq -> "addq"
   | Subq -> "subq"
   | Mul -> "imul"
-  | IDiv -> "idiv"
+  | IDiv -> "idivl"
   | Mov -> "mov"
   | Cltd -> "cltd"
   | Cqde -> "cdqe"
@@ -243,7 +243,7 @@ let format = function
       (format_operand binop.dest)
   | MovTo binop ->
     sprintf
-      "\tmov%s\t(%s), %s"
+      "\tmov%s\t%s, (%s)"
       (format_size binop.size)
       (format_operand binop.src)
       (format_operand binop.dest)
@@ -251,10 +251,10 @@ let format = function
     sprintf "\tmovsxdt%s, %s" (format_operand binop.src) (format_operand binop.dest)
   | MovFrom binop ->
     sprintf
-      "\tmov%s\t%s, (%s)"
+      "\tmov%s\t(%s), %s"
       (format_size binop.size)
-      (format_operand binop.dest)
       (format_operand binop.src)
+      (format_operand binop.dest)
   | UnCommand { op = (Pushq | Popq) as unop; src = s } ->
     sprintf "\t%s\t%s" (format_operation unop) (format_operand s)
   | UnCommand unop ->
@@ -265,7 +265,19 @@ let format = function
   | FunName s -> sprintf "%s:" s
   | Ret -> sprintf "\t%s" "ret"
   | Cmp { rhs; lhs; size } ->
-    sprintf "\tcmp%s\t%s, %s" (format_size size) (format_operand lhs) (format_operand rhs)
+    (match rhs with
+    | Imm _ ->
+      sprintf
+        "\tcmp%s\t%s, %s"
+        (format_size size)
+        (format_operand rhs)
+        (format_operand lhs)
+    | _ ->
+      sprintf
+        "\tcmp%s\t%s, %s"
+        (format_size size)
+        (format_operand lhs)
+        (format_operand rhs))
   | Test { rhs; lhs; size } ->
     sprintf
       "\ttest%s\t%s, %s"

@@ -243,7 +243,7 @@ module Print = struct
     | False -> "false"
     | PureBinop binop ->
       sprintf
-        "(%s %s %s)"
+        "(lhs=%s %s rhs=%s)"
         (pp_mexp binop.lhs)
         (pp_binop_pure binop.op)
         (pp_mexp binop.rhs)
