@@ -1,5 +1,5 @@
 open Core
-module A = Aste
+module A = Aste_l4
 
 let global_err = Error_msg.create ()
 
@@ -22,6 +22,7 @@ let rec ret_checker_bool (prog : A.mstm) =
   | A.NakedExpr _ -> false
   | A.AssertFail -> true
   | A.NakedCall _ -> false
+  | A.Asop _ -> false
 ;;
 
 let ret_checker_stm (prog : A.mstm) =
