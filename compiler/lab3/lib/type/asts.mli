@@ -1,4 +1,4 @@
-(* open Core
+open Core
 module A = Aste_l4
 
 type intop_pure =
@@ -160,4 +160,4 @@ module Print : sig
   val pp_stm : stm -> string
   val pp_glob : glob -> string
   val print_all : program -> string
-end *)
+end

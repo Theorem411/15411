@@ -1,4 +1,4 @@
-(* open Core
+open Core
 module A = Aste_l4
 
 type intop_pure =
@@ -338,4 +338,4 @@ module Print = struct
 
   let pp_program prog = List.fold prog ~init:"" ~f:(fun s g -> s ^ pp_glob g)
   let print_all prog = "\n\n" ^ pp_program prog ^ "\n"
-end *)
+end
