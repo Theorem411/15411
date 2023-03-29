@@ -3,10 +3,6 @@
 
 int main ()
 {
-  int a1 = 1;
-  int a2 = 2;
-  int z;
-  z = 10 + 34;
-  int a3 = 3;
-  return a1;
+  int x = 1 + 2 + 3;
+  return 0;
 }

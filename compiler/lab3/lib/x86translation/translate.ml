@@ -261,9 +261,10 @@ let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = functi
       (* mov mem, mem *)
       [ (* X86.BinCommand { op = Mov; dest = X86.get_free size; src = src_final; size } *)
         X86.BinCommand
-          { op = Mov; dest = X86.get_free size; src = src_final; size = X86.Q }
-      ; X86.BinCommand { op = Mov; src = src_final; dest = X86.get_memfree size; size }
-      ; X86.MovTo { src = X86.get_memfree size; dest = X86.get_free size; size }
+          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
+      ; X86.BinCommand
+          { op = Mov; dest = X86.get_memfree X86.Q; src = d_final; size = X86.Q }
+      ; X86.MovTo { src = X86.get_free size; dest = X86.get_memfree X86.Q; size }
       ]
     | Stack _, _ ->
       [ X86.BinCommand
@@ -357,7 +358,7 @@ let get_final (reg_map : X86.operand AS.Map.t) (o, size) =
         ; size =
             (match size with
             | X86.L -> 4
-            | X86.Q -> 4)
+            | X86.Q -> 8)
         }
     | _ -> failwith "reg_map can not be imm")
 ;;

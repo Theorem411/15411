@@ -173,7 +173,7 @@ let get_arrayalloc_function memErrLabel =
   ; X86.MovTo
       { dest = X86.Reg { reg = R.EAX; size = 8 }
       ; src = X86.Reg { reg = R.R10D; size = 4 }
-      ; size = X86.Q
+      ; size = X86.L
       }
   ; X86.BinCommand
       { op = X86.Add
