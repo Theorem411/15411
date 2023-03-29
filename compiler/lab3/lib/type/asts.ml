@@ -265,7 +265,7 @@ module Print = struct
       sprintf
         "(%s (%s))"
         (Symbol.name name)
-        (List.map args ~f:(fun (e, i) -> sprintf "%s[%s]" (pp_exp e) (Int.to_string i))
+        (List.map args ~f:(fun (e, i) -> sprintf "%s of size [%s]" (pp_exp e) (Int.to_string i))
         |> String.concat ~sep:", ")
     | Deref addr -> sprintf "(%s)" (pp_ptraddr addr)
     | ArrayAccess addr -> sprintf "arr[%s]" (pp_arraddr addr)
@@ -277,7 +277,7 @@ module Print = struct
     | ArrAddr arraddr -> pp_arraddr arraddr
 
   and pp_ptraddr = function
-    | Ptr { start; off } -> sprintf "%s:%s" (pp_mexp start) (Int.to_string off)
+    | Ptr { start; off } -> sprintf "%s:+%s" (pp_mexp start) (Int.to_string off)
     | Null -> "NULL"
 
   and pp_arraddr { head; idx; size; extra } =

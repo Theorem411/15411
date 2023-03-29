@@ -180,5 +180,6 @@ val mem_fail_lab : Label.t
 val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program : program -> string
+val format_operand : operand -> string
 
 include Comparable.S with type t := operand

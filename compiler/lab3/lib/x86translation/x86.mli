@@ -116,6 +116,7 @@ val efkt_to_opr : AS.efkt_operation -> operation
 val unary_to_opr : AS.unary_operation -> operation
 val format : instr -> string
 val format_list : instr list -> string
+val format_operand : operand -> string
 val get_free : size -> operand
 val get_memfree : size -> operand
 val all_available_regs : AS.reg list

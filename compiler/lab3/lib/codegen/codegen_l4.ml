@@ -86,7 +86,8 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
       let t2 = A.Temp (Temp.create ()) in
       let zero8 = A.Imm (Int32.of_int_exn 0) in
       let off8 = A.Imm (Int32.of_int_exn off) in
-      let size = munch_size off in
+      (* let size = munch_size off in *)
+      let size = munch_size 8 in
       [ A.MovFrom { dest; src = t2; size }
       ; A.Cjmp { typ = A.Je; l = mfl }
       ; A.Cmp { lhs = t2; rhs = zero8; size = A.L }

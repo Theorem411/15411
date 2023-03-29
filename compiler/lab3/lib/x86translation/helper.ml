@@ -227,12 +227,19 @@ let get_reg_map
   AS.Map.map op_col ~f:(Int.Map.find_exn col_x86op)
 ;;
 
+let print_reg_map (reg_map : X86.operand AS.Map.t) =
+  AS.Map.iteri
+    ~f:(fun ~key ~data ->
+      prerr_endline (sprintf "%s -> %s" (AS.format_operand key) (X86.format_operand data)))
+    reg_map
+;;
+
 let reg_alloc (fspace : AS.fspace) =
   let op2col : (AS.operand * color) list = __regalloc fspace in
   let col2operand, mem_cell_count = assign_colors op2col in
   (* let callee_start, rsp_to_rbp, callee_finish = callee_handle col2operand in *)
   let reg_map = get_reg_map op2col col2operand in
-  (* let () = print_reg_map reg_map in *)
+  let () = print_reg_map reg_map in
   reg_map, mem_cell_count
 ;;
 
