@@ -234,13 +234,13 @@ module Print = struct
         (match assign with
          | None ->
            sprintf
-             "%s %s;\n%s"
+             "Declarig(%s %s; [%s])"
              (Typ._tau_tostring typ)
              (Symbol.name var)
              (pp_mstm ~n body)
          | Some e ->
            sprintf
-             "%s %s=%s;\n%s"
+             "Declarig(%s %s=%s; [%s])"
              (Typ._tau_tostring typ)
              (Symbol.name var)
              (pp_mexp e)
@@ -265,7 +265,7 @@ module Print = struct
         sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_mstm ~n:(n + 1) body)
       | Return e -> sprintf "return %s;" (Option.value_map ~default:"" ~f:pp_mexp e)
       | NakedExpr e -> sprintf "(%s);" (pp_mexp e)
-      | Seq (s1, s2) -> sprintf "%s\n%s" (pp_mstm ~n s1) (pp_mstm ~n s2)
+      | Seq (s1, s2) -> sprintf "Seq(%s\n;%s)" (pp_mstm ~n s1) (pp_mstm ~n s2)
       | Nop -> "nop;"
       | AssertFail -> "__assert_fail;"
       | NakedCall { name; args } ->

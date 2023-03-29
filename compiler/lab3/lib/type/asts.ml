@@ -307,7 +307,7 @@ module Print = struct
     | Return eopt ->
       (match eopt with
        | None -> "return"
-       | Some (e, i) -> sprintf "return %s[%s]" (pp_exp e) (Int.to_string i))
+       | Some (e, i) -> sprintf "return %s of size [%s]" (pp_exp e) (Int.to_string i))
     | NakedExpr (e, i) -> sprintf "%s[%s];" (pp_exp e) (Int.to_string i)
     | Seq (s1, s2) -> sprintf "%s\n%s" (pp_stm s1) (pp_stm s2)
     | Nop -> "nop;"

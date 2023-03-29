@@ -221,7 +221,7 @@ let compile (cmd : cmd_line_args) : unit =
   (* if cmd.dump_parsing then exit 0; *)
   (* Elaborate *)
   let elab_h, elab_raw = elaboration_step (ast, ast_h) cmd in
-  if cmd.dump_ast then ignore (exit 0 : unit);
+  (* if cmd.dump_ast then ignore (exit 0 : unit); *)
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
