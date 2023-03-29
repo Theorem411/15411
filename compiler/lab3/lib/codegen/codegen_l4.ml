@@ -289,5 +289,21 @@ let munch_stm : T.stm -> A.instr list = function
       |> List.concat)
 ;;
 
-let munch_block : T.block -> A.block = failwith "no"
-let codegen : T.program -> A.program = failwith "no"
+let munch_block ({ label; block; jump } : T.block) : A.block =
+  let jump =
+    match jump with
+    | T.JRet -> A.JRet
+    | T.JCon { lt; lf } -> A.JCon { jt = lt; jf = lf }
+    | T.JUncon l -> A.JUncon l
+  in
+  let block' = List.map ~f:munch_stm block |> List.concat in
+  { label; block=block'; jump}
+;;
+
+let codegen (prog : T.program) : A.program = 
+  let map_f ({fname; args; fdef} :T.fspace_block) : A.fspace = 
+    let args = List.map args ~f:(fun (t, i) -> t, munch_size i) in
+    let fdef_blocks = List.map fdef ~f:munch_block in
+    { fname; args; fdef_blocks }
+  in
+  List.map prog ~f:map_f

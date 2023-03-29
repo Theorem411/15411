@@ -101,18 +101,15 @@ and mexp = exp * int
 type stm =
   | Declare of
       { var : Symbol.t
-      ; typ_size : int
       ; assign : mexp option
       ; body : stm
       }
   | Assign of
       { var : Symbol.t
-      ; typ_size : int
       ; exp : mexp
       }
   | AssignMem of (*_ assign to mem of dest *)
       { dest : Symbol.t
-      ; typ_size : int
       ; op : intop option
       ; exp : mexp
       }
