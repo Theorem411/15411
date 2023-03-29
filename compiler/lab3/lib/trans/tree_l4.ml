@@ -234,19 +234,19 @@ module Print = struct
       let fstr = Symbol.name fname in
       let argstr = List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mpexp e ^ ", ") in
       (match dest with
-       | None -> Printf.sprintf "%s(%s)" fstr argstr
-       | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
+      | None -> Printf.sprintf "%s(%s)" fstr argstr
+      | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
     | MovToMem { mem; src } ->
-      (* Implement the MovToMem case *)
-      failwith "Not implemented"
+      Printf.sprintf "*(%s)  <-- %s" (Temp.name mem) (pp_mpexp src)
     | Return eopt ->
       (match eopt with
-       | None -> "return"
-       | Some e -> "return " ^ pp_mpexp e)
+      | None -> "return"
+      | Some e -> "return " ^ pp_mpexp e)
     | AssertFail -> "assertfail"
-    | Alloc { dest; size } -> failwith "not implemented"
-    | Calloc { dest; len; typ } -> failwith "not"
+    | Alloc { dest; size } -> Printf.sprintf "%s  <-- alloc(%d)" (Temp.name dest) size
+    | Calloc { dest; len; typ } ->
+      Printf.sprintf "%s  <-- alloc_array(%d, %s)" (Temp.name dest) typ (pp_mpexp len)
   ;;
 
-  let pp_program (prog : program) = failwith "no"
+  let pp_program (_ : program) = failwith "no"
 end
