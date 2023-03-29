@@ -79,17 +79,20 @@ let rec check_rec_dcl (v : Symbol.t) (e : Ast.exp) : unit =
   | _ -> ()
 ;;
 
+let rec vldt_lval l =
+  match Mark.data l with
+  | Ast.Var _ -> ()
+  | Ast.StructDot { str; _ } -> vldt_lval str
+  | Ast.StructArr { str; _ } -> vldt_lval str
+  | Ast.ArrAccess { arr; _ } -> vldt_lval arr
+  | Ast.Deref p -> vldt_lval p
+  | _ -> raise (Failure ("Invalid lval" ^ give_out l))
+;;
+
 (*_ validates if m is the lvalue *)
 let vldt_assign m =
   match Mark.data m with
-  | Ast.Assign { left = l; _ } ->
-    (match Mark.data l with
-    | Ast.Var _ -> ()
-    | Ast.StructDot _ -> ()
-    | Ast.StructArr _ -> ()
-    | Ast.ArrAccess _ -> ()
-    | Ast.Deref _ -> ()
-    | _ -> raise (Failure ("Invalid asign" ^ give_out l)))
+  | Ast.Assign { left = l; _ } -> vldt_lval l
   | _ -> ()
 ;;
 
