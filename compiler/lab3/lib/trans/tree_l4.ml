@@ -165,6 +165,13 @@ module Print = struct
     | Neq -> "!="
   ;;
 
+  let pp_ebop = function
+    | Div -> "/"
+    | Mod -> "%"
+    | ShftL -> "<<"
+    | ShftR -> ">>"
+  ;;
+
   let pp_unop = function
     | BitNot -> "~"
   ;;
@@ -205,33 +212,38 @@ module Print = struct
 
   and pp_mpexp ((e, _) : mpexp) = pp_pexp e
 
+  let pp_if_cond = function
+    | LCond { cmp; p1; p2 } ->
+      sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "l" (pp_mpexp p2)
+    | SCond { cmp; p1; p2 } ->
+      sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "s" (pp_mpexp p2)
+  ;;
+
   let pp_stm (stm : stm) =
     match stm with
-    | If { cond; lt; lf } -> failwith "Not implemented"
-    | Goto label ->
-      (* Implement the Goto case *)
-      failwith "Not implemented"
-    | Label label ->
-      (* Implement the Label case *)
-      failwith "Not implemented"
+    | If { cond; lt; lf } ->
+      "if " ^ pp_if_cond cond ^ Label.name lt ^ " else " ^ Label.name lf
+    | Goto l -> "goto " ^ Label.name l
+    | Label l -> Label.name l
     | MovEfktExp { dest; ebop; lhs; rhs } ->
-      (* Implement the MovEfktExp case *)
-      failwith "Not implemented"
-    | MovPureExp { dest; src } ->
-      (* Implement the MovPureExp case *)
-      failwith "Not implemented"
+      Temp.name dest
+      ^ "  <--  "
+      ^ Printf.sprintf "(%s %s %s)" (pp_mpexp lhs) (pp_ebop ebop) (pp_mpexp rhs)
+    | MovPureExp { dest; src } -> Temp.name dest ^ "  <--  " ^ pp_mpexp src
     | MovFuncApp { dest; fname; args } ->
-      (* Implement the MovFuncApp case *)
-      failwith "Not implemented"
+      let fstr = Symbol.name fname in
+      let argstr = List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mpexp e ^ ", ") in
+      (match dest with
+       | None -> Printf.sprintf "%s(%s)" fstr argstr
+       | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
     | MovToMem { mem; src } ->
       (* Implement the MovToMem case *)
       failwith "Not implemented"
-    | Return mpexp_opt ->
-      (* Implement the Return case *)
-      failwith "Not implemented"
-    | AssertFail ->
-      (* Implement the AssertFail case *)
-      failwith "Not implemented"
+    | Return eopt ->
+      (match eopt with
+       | None -> "return"
+       | Some e -> "return " ^ pp_mpexp e)
+    | AssertFail -> "assertfail"
     | Alloc { dest; size } -> failwith "not implemented"
     | Calloc { dest; len; typ } -> failwith "not"
   ;;
