@@ -16,10 +16,11 @@
 open Core
 module TranslationM = Trans
 module Aste = Aste_l4
-module AssemM = Assem
-module Cogen = Cogen
-module TreeM = Tree
-module Statsem = Statsem
+module AssemM = Assem_l4
+module Cogen = Codegen_l4
+module TreeM = Tree_l4
+module Asts = Asts
+module Statsem = Statsem_l4
 
 (* Command line arguments *)
 
@@ -224,10 +225,8 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
-  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw)
-;;
-
-(* say_if cmd.verbose (fun () -> "doing type Checking...");
+  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
+  say_if cmd.verbose (fun () -> "doing type Checking...");
   let (() : unit) = Statsem.static_semantic ~hdr:elab_h ~src:elab_raw in
   let (() : unit) = Return.ret_checker elab_raw in
   say_if cmd.verbose (fun () -> "renaming what is necc...");
@@ -248,8 +247,7 @@ let compile (cmd : cmd_line_args) : unit =
   let assem = Cogen.cogen ir in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
   (* Testing blocks *)
-  say_if cmd.dump_assem (fun () ->
-  Block.pp_all_blocks (Block.blocks_former assem));
+  say_if cmd.dump_assem (fun () -> Block.pp_all_blocks (Block.blocks_former assem));
   (* Testing blocks *)
   match cmd.emit with
   (* Output: abstract 3-address assem *)
@@ -272,8 +270,8 @@ let compile (cmd : cmd_line_args) : unit =
         let union = Translate.get_string_list translated in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");
-        Out_channel.fprintf out "%s\n" X86.alloc_javaway_res;
-        List.iter ~f:output_x86_instr union) *)
+        List.iter ~f:output_x86_instr union)
+;;
 
 let run (cmd : cmd_line_args) : unit =
   try if cmd.regalloc_only then regalloc cmd else compile cmd with
@@ -296,4 +294,3 @@ let main () =
   | Ok `Help -> Stdlib.exit Cmd.Exit.ok
   | Error _ -> Stdlib.exit Cmd.Exit.cli_error
 ;;
-
