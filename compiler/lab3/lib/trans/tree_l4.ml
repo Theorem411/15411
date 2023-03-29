@@ -234,19 +234,44 @@ module Print = struct
       let fstr = Symbol.name fname in
       let argstr = List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mpexp e ^ ", ") in
       (match dest with
-      | None -> Printf.sprintf "%s(%s)" fstr argstr
-      | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
-    | MovToMem { mem; src } ->
-      Printf.sprintf "*(%s)  <-- %s" (Temp.name mem) (pp_mpexp src)
+       | None -> Printf.sprintf "%s(%s)" fstr argstr
+       | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
+    | MovToMem { mem; src } -> sprintf "(%s) <-- %s" (Temp.name mem) (pp_mpexp src)
     | Return eopt ->
       (match eopt with
       | None -> "return"
       | Some e -> "return " ^ pp_mpexp e)
     | AssertFail -> "assertfail"
-    | Alloc { dest; size } -> Printf.sprintf "%s  <-- alloc(%d)" (Temp.name dest) size
+    | Alloc { dest; size } ->
+      sprintf "%s <-- alloc (%s)" (Temp.name dest) (Int.to_string size)
     | Calloc { dest; len; typ } ->
-      Printf.sprintf "%s  <-- alloc_array(%d, %s)" (Temp.name dest) typ (pp_mpexp len)
+      sprintf "%s <-- calloc (%s, %s)" (Temp.name dest) (pp_mpexp len) (Int.to_string typ)
   ;;
 
-  let pp_program (_ : program) = failwith "no"
+  let pp_jump = function
+    | JRet -> "ret"
+    | JCon { lt; lf } -> sprintf "t:%s|f:%s" (Label.name lt) (Label.name lf)
+    | JUncon l -> sprintf "goto %s" (Label.name l)
+  ;;
+
+  let pp_block ({ label; block; jump } : block) =
+    sprintf
+      "%s\n%s-------[%s]---------"
+      (Label.name_bt label)
+      (List.map block ~f:pp_stm |> String.concat ~sep:"\n")
+      (pp_jump jump)
+  ;;
+
+  let pp_fspace ({ fname; args; fdef } : fspace_block) =
+    sprintf
+      "func %s(%s):\n%s"
+      (Symbol.name fname)
+      (List.map args ~f:(fun (t, i) -> sprintf "%s[%s]" (Temp.name t) (Int.to_string i))
+      |> String.concat ~sep:", ")
+      (List.map fdef ~f:pp_block |> String.concat ~sep:"\n")
+  ;;
+
+  let pp_program (prog : program) =
+    List.map prog ~f:pp_fspace |> String.concat ~sep:"\n\n"
+  ;;
 end
