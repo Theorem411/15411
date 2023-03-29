@@ -107,6 +107,11 @@ type instr =
       ; size : size
       ; src : operand
       }
+  | MovSxd of
+      { (*_ sign extend temp/reg from 32->64 bit *)
+        dest : operand
+      ; src : operand
+      }
   | MovFrom of
       { dest : operand
       ; size : size
@@ -234,6 +239,8 @@ let format_instr' = function
       (format_unop unop.op)
       (format_operand unop.dest)
   | Mov mv -> sprintf "%s <-- %s" (format_operand mv.dest) (format_operand mv.src)
+  | MovSxd { dest; src } ->
+    sprintf "movsxd %s, %s" (format_operand dest) (format_operand src)
   | Directive dir -> sprintf "%s" dir
   | Comment comment -> sprintf "/* %s */" comment
   | Jmp l -> "jump" ^ Label.name l

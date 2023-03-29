@@ -106,6 +106,9 @@ type instr =
       ; size : size
       ; src : operand
       }
+  | MovSxd of  (*_ sign extend temp/reg from 32->64 bit *)
+      { dest: operand
+      ; src : operand }
   | MovFrom of
       { dest : operand
       ; size : size
