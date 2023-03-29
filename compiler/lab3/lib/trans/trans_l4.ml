@@ -205,8 +205,8 @@ let rec tr_stm_rev
     (*_ tr assign *)
     let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
     (*_ tr body *)
-    let acc, b = tr_stm_rev env' body acc b in
     let b = { b with code = T.MovPureExp { dest = t; src = e } :: b.code } in
+    let acc, b = tr_stm_rev env' body acc b in
     acc, b
   | Assign { var; exp; _ } ->
     let t = S.find_exn env var in
