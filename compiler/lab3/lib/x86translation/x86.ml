@@ -225,6 +225,10 @@ type instr =
       ; size : size
       ; src : operand
       }
+  | Movsxd of
+      { dest : operand
+      ; src : operand
+      }
 [@@deriving equal, compare, sexp]
 
 let format = function
@@ -245,12 +249,14 @@ let format = function
       (format_size binop.size)
       (format_operand binop.src)
       (format_operand binop.dest)
+  | Movsxd binop ->
+    sprintf "\tmovsxdt%s, %s" (format_operand binop.src) (format_operand binop.dest)
   | MovFrom binop ->
     sprintf
       "\tmov%s\t%s, (%s)"
       (format_size binop.size)
-      (format_operand binop.src)
       (format_operand binop.dest)
+      (format_operand binop.src)
   | UnCommand { op = (Pushq | Popq) as unop; src = s } ->
     sprintf "\t%s\t%s" (format_operation unop) (format_operand s)
   | UnCommand unop ->

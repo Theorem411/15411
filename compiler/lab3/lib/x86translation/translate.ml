@@ -212,6 +212,20 @@ let translate_mov (get_final : AS.operand * X86.size -> X86.operand) = function
   | _ -> failwith "translate_mov is getting not mov"
 ;;
 
+let translate_movsxd (get_final : AS.operand * X86.size -> X86.operand) = function
+  | AS.MovSxd { dest = d; src = s; } ->
+    let d_final = get_final (d, X86.Q) in
+    let src_final = get_final (s, X86.L) in
+    (match d_final with
+    | Stack _ ->
+      (* mov mem, mem *)
+      [ X86.Movsxd { dest = X86.get_free X86.Q; src = src_final }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free X86.Q; size = X86.Q }
+      ]
+    | _ -> [ X86.Movsxd { dest = d_final; src = src_final} ])
+  | _ -> failwith "translate_movsxd is getting not movsxd "
+;;
+
 let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = function
   | AS.MovFrom { dest = d; src = s; size } ->
     let size = X86.to_size size in
@@ -292,6 +306,7 @@ let translate_line
   | AS.LoadFromStack _ -> prev_lines
   | AS.MovFrom _ -> List.rev_append (translate_mov_from get_final line) prev_lines
   | AS.MovTo _ -> List.rev_append (translate_mov_to get_final line) prev_lines
+  | MovSxd _ -> List.rev_append (translate_movsxd get_final line) prev_lines
 ;;
 
 let get_error_block errLabel =

@@ -27,6 +27,7 @@ let get_all_addressable_line instr =
     | Call { args_overflow; _ } -> tempsize_list_to_opr args_overflow
     | AS.MovFrom m -> [ m.dest; m.src ]
     | AS.MovTo m -> [ m.dest; m.src ]
+    | AS.MovSxd m -> [ m.dest; m.src ]
   in
   List.filter (all_ops instr) ~f:(fun i ->
       match i with

@@ -15,7 +15,7 @@ type mem =
       ; idx_reg : R.reg option
       ; scale : int option
       }
-      [@@deriving equal, compare, sexp]
+[@@deriving equal, compare, sexp]
 
 type operation =
   | Add
@@ -47,9 +47,12 @@ type operation =
   | Div
 [@@deriving equal, compare, sexp]
 
-type size = Q | L [@@deriving equal, compare, sexp];;
+type size =
+  | Q
+  | L
+[@@deriving equal, compare, sexp]
 
-val to_size:(AS.size -> size) ;;
+val to_size : AS.size -> size
 
 type instr =
   | BinCommand of
@@ -67,12 +70,12 @@ type instr =
   | Cmp of
       { rhs : operand
       ; lhs : operand
-      ; size: size
+      ; size : size
       }
   | Test of
       { rhs : operand
       ; lhs : operand
-      ; size: size 
+      ; size : size
       }
   | Lea of
       { dest : operand
@@ -102,6 +105,10 @@ type instr =
       ; size : size
       ; src : operand
       }
+  | Movsxd of
+      { dest : operand
+      ; src : operand
+      }
 [@@deriving equal, compare, sexp]
 
 val pure_to_opr : AS.pure_operation -> operation
@@ -115,5 +122,4 @@ val all_available_regs : AS.reg list
 val callee_saved : operand -> bool
 val caller_saved : operand -> bool
 val is_reg : operand -> bool
-
-val as_to_reg_enum: AS.reg -> R.reg_enum
+val as_to_reg_enum : AS.reg -> R.reg_enum
