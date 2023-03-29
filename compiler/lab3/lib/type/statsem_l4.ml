@@ -465,7 +465,6 @@ let rec static_semantic_stm
     let res =
       A'.Declare
         { var = dest
-        ; typ_size = 8
         ; assign = Some (lvalue, 8)
         ; body = A'.AssignMem { dest; op = Some (A'.intop o); exp=re }
         }

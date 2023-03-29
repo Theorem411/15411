@@ -142,13 +142,11 @@ and mexp = exp * int
 type stm =
   | Declare of
       { var : Symbol.t
-      ; typ_size : int
       ; assign : mexp option
       ; body : stm
       }
   | Assign of
       { var : Symbol.t
-      ; typ_size : int
       ; exp : mexp
       }
   | AssignMem of
@@ -293,19 +291,14 @@ module Print = struct
   and pp_mexp ((e, _) : mexp) = pp_exp e
 
   let rec pp_stm = function
-    | Declare { var; typ_size; assign; body } ->
+    | Declare { var; assign; body } ->
       (match assign with
        | None -> sprintf "decl %s;\n%s" (Symbol.name var) (pp_stm body)
        | Some (e, _) ->
-         sprintf
-           "decl %s[%s]=%s;\n%s"
-           (Symbol.name var)
-           (Int.to_string typ_size)
-           (pp_exp e)
-           (pp_stm body))
-    | Assign { var; typ_size; exp } ->
-      sprintf "%s[%s] = %s;" (Symbol.name var) (Int.to_string typ_size) (pp_mexp exp)
-    | AssignMem { dest; op = None; exp } -> sprintf "(%s) = %s" (Symbol.name dest) (pp_mexp exp)
+         sprintf "decl %s=%s;\n%s" (Symbol.name var) (pp_exp e) (pp_stm body))
+    | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
+    | AssignMem { dest; op = None; exp } ->
+      sprintf "(%s) = %s" (Symbol.name dest) (pp_mexp exp)
     | AssignMem { dest; op = Some o; exp } ->
       sprintf "(%s) %s= %s" (Symbol.name dest) (pp_binop o) (pp_mexp exp)
     | If { cond; lb; rb } ->
