@@ -1,8 +1,8 @@
 module T = Tree_l4
 module A = Assem_l4
 
-let munch_exp : Temp.t -> T.mpexp -> A.instr list = 
-  let rec munch_exp_rev (t : Temp.t) (exp : T.mpexp) : A.instr list = 
+let munch_exp : A.operand -> T.mpexp -> A.instr list = 
+  let rec munch_exp_rev (t : A.operand) (exp : T.mpexp) : A.instr list = 
     let e, esize = exp in
     match e with
   | T.Const const ->
@@ -37,6 +37,8 @@ let munch_exp : Temp.t -> T.mpexp -> A.instr list =
 ;;
 
 let munch_stm : T.stm -> A.instr list = function  
+| T.MovPureExp { dest; src } ->
+  munch_exp (A.Temp dest) src
 | T.If { cond; lt; lf } ->
   failwith "Not implemented"
 | T.Goto label ->
@@ -44,8 +46,6 @@ let munch_stm : T.stm -> A.instr list = function
 | T.Label label ->
   failwith "Not implemented"
 | T.MovEfktExp { dest; ebop; lhs; rhs } ->
-  failwith "Not implemented"
-| T.MovPureExp { dest; src } ->
   failwith "Not implemented"
 | T.MovFuncApp { dest; fname; args } ->
   failwith "Not implemented"
