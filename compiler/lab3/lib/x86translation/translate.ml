@@ -213,16 +213,17 @@ let translate_mov (get_final : AS.operand * X86.size -> X86.operand) = function
 ;;
 
 let translate_movsxd (get_final : AS.operand * X86.size -> X86.operand) = function
-  | AS.MovSxd { dest = d; src = s; } ->
+  | AS.MovSxd { dest = d; src = s } ->
     let d_final = get_final (d, X86.Q) in
     let src_final = get_final (s, X86.L) in
     (match d_final with
     | Stack _ ->
       (* mov mem, mem *)
       [ X86.Movsxd { dest = X86.get_free X86.Q; src = src_final }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free X86.Q; size = X86.Q }
+      ; X86.BinCommand
+          { op = Mov; dest = d_final; src = X86.get_free X86.Q; size = X86.Q }
       ]
-    | _ -> [ X86.Movsxd { dest = d_final; src = src_final} ])
+    | _ -> [ X86.Movsxd { dest = d_final; src = src_final } ])
   | _ -> failwith "translate_movsxd is getting not movsxd "
 ;;
 
@@ -378,12 +379,11 @@ let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr lis
     b @ List.rev full_rev
 ;;
 
-let translate (fs : AS.program) =
+let translate (fs : AS.program) ~mfail =
   let arithErrLabel = Label.create () in
-  let memErrLabel = Label.create () in
-  [ Custom.get_alloc_function memErrLabel ]
-  @ [ Custom.get_arrayalloc_function memErrLabel ]
-  @ [ get_memErrLabel_block memErrLabel ]
+  [ Custom.get_alloc_function mfail ]
+  @ [ Custom.get_arrayalloc_function mfail ]
+  @ [ get_memErrLabel_block mfail ]
   @ [ get_error_block arithErrLabel ]
   @ List.map ~f:(fun f -> translate_function arithErrLabel f) fs
 ;;

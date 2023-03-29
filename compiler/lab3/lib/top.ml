@@ -14,7 +14,7 @@
  *)
 
 open Core
-module TranslationM = Trans
+module TranslationM = Trans_l4
 module Aste = Aste_l4
 module AssemM = Assem_l4
 module Cogen = Codegen_l4
@@ -227,24 +227,25 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
   say_if cmd.verbose (fun () -> "doing type Checking...");
-  let (() : unit) = Statsem.static_semantic ~hdr:elab_h ~src:elab_raw in
+  let asts_raw = Statsem.static_semantic ~hdr:elab_h ~src:elab_raw in
   let (() : unit) = Return.ret_checker elab_raw in
   say_if cmd.verbose (fun () -> "renaming what is necc...");
-  let elab = Preprocess.rename elab_h elab_raw in
+  let elab = Preprocess.rename elab_h asts_raw in
   say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
-  say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab);
+  say_if cmd.dump_ast (fun () -> Asts.Print.print_all elab);
   (* Typecheck *)
   (* Typechecker.typecheck ast; *)
   if cmd.typecheck_only then exit 0;
   (* Translate *)
   say_if cmd.verbose (fun () -> "Translating...");
-  let ir = TranslationM.translate (elab_h @ elab) in
+  let ir = TranslationM.translate (elab) in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
   (* let assem_blocks = Cogen.cogen_block ir in
   let assem = Cogen.cogen assem_blocks in *)
-  let assem = Cogen.cogen ir in
+  let mfail = Label.create () in 
+  let assem = Codegen_l4.codegen ~mfl:mfail ir in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
   (* Testing blocks *)
   say_if cmd.dump_assem (fun () -> Block.pp_all_blocks (Block.blocks_former assem));
@@ -266,7 +267,7 @@ let compile (cmd : cmd_line_args) : unit =
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
     Out_channel.with_file file ~f:(fun out ->
         let output_x86_instr instr = Out_channel.fprintf out "%s\n" (X86.format instr) in
-        let translated = Translate.translate assem in
+        let translated = Translate.translate assem ~mfail in
         let union = Translate.get_string_list translated in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");
