@@ -50,11 +50,6 @@ type pexp =
       }
   | Mem of addr
   | Addr of addr
-  | Alloc of int
-  | Calloc of
-      { len : mpexp
-      ; typ : int
-      }
 
 and ptraddr =
   { start : mpexp
@@ -109,6 +104,15 @@ type stm =
       { dest : (Temp.t * int) option
       ; fname : Symbol.t
       ; args : mpexp list
+      }
+  | Alloc of
+      { dest : Temp.t
+      ; size : int
+      }
+  | Calloc of
+      { dest : Temp.t
+      ; len : mpexp
+      ; typ : int
       }
   | MovToMem of
       { (*_ this means deref the lhs *)
@@ -198,15 +202,12 @@ module Print = struct
         (pp_mpexp idx)
         (Int.to_string typ_size)
         (Int.to_string extra)
-    | Alloc size -> sprintf "alloc(%s)" (Int.to_string size)
-    | Calloc { typ; len } -> sprintf "calloc(%s, %s)" (Int.to_string typ) (pp_mpexp len)
 
   and pp_mpexp ((e, _) : mpexp) = pp_pexp e
 
   let pp_stm (stm : stm) =
     match stm with
-    | If { cond; lt; lf } ->
-      failwith "Not implemented"
+    | If { cond; lt; lf } -> failwith "Not implemented"
     | Goto label ->
       (* Implement the Goto case *)
       failwith "Not implemented"
@@ -231,6 +232,8 @@ module Print = struct
     | AssertFail ->
       (* Implement the AssertFail case *)
       failwith "Not implemented"
+    | Alloc { dest; size } -> failwith "not implemented"
+    | Calloc { dest; len; typ } -> failwith "not"
   ;;
 
   let pp_program (prog : program) = failwith "no"

@@ -49,11 +49,6 @@ type pexp =
       }
   | Mem of addr (*_ deref of address *)
   | Addr of addr (*_ just the raw address *)
-  | Alloc of int
-  | Calloc of
-      { len : mpexp
-      ; typ : int
-      }
 
 and ptraddr =
   { start : mpexp
@@ -108,6 +103,15 @@ type stm =
       { dest : (Temp.t * int) option
       ; fname : Symbol.t
       ; args : mpexp list
+      }
+  | Alloc of
+      { dest : Temp.t
+      ; size : int
+      }
+  | Calloc of
+      { dest : Temp.t
+      ; len : mpexp
+      ; typ : int
       }
   | MovToMem of
       { (*_ move src to deref mem *)

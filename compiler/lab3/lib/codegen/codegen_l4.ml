@@ -166,12 +166,6 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
         |> List.rev
       in
       [ res; munch_exp_rev b idx; munch_exp_rev a head ] |> List.concat
-    | T.Alloc size ->
-      (* Implement the Alloc case *)
-      failwith "Not implemented"
-    | T.Calloc { len; typ } ->
-      (* Implement the Calloc case *)
-      failwith "Not implemented"
   in
   fun t exp -> List.rev (munch_exp_rev t exp)
 ;;
@@ -183,6 +177,8 @@ let munch_stm : T.stm -> A.instr list = function
   | T.MovEfktExp { dest; ebop; lhs; rhs } -> failwith "Not implemented"
   | T.MovPureExp { dest; src } -> failwith "Not implemented"
   | T.MovFuncApp { dest; fname; args } -> failwith "Not implemented"
+  | T.Alloc { dest; size } -> failwith "no"
+  | T.Calloc { dest; len; typ } -> failwith "no"
   | T.MovToMem { mem; src } -> failwith "Not implemented"
   | T.Return mpexp_opt -> failwith "Not implemented"
   | T.AssertFail -> failwith "Not implemented"
