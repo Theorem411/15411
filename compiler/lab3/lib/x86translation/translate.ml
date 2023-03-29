@@ -198,6 +198,7 @@ let translate_mov (get_final : AS.operand * X86.size -> X86.operand) = function
     let d_final = get_final (d, size) in
     let src_final = get_final (s, size) in
     (match d_final, src_final with
+    | _, Imm _ -> [ X86.BinCommand { op = Mov; dest = d_final; src = src_final; size } ]
     | Stack _, Stack _ ->
       (* mov mem, mem *)
       [ X86.BinCommand { op = Mov; dest = X86.get_free size; src = src_final; size }

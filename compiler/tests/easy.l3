@@ -5,6 +5,6 @@ int main ()
 {
   int x = 1;
   int y = 1;
-  int z = x;
+  int z = x + 4 + 4;
   return x + z;
 }
