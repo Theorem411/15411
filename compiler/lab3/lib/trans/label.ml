@@ -21,6 +21,9 @@ let create () =
   t
 ;;
 
+let bt (l : t) : bt = BlockLbl l
+;;
+
 let name t = ".L" ^ string_of_int t
 
 let name_bt = function 

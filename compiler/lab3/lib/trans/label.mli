@@ -17,7 +17,7 @@ val reset : unit -> unit
 
 (* returns a unique new label *)
 val create : unit -> t
-
+val bt : t -> bt
 (* returns the name of a label *)
 val name : t -> string
 val name_bt : bt -> string

@@ -78,8 +78,7 @@ let rec tr_exp_rev
     let cond : T.cond =
       match T.size ec with
       | 4 -> SCond { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4 }
-      | 8 -> LCond { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4 }
-      | _ -> failwith "trans: encounter cmp size not 4 or 8"
+      | _ -> failwith "trans: ternary loop guard encounters exp of size not 4, it must be a boolean"
     in
     let finisher = T.If { cond; lt = l1; lf = l2 } in
     let acc, b = update acc b ~finisher ~newlab:l1 in
