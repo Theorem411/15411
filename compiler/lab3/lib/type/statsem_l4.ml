@@ -437,7 +437,7 @@ let rec static_semantic_stm
     (match assign with
      | None ->
        { vdef = SS.remove vdef' var
-       ; res = A'.Declare { var; typ_size = size; assign = None; body }
+       ; res = A'.Declare { var; assign = None; body }
        ; used = us
        }
      | Some ae ->
@@ -446,7 +446,7 @@ let rec static_semantic_stm
        in
        type_unify_exn t typ;
        { vdef = SS.remove vdef' var
-       ; res = A'.Declare { var; typ_size = size; assign = Some eres; body }
+       ; res = A'.Declare { var; assign = Some eres; body }
        ; used = SS.union us ue
        })
   | A.Asop { dest; op = Some o; exp } ->
@@ -487,7 +487,6 @@ let rec static_semantic_stm
     let res =
       A'.Declare
         { var = dest
-        ; typ_size = 8
         ; assign = Some (lvalue, 8)
         ; body = A'.AssignMem { dest; op = None; exp = re }
         }
@@ -495,12 +494,12 @@ let rec static_semantic_stm
     type_unify_exn td te;
     { vdef; res; used = SS.union ud ue }
   | A.Assign { var; exp } ->
-    let t, size = SM.find_exn vdec var in
+    let t, _ = SM.find_exn vdec var in
     let { res; typ; used } =
       static_semantic_exp exp { fdec; tdef; vdef; vdec; sdec; sdef; suse }
     in
     type_unify_exn t typ;
-    { vdef = SS.add vdef var; res = A'.Assign { var; typ_size = size; exp = res }; used }
+    { vdef = SS.add vdef var; res = A'.Assign { var; exp = res }; used }
   | A.If { cond; lb; rb } ->
     let { vdef = vdef1; res = r1; used = u1 } =
       static_semantic_stm lb { fdec; tdef; vdef; vdec; sdec; sdef; suse } topt

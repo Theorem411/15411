@@ -51,15 +51,15 @@ let equal_reg a b =
 let format_reg_32 = function
   | EAX -> "%eax"
   | EBX -> "%ebx"
-  | RBX -> "%rbx"
+  | RBX -> "%ebx"
   | ECX -> "%ecx"
-  | RCX -> "%rcx"
+  | RCX -> "%ecx"
   | EDX -> "%edx"
-  | RDX -> "%rdx"
+  | RDX -> "%edx"
   | ESI -> "%esi"
-  | RSI -> "%rsi"
+  | RSI -> "%esi"
   | EDI -> "%edi"
-  | RDI -> "%rdi"
+  | RDI -> "%edi"
   | R8D -> "%r8d"
   | R9D -> "%r9d"
   | R10D -> "%r10d"
@@ -68,8 +68,8 @@ let format_reg_32 = function
   | R13D -> "%r13d"
   | R14D -> "%r14d"
   | R15D -> "%r15d"
-  | RBP -> "%rbp"
-  | RSP -> "%rsp"
+  | RBP -> "%ebp"
+  | RSP -> "%esp"
 ;;
 
 let format_reg_64 = function

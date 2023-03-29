@@ -286,7 +286,7 @@ let do_arg_moves
 (* arg[7 + i] <- rsp has some size so recalculate *)
 
 let rbp = X86.Reg { reg = R.RBP; size = 8 }
-let rsp = X86.Reg { reg = R.RBP; size = 8 }
+let rsp = X86.Reg { reg = R.RSP; size = 8 }
 
 let get_function_be
     ((fname, __args) : Symbol.t * (Temp.t * AS.size) list)

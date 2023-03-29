@@ -38,7 +38,7 @@ let get_alloc_function memErrLabel =
       }
   ; X86.ZeroCommand { op = X86.Cqde }
   ; X86.BinCommand
-      { op = X86.Movq
+      { op = X86.Mov
       ; src = X86.Reg { reg = R.EAX; size = 8 }
       ; dest = X86.Reg { reg = R.ESI; size = 8 }
       ; size = X86.Q
@@ -98,17 +98,17 @@ let get_arrayalloc_function memErrLabel =
       ; size = X86.L
       }
   ; X86.BinCommand
-      { op = X86.Movq
+      { op = X86.Mov
       ; dest = X86.Reg { reg = R.R11D; size = 8 }
       ; src = X86.Reg { reg = R.R10D; size = 8 }
-      ; size = X86.L
+      ; size = X86.Q
       }
   ; X86.UnCommand { op = X86.Pushq; src = X86.Reg { reg = R.RBX; size = 8 } }
   ; X86.BinCommand
-      { op = X86.Movq
+      { op = X86.Mov
       ; dest = X86.Reg { reg = R.RBX; size = 8 }
       ; src = X86.Reg { reg = R.RDI; size = 8 }
-      ; size = X86.L
+      ; size = X86.Q
       }
   ; X86.Test
       { rhs = X86.Reg { reg = R.R10D; size = 4 }

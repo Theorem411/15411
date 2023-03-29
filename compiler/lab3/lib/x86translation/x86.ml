@@ -90,23 +90,23 @@ let to_size = function
 
 let format_size = function
   | Q -> "q"
-  | L -> "s"
+  | L -> "l"
 ;;
 
 let format_operation = function
-  | Add -> "addl"
-  | Sub -> "subl"
+  | Add -> "add"
+  | Sub -> "sub"
   | Addq -> "addq"
   | Subq -> "subq"
-  | Mul -> "imull"
-  | IDiv -> "idivl"
+  | Mul -> "imul"
+  | IDiv -> "idiv"
   | Mov -> "mov"
   | Cltd -> "cltd"
   | Cqde -> "cdqe"
   | Pushq -> "pushq"
   | Popq -> "popq"
   | Movq -> "movq"
-  | IMul -> "lol"
+  | IMul -> "imul"
   | Movl -> "movl"
   | Movzx -> "movzx"
   | Movsx -> "movsx"
@@ -168,9 +168,7 @@ let format_mem = function
       sprintf "[%s %s %d*%s]" (R.format_reg base_reg) sign1 sc (R.format_reg idx)
     | Some _, None, _ -> failwith "no scale when idx is at memory"
     | None, Some _, _ -> failwith "no index register when given scale"
-    | None, None, Some disp ->
-      let sign1, disp = integer_formatting disp in
-      sprintf "[%s %s %d]" (R.format_reg base_reg) sign1 disp
+    | None, None, Some disp -> sprintf "%d(%s)" disp (R.format_reg base_reg)
     | None, None, None -> sprintf "[%s]" (R.format_reg base_reg))
 ;;
 
@@ -275,7 +273,7 @@ let format = function
       (format_operand lhs)
       (format_operand rhs)
   | Lea { dest; src; size } ->
-    sprintf "\tlea%s\t%s, %s" (format_size size) (format_operand dest) (format_mem src)
+    sprintf "\tlea%s\t%s, %s" (format_size size) (format_mem src) (format_operand dest)
   | Lbl l -> Label.name l ^ ":"
   | Jump { op; label } -> sprintf "\t%s\t%s" (format_jump op) (Label.name label)
   | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand src)
