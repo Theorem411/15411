@@ -1,3 +1,4 @@
+open Core
 module T = Tree_l4
 module A = Assem_l4
 
@@ -63,8 +64,8 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
     | T.Mem (T.Ptr { start; off }) ->
       let t1 = A.Temp (Temp.create ()) in
       let t2 = A.Temp (Temp.create ()) in
-      let zero8 = A.Imm (Int32.of_int 0) in
-      let off8 = A.Imm (Int32.of_int off) in
+      let zero8 = A.Imm (Int32.of_int_exn 0) in
+      let off8 = A.Imm (Int32.of_int_exn off) in
       let size = munch_size off in
       [ A.MovFrom { dest; src = t2; size }
       ; A.Cjmp { typ = A.Je; l = A.mem_fail_lab }
@@ -75,7 +76,7 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
     | T.Mem (T.Arr { head; idx; typ_size; extra }) ->
       let a = A.Temp (Temp.create ()) in
       let b = A.Temp (Temp.create ()) in
-      let zero8 = A.Imm (Int32.of_int 0) in
+      let zero8 = A.Imm (Int32.of_int_exn 0) in
       let chk_head_null_rev =
         [ A.Cmp { size = A.L; lhs = a; rhs = zero8 }
         ; A.Cjmp { typ = A.Je; l = A.mem_fail_lab }
@@ -90,7 +91,7 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
       in
       let t3 = A.Temp (Temp.create ()) in
       let t4 = A.Temp (Temp.create ()) in
-      let eight8 = A.Imm (Int32.of_int 8) in
+      let eight8 = A.Imm (Int32.of_int_exn 8) in
       let chk_idx_len_rev =
         [ A.PureBinop { op = A.Sub; size = A.L; dest = t3; lhs = a; rhs = eight8 }
         ; A.MovFrom { dest = t4; size = A.S; src = t3 }
@@ -109,7 +110,7 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
             ; size = A.L
             ; dest = t2
             ; lhs = b
-            ; rhs = A.Imm (Int32.of_int typ_size)
+            ; rhs = A.Imm (Int32.of_int_exn typ_size)
             }
         ; A.PureBinop { op = A.Add; size = A.L; dest = t1; lhs = t1; rhs = t1 }
         ; A.PureBinop
@@ -117,7 +118,7 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
             ; size = A.L
             ; dest = t1
             ; lhs = t1
-            ; rhs = A.Imm (Int32.of_int extra)
+            ; rhs = A.Imm (Int32.of_int_exn extra)
             }
         ; A.MovFrom { dest; size = munch_size esize; src = t1 }
         ]
@@ -132,11 +133,11 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
       ; munch_exp_rev a head
       ]
       |> List.concat
-    | T.Addr T.Null -> [ A.Mov { dest; size = A.L; src = A.Imm (Int32.of_int 0) } ]
+    | T.Addr T.Null -> [ A.Mov { dest; size = A.L; src = A.Imm (Int32.of_int_exn 0) } ]
     | T.Addr (T.Ptr { start; off }) ->
       let t = A.Temp (Temp.create ()) in
       A.PureBinop
-        { op = A.Add; size = A.L; dest; lhs = t; rhs = A.Imm (Int32.of_int off) }
+        { op = A.Add; size = A.L; dest; lhs = t; rhs = A.Imm (Int32.of_int_exn off) }
       :: munch_exp_rev t start
     | T.Addr (T.Arr { head; idx; typ_size; extra }) ->
       let t1 = A.Temp (Temp.create ()) in
@@ -150,7 +151,7 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
             ; size = A.L
             ; lhs = b
             ; op = A.Mul
-            ; rhs = A.Imm (Int32.of_int typ_size)
+            ; rhs = A.Imm (Int32.of_int_exn typ_size)
             }
         ; A.Mov { dest = t2; size = A.L; src = a }
         ; A.PureBinop { dest = t2; size = A.L; lhs = t2; op = A.Add; rhs = t1 }
@@ -159,7 +160,7 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
             ; size = A.L
             ; lhs = t2
             ; op = A.Add
-            ; rhs = A.Imm (Int32.of_int extra)
+            ; rhs = A.Imm (Int32.of_int_exn extra)
             }
         ; A.Mov { dest; size = A.L; src = t2 }
         ]
@@ -184,5 +185,21 @@ let munch_stm : T.stm -> A.instr list = function
   | T.AssertFail -> failwith "Not implemented"
 ;;
 
-let munch_block : T.block -> A.block = failwith "no"
-let codegen : T.program -> A.program = failwith "no"
+let munch_block ({ label; block; jump } : T.block) : A.block =
+  let jump =
+    match jump with
+    | T.JRet -> A.JRet
+    | T.JCon { lt; lf } -> A.JCon { jt = lt; jf = lf }
+    | T.JUncon l -> A.JUncon l
+  in
+  let block' = List.map ~f:munch_stm block |> List.concat in
+  { label; block=block'; jump}
+;;
+
+let codegen (prog : T.program) : A.program = 
+  let map_f ({fname; args; fdef} :T.fspace_block) : A.fspace = 
+    let args = List.map args ~f:(fun (t, i) -> t, munch_size i) in
+    let fdef_blocks = List.map fdef ~f:munch_block in
+    { fname; args; fdef_blocks }
+  in
+  List.map prog ~f:map_f
