@@ -339,3 +339,13 @@ let get_free (sz : size) : operand =
         | Q -> 8)
     }
 ;;
+
+let get_memfree (sz : size) : operand =
+  Reg
+    { reg = R.R10D
+    ; size =
+        (match sz with
+        | L -> 4
+        | Q -> 8)
+    }
+;;

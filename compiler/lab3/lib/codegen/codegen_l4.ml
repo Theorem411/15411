@@ -2,6 +2,25 @@ open Core
 module T = Tree_l4
 module A = Assem_l4
 
+let if_cond_to_rev_jump_t = function
+  | T.Leq -> A.Jg
+  | T.Less -> A.Jge
+  | T.Geq -> A.Jl
+  | T.Greater -> A.Jle
+  | T.Eq -> A.Jne
+  | T.Neq -> A.Je
+;;
+
+let arg_i_to_reg = function
+  | 0 -> A.EDI
+  | 1 -> A.ESI
+  | 2 -> A.EDX
+  | 3 -> A.ECX
+  | 4 -> A.R8D
+  | 5 -> A.R9D
+  | _ -> failwith "args overflow 6"
+;;
+
 let munch_binary_op = function
   | T.Add -> A.Add
   | T.Sub -> A.Sub
@@ -172,17 +191,102 @@ let munch_exp : A.operand -> T.mpexp -> A.instr list =
 ;;
 
 let munch_stm : T.stm -> A.instr list = function
-  | T.If { cond; lt; lf } -> failwith "Not implemented"
-  | T.Goto label -> failwith "Not implemented"
-  | T.Label label -> failwith "Not implemented"
-  | T.MovEfktExp { dest; ebop; lhs; rhs } -> failwith "Not implemented"
-  | T.MovPureExp { dest; src } -> failwith "Not implemented"
-  | T.MovFuncApp { dest; fname; args } -> failwith "Not implemented"
-  | T.Alloc { dest; size } -> failwith "no"
-  | T.Calloc { dest; len; typ } -> failwith "no"
-  | T.MovToMem { mem; src } -> failwith "Not implemented"
-  | T.Return mpexp_opt -> failwith "Not implemented"
-  | T.AssertFail -> failwith "Not implemented"
+  | T.MovPureExp { dest; src } -> munch_exp (A.Temp dest) src
+  | T.MovEfktExp { dest; ebop; lhs; rhs } ->
+    let t1 = A.Temp (Temp.create ()) in
+    let t2 = A.Temp (Temp.create ()) in
+    [ munch_exp t1 lhs
+    ; munch_exp t2 rhs
+    ; [ A.EfktBinop { dest = A.Temp dest; op = munch_efkt_op ebop; lhs = t1; rhs = t2 } ]
+    ]
+    |> List.concat
+  | T.Goto label -> [ A.Jmp label ]
+  | T.Label label -> [ A.Lab label ]
+  | T.Return eopt ->
+    (* return e is implemented as %eax <- e *)
+    (match eopt with
+    | None -> [ A.Ret ]
+    | Some e -> munch_exp (A.Reg A.EAX) e @ [ A.Ret ])
+  | T.AssertFail -> [ A.AssertFail ]
+  | T.Alloc { dest; size } ->
+    [ (* edi <-4 size *)
+      A.Mov { dest = A.Reg A.RDI; size = A.S; src = A.Imm (Int32.of_int_exn size) }
+      (* call allocjavaway *)
+    ; A.Call
+        { fname = Symbol.symbol CustomAssembly.alloc_fname
+        ; args_overflow = []
+        ; args_in_regs = [ A.RDI, A.S ]
+        }
+      (* dest <-8 rax *)
+    ; A.Mov { dest = A.Temp dest; size = A.L; src = A.Reg A.EAX }
+    ]
+  | T.Calloc { dest; len; typ } ->
+    let t1 = A.Temp (Temp.create ()) in
+    [ munch_exp t1 len
+    ; [ (* edi <-4 typ *)
+        A.Mov { dest = A.Reg A.RDI; size = A.S; src = A.Imm (Int32.of_int_exn typ) }
+        (* edi <-4 len *)
+      ; A.Mov { dest = A.Reg A.RSI; size = A.S; src = t1 } (* call allocjavaway *)
+      ; A.Call
+          { fname = Symbol.symbol CustomAssembly.alloc_array_fname
+          ; args_overflow = []
+          ; args_in_regs = [ A.RDI, A.S; A.RSI, A.S ]
+          }
+        (* dest <-8 rax *)
+      ; A.Mov { dest = A.Temp dest; size = A.L; src = A.Reg A.EAX }
+      ]
+    ]
+    |> List.concat
+  | T.If { cond; lt; lf } ->
+    let sz, cmp, e1, e2 =
+      match cond with
+      | LCond cond -> A.L, cond.cmp, cond.p1, cond.p2
+      | SCond cond -> A.L, cond.cmp, cond.p1, cond.p2
+    in
+    let jmptyp = if_cond_to_rev_jump_t cmp in
+    let t1 = A.Temp (Temp.create ()) in
+    let t2 = A.Temp (Temp.create ()) in
+    [ munch_exp t1 e1
+    ; munch_exp t2 e2
+    ; [ A.Cmp { lhs = t1; size = sz; rhs = t2 }
+      ; A.Cjmp { typ = jmptyp; l = lf }
+      ; A.Jmp lt
+      ]
+    ]
+    |> List.concat
+  | T.MovToMem { mem; src } ->
+    let t1 = A.Temp (Temp.create ()) in
+    [ munch_exp t1 src
+    ; [ A.MovTo { dest = A.Temp mem; size = munch_size (T.size src); src = t1 } ]
+    ]
+    |> List.concat
+  | T.MovFuncApp { dest; fname; args } ->
+    let cogen_arg e =
+      let t = Temp.create () in
+      let sz = munch_size (T.size e) in
+      (t, sz), munch_exp (A.Temp t) e
+    in
+    let ops, cogen_args = List.map args ~f:cogen_arg |> List.unzip in
+    let cogen_args = List.concat cogen_args in
+    let args_mv_f i (t, sz) =
+      if i < 6
+      then Some (A.Mov { dest = A.Reg (arg_i_to_reg i); src = A.Temp t; size = sz })
+      else None
+    in
+    let args_mv = List.mapi ops ~f:args_mv_f |> List.filter_opt in
+    let args_in_regs_f i (_, sz) = if i < 6 then Some (arg_i_to_reg i, sz) else None in
+    let args_in_regs = List.filter_mapi ops ~f:args_in_regs_f in
+    let args_overflow_f i op = if i >= 6 then Some op else None in
+    let args_overflow = List.filter_mapi ops ~f:args_overflow_f in
+    let call = A.Call { fname; args_in_regs; args_overflow } in
+    (match dest with
+    | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
+    | Some (d, sz) ->
+      [ cogen_args
+      ; args_mv
+      ; [ call; A.Mov { dest = A.Temp d; size = munch_size sz; src = A.Reg A.EAX } ]
+      ]
+      |> List.concat)
 ;;
 
 let munch_block ({ label; block; jump } : T.block) : A.block =

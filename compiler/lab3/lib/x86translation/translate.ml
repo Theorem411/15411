@@ -217,14 +217,20 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
     let size = X86.to_size size in
     let d_final = get_final (d, size) in
     let src_final = get_final (s, size) in
-    (match src_final with
-    | Stack _ ->
+    (match src_final, d_final with
+    | Stack _, Stack _ ->
+      [ X86.BinCommand
+          { op = Mov; dest = X86.get_free size; src = src_final; size = X86.Q }
+      ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free size; size }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
+      ]
+    | Stack _, _ ->
       (* mov mem, mem *)
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free size; src = src_final; size = X86.Q }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
+      ; X86.MovFrom { dest = d_final; src = X86.get_free size; size }
       ]
-    | Imm _ -> failwith "deref of an imm"
+    | Imm _, _ -> failwith "deref of an imm"
     | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;
@@ -234,15 +240,21 @@ let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = functi
     let size = X86.to_size size in
     let d_final = get_final (d, size) in
     let src_final = get_final (s, size) in
-    (match d_final with
-    | Stack _ ->
+    (match d_final, src_final with
+    | Stack _, Stack _ ->
       (* mov mem, mem *)
       [ (* X86.BinCommand { op = Mov; dest = X86.get_free size; src = src_final; size } *)
         X86.BinCommand
           { op = Mov; dest = X86.get_free size; src = src_final; size = X86.Q }
+      ; X86.BinCommand { op = Mov; src = src_final; dest = X86.get_memfree size; size }
+      ; X86.MovTo { src = X86.get_memfree size; dest = X86.get_free size; size }
+      ]
+    | Stack _, _ ->
+      [ X86.BinCommand
+          { op = Mov; dest = X86.get_free size; src = src_final; size = X86.Q }
       ; X86.MovTo { src = src_final; dest = X86.get_free size; size }
       ]
-    | Imm _ -> failwith "deref of an imm"
+    | Imm _, _ -> failwith "deref of an imm"
     | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;

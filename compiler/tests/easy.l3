@@ -1,11 +1,5 @@
-//test error
-/* recursively defined struct */
-
-struct list {
-  int head;
-  struct list tail;
-};
-
-int main () {
-  return -1;
+int main(){
+  int *z = alloc(int);
+  int [] a = alloc_array(int, 1/*z);
+  return a[0];
 }

@@ -110,6 +110,7 @@ val unary_to_opr : AS.unary_operation -> operation
 val format : instr -> string
 val format_list : instr list -> string
 val get_free : size -> operand
+val get_memfree : size -> operand
 val all_available_regs : AS.reg list
 val callee_saved : operand -> bool
 val caller_saved : operand -> bool
