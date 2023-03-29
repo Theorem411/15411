@@ -1,9 +1,25 @@
 //test error
 // alloc_array (foo) not an lvalue.
 
-int main ()
-{
-    (alloc_array (int, 1))[0] = 1;
+// int main ()
+//{
+//    (alloc_array (int, 1))[0] = 1;
+
+//    return 0;
+//}
+
+//test memerror
+/* erstwhile of gorgonzola's test suite */
+
+struct s {
+  int a;
+};
+
+int main() {
+    struct s* s;
+
+    s = NULL;
+    s->a;
 
     return 0;
 }

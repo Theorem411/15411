@@ -19,7 +19,9 @@ let alloc_fname = "____calloc_javaway"
         ret *)
 let get_alloc_function memErrLabel =
   let l1 = Label.create () in
-  [ X86.FunName alloc_fname
+  [ X86.Directive (sprintf ".globl %s" alloc_fname)
+  ; X86.Directive (sprintf ".type\t%s, @function" alloc_fname)
+  ; X86.FunName alloc_fname
   ; X86.Cmp
       { rhs = X86.Reg { reg = R.EDI; size = 4 }; lhs = Imm Int32.zero; size = X86.L }
   ; X86.Jump { label = l1; op = Some AS.Jne }
@@ -90,7 +92,9 @@ let alloc_array_fname = "____allocarray_javaway"
 
 let get_arrayalloc_function memErrLabel =
   let l1, l2, l3 = Label.create (), Label.create (), Label.create () in
-  [ X86.FunName alloc_array_fname
+  [ X86.Directive (sprintf ".globl %s" alloc_array_fname)
+  ; X86.Directive (sprintf ".type\t%s, @function" alloc_array_fname)
+  ; X86.FunName alloc_array_fname
   ; X86.BinCommand
       { op = X86.Movsx
       ; dest = X86.Reg { reg = R.R10D; size = 8 }
