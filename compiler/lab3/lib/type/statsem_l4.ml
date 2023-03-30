@@ -465,11 +465,11 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     { res = A'.Alloc_array { type_size; len = lres }, 8; typ = T.Array t; used }
 ;;
 
-(* let not_type_names (tdef : T.t SM.t) (s : Symbol.t) =
+let not_type_names (tdef : T.t SM.t) (s : Symbol.t) =
   match t_defined tdef s with
   | Some _ -> raise TypeError
   | None -> ()
-;; *)
+;;
 
 (* let not_func_names (fdec : SS.t) s =
   match SS.find fdec ~f:(Symbol.equal s) with
