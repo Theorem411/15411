@@ -1,12 +1,17 @@
-//test return 366
+//test return 2147483647
 
-int f(int [] A, int i, int v){
-  A[i] = v;
-  return A[i] + 10000;
-}
+int main ()
+{
+  int x;
 
-int main () {
-  int[] A = alloc_array(int, 10);
-  int i = 100;
-  return f(A, i, 1);
+  x = 1;  // 1
+  x <<= x; // 2
+  x <<= 33 % 32; // 4
+  x >>= 1; // 2
+  x = ~x; // -3
+  x >>= 33 % 32; // -2
+  x |= 1; // -1
+  x &= 1 << 31; // -2^31
+  x ^= 1 << 31 >> 31; // 2^31-1
+  return x;
 }

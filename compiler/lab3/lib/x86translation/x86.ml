@@ -114,7 +114,7 @@ let format_operation = function
   | And -> "and"
   | Or -> "or"
   | Xor -> "xor"
-  | Not -> "not"
+  | Not -> "notl"
   | Cmp -> "cmp"
   | Mod -> "mod"
   | Sal -> "sal"
