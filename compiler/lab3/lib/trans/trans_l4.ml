@@ -407,8 +407,9 @@ let rec tr_stm_rev
 let tr_stm (env : Temp.t S.t) (stm : A.stm) (binit : block_tobe) : T.block list =
   let acc_rev, bleft = tr_stm_rev env stm ([] : T.block list) binit in
   (*_ finish off any leftover block by adding a jret *)
+  let rem_intrs = match bleft.code with [] -> [T.Return None] | _ -> bleft.code in 
   let acc_rev =
-    ({ label = bleft.l; block = bleft.code; jump = T.JRet } : T.block) :: acc_rev
+    ({ label = bleft.l; block = rem_intrs; jump = T.JRet } : T.block) :: acc_rev
   in
   (*_ reminder: blocks are in original order; blocks are in reverse order *)
   let acc = List.rev acc_rev in

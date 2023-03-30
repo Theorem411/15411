@@ -192,7 +192,7 @@ module Print = struct
         (pp_mpexp rhs)
     | Unop { op; p } -> sprintf "%s%s" (pp_unop op) (pp_mpexp p)
     | Mem Null -> "(null)"
-    | Mem (Ptr { start; off }) -> sprintf "(%s, %s)" (pp_mpexp start) (Int.to_string off)
+    | Mem (Ptr { start; off }) -> sprintf "deref (%s, %s)" (pp_mpexp start) (Int.to_string off)
     | Mem (Arr { head; idx; typ_size; extra }) ->
       sprintf
         "(%s, %s, %s, %s)"
@@ -201,22 +201,22 @@ module Print = struct
         (Int.to_string typ_size)
         (Int.to_string extra)
     | Addr Null -> "null"
-    | Addr (Ptr { start; off }) -> sprintf "{%s, %s}" (pp_mpexp start) (Int.to_string off)
+    | Addr (Ptr { start; off }) -> sprintf "addr(%s, %s)" (pp_mpexp start) (Int.to_string off)
     | Addr (Arr { head; idx; typ_size; extra }) ->
       sprintf
-        "{%s, %s, %s, %s}"
+        "addr{%s, %s, %s, %s}"
         (pp_mpexp head)
         (pp_mpexp idx)
         (Int.to_string typ_size)
         (Int.to_string extra)
 
-  and pp_mpexp ((e, _) : mpexp) = pp_pexp e
+  and pp_mpexp ((e, _) : mpexp) = (pp_pexp e)
 
   let pp_if_cond = function
     | LCond { cmp; p1; p2 } ->
-      sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "l" (pp_mpexp p2)
+      sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "large" (pp_mpexp p2)
     | SCond { cmp; p1; p2 } ->
-      sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "s" (pp_mpexp p2)
+      sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "small" (pp_mpexp p2)
   ;;
 
   let pp_stm (stm : stm) =

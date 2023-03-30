@@ -1,17 +1,8 @@
-//test return 2147483647
+//test return 0
 
-int main ()
-{
-  int x;
-
-  x = 1;  // 1
-  x <<= x; // 2
-  x <<= 33 % 32; // 4
-  x >>= 1; // 2
-  x = ~x; // -3
-  x >>= 33 % 32; // -2
-  x |= 1; // -1
-  x &= 1 << 31; // -2^31
-  x ^= 1 << 31 >> 31; // 2^31-1
-  return x;
+int main() {
+  int[] a1 = alloc_array(int, 1000);
+  int[] a2 = alloc_array(int, 1000);
+  if(a1 == a2) return 1;
+  else return 0;
 }

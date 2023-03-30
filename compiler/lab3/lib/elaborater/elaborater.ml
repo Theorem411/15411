@@ -196,7 +196,12 @@ let rec elab_mexp (m_e : Ast.mexp) : AstElab.mexp =
   | ArrAccess { arr; idx } ->
     copy_mark m_e (AstElab.ArrAccess { arr = elab_mexp arr; idx = elab_mexp idx })
   | StructDot { str; field } ->
-    copy_mark m_e (AstElab.StructDot { field; str = elab_mexp str })
+    let str = elab_mexp str in
+    copy_mark
+      m_e
+      (match Mark.data str with
+      | AstElab.Deref d -> AstElab.StructArr { field; str = d }
+      | _ -> AstElab.StructDot { field; str })
   | StructArr { str; field } ->
     copy_mark m_e (AstElab.StructArr { field; str = elab_mexp str })
   | Alloc t -> copy_mark m_e (AstElab.Alloc t)

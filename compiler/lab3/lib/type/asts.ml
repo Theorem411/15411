@@ -267,7 +267,7 @@ module Print = struct
         (Symbol.name name)
         (List.map args ~f:(fun (e, i) -> sprintf "%s of size [%s]" (pp_exp e) (Int.to_string i))
         |> String.concat ~sep:", ")
-    | Deref addr -> sprintf "(%s)" (pp_ptraddr addr)
+    | Deref addr -> sprintf "deref(%s)" (pp_ptraddr addr)
     | ArrayAccess addr -> sprintf "arr[%s]" (pp_arraddr addr)
     | StructAccess addr -> sprintf "(%s)" (pp_ptraddr addr)
     | Alloc i -> sprintf "alloc(%s)" (Int.to_string i)
@@ -277,7 +277,7 @@ module Print = struct
     | ArrAddr arraddr -> pp_arraddr arraddr
 
   and pp_ptraddr = function
-    | Ptr { start; off } -> sprintf "%s:+%s" (pp_mexp start) (Int.to_string off)
+    | Ptr { start; off } -> sprintf "%s[+%s]" (pp_mexp start) (Int.to_string off)
     | Null -> "NULL"
 
   and pp_arraddr { head; idx; size; extra } =
@@ -288,7 +288,7 @@ module Print = struct
       (Int.to_string size)
       (Int.to_string extra)
 
-  and pp_mexp ((e, _) : mexp) = pp_exp e
+  and pp_mexp ((e, _) : mexp) = (pp_exp e)
 
   let rec pp_stm = function
     | Declare { var; assign; body } ->
