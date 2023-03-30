@@ -4,6 +4,7 @@ module V = Graph.Vertex
 module R = Register
 
 let no_reg_alloc = true
+let should_print_reg_map = false
 
 type color = int [@@deriving compare, equal, sexp]
 
@@ -229,7 +230,7 @@ let get_reg_map
 ;;
 
 let print_reg_map (reg_map : X86.operand AS.Map.t) =
-  if true
+  if should_print_reg_map
   then
     AS.Map.iteri
       ~f:(fun ~key ~data ->
