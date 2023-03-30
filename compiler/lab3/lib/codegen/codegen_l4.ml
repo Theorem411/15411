@@ -53,7 +53,8 @@ let munch_efkt_op = function
 let munch_size = function
   | 4 -> A.S
   | 8 -> A.L
-  | _ -> failwith "codegen: size is not 4 or 8"
+  | _ -> A.L
+  (* | i -> failwith ("codegen: size is not 4 or 8. it is " ^ (Int.to_string i)) *)
 ;;
 
 let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list =
@@ -87,7 +88,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
       let zero8 = A.Imm (Int32.of_int_exn 0) in
       let off8 = A.Imm (Int32.of_int_exn off) in
       (* let size = munch_size off in *)
-      let size = munch_size 8 in
+      let size = munch_size esize in
       [ A.MovFrom { dest; src = t2; size }
       ; A.Cjmp { typ = A.Je; l = mfl }
       ; A.Cmp { lhs = t2; rhs = zero8; size = A.L }

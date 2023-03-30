@@ -1,8 +1,5 @@
-//test return 0
-int main() {
+int ret7(int a){ int  x =1; return 7;}
 
-  for ( ; false ; ) {
-    return 1;
-  } 
-  return 0;
+int main(){
+    return ret7(42);
 }

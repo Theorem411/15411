@@ -36,10 +36,11 @@ let get_all_addressable_line instr =
       | _ -> false)
 ;;
 
-let get_all_nodes instrs =
+let get_all_nodes (f:AS.fspace) instrs =
+  let temps = List.map f.args ~f:(fun(t, _) -> AS.Temp t) in 
   List.dedup_and_sort
     ~compare:AS.compare_operand
-    (List.concat (List.map instrs ~f:get_all_addressable_line))
+    (List.concat (temps :: List.map instrs ~f:get_all_addressable_line))
 ;;
 
 let back_coloring_adapter : AS.operand * color -> V.t * color = function
@@ -51,8 +52,8 @@ let back_coloring_adapter : AS.operand * color -> V.t * color = function
   | _ -> raise (Failure "Can not happen")
 ;;
 
-let __coloring_debug (program : AS.instr list) : (V.t * color) list =
-  let nodes = get_all_nodes program in
+let __coloring_debug (f: AS.fspace) (program : AS.instr list) : (V.t * color) list =
+  let nodes = get_all_nodes f program in
   let max_color = List.length nodes in
   let all_colors : color list = List.range 1 (max_color + 1) in
   let coloring = List.zip_exn nodes all_colors in
@@ -73,7 +74,7 @@ let __coloring ?(debug_mode_translate = no_reg_alloc) (fspace : AS.fspace)
     if debug_mode_translate
     then (
       let program : AS.instr list = concat_blocks fdef_blocks in
-      __coloring_debug program)
+      __coloring_debug fspace program)
     else (
       let graph = Live.mk_graph_fspace (Block.of_fspace fspace) in
       Graph.coloring graph)
