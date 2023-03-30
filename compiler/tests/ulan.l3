@@ -25,11 +25,10 @@ int main() {
   x a = alloc(struct x);
   a->x = 15;
   a->y = 18;
-  /*a->z.x = 13;
+  a->z.x = 13;
   a->z.y = 15; // sum of 15 + 18 = 33, shift-out-of-range
   a->z.z = 18;
   y b = alloc(struct y);
   b->x = a;
-  return (b->x)->y >> (b->x->z.z + b->x->z.y);*/
-  return 1;
+  return (b->x)->y >> (b->x->z.z + b->x->z.y);
 }

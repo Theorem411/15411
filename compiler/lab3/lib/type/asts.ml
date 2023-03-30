@@ -149,12 +149,7 @@ type stm =
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignToPtrMem of
-      { dest : Symbol.t
-      ; op : intop option
-      ; exp : mexp
-      }
-  | AssignToArrMem of
+  | AssignMem of
       { dest : Symbol.t
       ; op : intop option
       ; exp : mexp
@@ -271,7 +266,7 @@ module Print = struct
         "(%s (%s))"
         (Symbol.name name)
         (List.map args ~f:(fun (e, i) ->
-           sprintf "%s of size [%s]" (pp_exp e) (Int.to_string i))
+             sprintf "%s of size [%s]" (pp_exp e) (Int.to_string i))
         |> String.concat ~sep:", ")
     | Deref addr -> sprintf "deref(%s)" (pp_ptraddr addr)
     | ArrayAccess addr -> sprintf "arr[%s]" (pp_arraddr addr)
@@ -299,25 +294,21 @@ module Print = struct
   let rec pp_stm = function
     | Declare { var; assign; body } ->
       (match assign with
-       | None -> sprintf "decl %s;\n%s" (Symbol.name var) (pp_stm body)
-       | Some (e, _) ->
-         sprintf "decl %s=%s;\n%s" (Symbol.name var) (pp_exp e) (pp_stm body))
+      | None -> sprintf "decl %s;\n%s" (Symbol.name var) (pp_stm body)
+      | Some (e, _) ->
+        sprintf "decl %s=%s;\n%s" (Symbol.name var) (pp_exp e) (pp_stm body))
     | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
-    | AssignToPtrMem { dest; op = None; exp } ->
-      sprintf "(%s)p = %s" (Symbol.name dest) (pp_mexp exp)
-    | AssignToPtrMem { dest; op = Some o; exp } ->
-      sprintf "(%s)p %s= %s" (Symbol.name dest) (pp_binop o) (pp_mexp exp)
-    | AssignToArrMem { dest; op = None; exp } ->
-      sprintf "(%s)a = %s" (Symbol.name dest) (pp_mexp exp)
-    | AssignToArrMem { dest; op = Some o; exp } ->
-      sprintf "(%s)a %s= %s" (Symbol.name dest) (pp_binop o) (pp_mexp exp)
+    | AssignMem { dest; op = None; exp } ->
+      sprintf "(%s) = %s" (Symbol.name dest) (pp_mexp exp)
+    | AssignMem { dest; op = Some o; exp } ->
+      sprintf "(%s) %s= %s" (Symbol.name dest) (pp_binop o) (pp_mexp exp)
     | If { cond; lb; rb } ->
       sprintf "if (%s) {\n%s\n}\nelse {\n%s\n}" (pp_mexp cond) (pp_stm lb) (pp_stm rb)
     | While { cond; body } -> sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_stm body)
     | Return eopt ->
       (match eopt with
-       | None -> "return"
-       | Some (e, i) -> sprintf "return %s of size [%s]" (pp_exp e) (Int.to_string i))
+      | None -> "return"
+      | Some (e, i) -> sprintf "return %s of size [%s]" (pp_exp e) (Int.to_string i))
     | NakedExpr (e, i) -> sprintf "%s[%s];" (pp_exp e) (Int.to_string i)
     | Seq (s1, s2) -> sprintf "%s\n%s" (pp_stm s1) (pp_stm s2)
     | Nop -> "nop;"

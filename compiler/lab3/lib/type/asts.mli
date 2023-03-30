@@ -107,13 +107,9 @@ type stm =
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignToPtrMem of
-      { dest : Symbol.t
-      ; op : intop option
-      ; exp : mexp
-      }
-  | AssignToArrMem of
-      { dest : Symbol.t
+  | AssignMem of
+      { (*_ assign to mem of dest *)
+        dest : Symbol.t
       ; op : intop option
       ; exp : mexp
       }
