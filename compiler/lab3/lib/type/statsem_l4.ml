@@ -83,7 +83,7 @@ let type_size suse (typ : T.t) =
   | _ -> small_type_size typ
 ;;
 
-(* let pp_suse (suse : struct_t SH.t) : string = 
+let pp_suse (suse : struct_t SH.t) : string = 
   let pp_sinfo ({ f_offset; tot_size; align } : struct_t) =
     sprintf
       "{\n%s\ntot:%s\nmax:%s\n}"
@@ -99,7 +99,7 @@ let type_size suse (typ : T.t) =
          ~f:(fun (s, sinfo) -> sprintf "%s=%s" (Symbol.name s) (pp_sinfo sinfo))
          (SH.to_alist suse)
       |> String.concat ~sep:"\n"))
-;; *)
+;;
 (*_ given a struct signature (either declared or undeclared), as long as all
    the field's struct types are defined, can calculate struct size, max align, all field offsets*)
 let struct_info (sdef : struct_t SH.t) (ssig : T.ssig_real) =
@@ -220,7 +220,22 @@ let struct_in_field (ssig : T.ssig_real) : SS.t =
   in
   SS.of_list structs
 ;;
-
+(*_ dfs *)
+type state = Visiting | Visited
+let detect_cycle (graph : SS.t SM.t) =
+  let rec dfs node visited_states =
+    match SM.find (!visited_states) node with
+    | Some Visiting -> raise TypeError
+    | Some Visited -> ()
+    | None ->
+      visited_states := SM.add_exn !visited_states ~key:node ~data:(Visiting);
+      let neighbors = match SM.find graph node with None -> SS.empty | Some nbr -> nbr in
+      SS.iter ~f:(fun neighbor -> dfs neighbor visited_states) neighbors;
+      visited_states := SM.mapi ~f:(fun ~key:n ~data:state -> if Symbol.equal n node then Visited else state) !visited_states
+  in
+  let visited_states = ref (SM.empty) in
+  SM.iteri ~f:(fun ~key:node ~data:_ -> dfs node visited_states) graph
+;;
 let struct_cyclic_chk (sdec : SS.t) (sdef : T.ssig_real SM.t) : unit =
   let vs : SS.t = SS.union sdec (SM.key_set sdef) in
   let es = SM.of_key_set vs ~f:(fun _ -> SS.empty) in
@@ -229,17 +244,20 @@ let struct_cyclic_chk (sdec : SS.t) (sdef : T.ssig_real SM.t) : unit =
     SM.update acc key ~f:(fun _ -> flds)
   in
   let es = SM.fold sdef ~init:es ~f:update in
-  let vinit = SS.empty in
-  let rec dfs (v : Symbol.t) (visited : SS.t) : SS.t =
-    if SS.mem visited v
-    then raise TypeError
-    else (
-      let visited' = SS.add visited v in
-      let nbrs = SM.find_exn es v in
-      SS.fold ~init:visited' nbrs ~f:(fun acc u -> dfs u acc))
+  (*_ debug scene *)
+  let es_lst = SM.to_alist ~key_order:`Increasing es in
+  let es_lst = List.map es_lst ~f:(fun (s, ss) -> (s, SS.to_list ss)) in
+  let es_str = List.map es_lst ~f:(fun (s, es) -> sprintf "%s:%s" (Symbol.name s) (List.map es ~f:Symbol.name |> String.concat ~sep:", ")) in
+  let debug_s = 
+    sprintf "es=\n%s\n" 
+    (String.concat es_str ~sep:"\n")
   in
-  let (_ : SS.t) = SS.fold vs ~init:vinit ~f:(fun acc v -> dfs v acc) in
-  ()
+  let () = prerr_endline debug_s in
+  (*_ begin debug scene *)
+  let debug_s = String.concat ~sep:"," (List.map ~f:Symbol.name (SS.to_list vs)) in
+  let () = prerr_endline (sprintf "vs=%s" debug_s) in
+  (*_ end debug scene *)
+  detect_cycle es
 ;;
 
 (*_ helper: extended type equation for polymorphic compare op *)
@@ -756,8 +774,8 @@ let static_semantic_gdecl
   | A.Sdef { sname; ssig } ->
     let ssig_real, sname_implicit = resolve_ssig tdef ssig in
     (* let () = printf ">>> ssig_real = %s\n" (T._ssig_real_tostring ssig_real) in *)
-    (* let () = struct_cyclic_chk sdef sname ssig_real in *)
     let sdef' = SM.add_exn sdef ~key:sname ~data:ssig_real in
+    let () = SH.update suse sname ~f:(fun _ -> struct_info suse ssig_real) in
     not_func_names (SM.key_set fdec) sname;
     not_type_names tdef sname;
     ( { fdef
@@ -821,6 +839,6 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) : A'.program =
   (*_ struct defs are not cyclic *)
   let () = struct_cyclic_chk global_ctx_src.sdec global_ctx_src.sdef in
   (*_ prrint fstruct offsets and stuff *)
-  (* let () = prerr_endline (pp_suse global_ctx_src.suse) in *)
+  let () = prerr_endline (pp_suse global_ctx_src.suse) in
   program
 ;;

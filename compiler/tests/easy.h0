@@ -1,9 +1,22 @@
-// Uses int arrays as strings
-// Here be undefined behavior, if not '\0'-terminated
 
-int strlen(int[] A);
+typedef int mandarin;
+typedef bool shanghainese;
 
-// Warning! You can't actually use this in the autograder
-// Printing to standard error interferes with autograder's reading the integer
-void puts(int[] A); 
+struct fuku {
+	mandarin **peach;
+};
+
+struct boba {
+	struct fuku am;
+};
+
+mandarin orange_crush();
+
+int fancy_shirt(shanghainese a);
+
+shanghainese sxy_man(int b, mandarin c);
+
+void iphone();
+
+
 

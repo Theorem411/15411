@@ -9,8 +9,8 @@
 * negative
 * negative
 * ankylosaurus-error02.l4 positive helpful for checking function return type size
-* positive
-* positive
+* bb-8-typecheck1.l4 positive short helpful test case for struct field 
+* captainamerica-3.l4 positive helpful for checking lvalue shapes on the lhs of assign
 * positive
 * positive
 * positive
