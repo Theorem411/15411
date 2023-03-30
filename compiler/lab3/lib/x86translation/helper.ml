@@ -229,7 +229,7 @@ let get_reg_map
 ;;
 
 let print_reg_map (reg_map : X86.operand AS.Map.t) =
-  if false
+  if true
   then
     AS.Map.iteri
       ~f:(fun ~key ~data ->
