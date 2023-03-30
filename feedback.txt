@@ -13,8 +13,8 @@
 * quenya-lab4-return01.l4 negative another linked list check
 * ponyta-namespace.l4 negative same / smaller as squirtle-so_many_mains.l4
 * paras-return08.l4 negative same / smaller as squirtle-so_many_mains.l4
-* chromium-exception02.l4 negative too easy bound check
-* positive
+* bb-8-typecheck1.l4 chromium-exception02.l4 negative too easy bound check short helpful test case for struct field 
+* captainamerica-3.l4 positive helpful for checking lvalue shapes on the lhs of assign
 * tyrion-t1.l4 positive found namespace bug
 * squirtle-so_many_mains.l4 positive found another namespace bug
 * deepimpact-fresh_zero_array.l4 positive finding weird alloc array bug

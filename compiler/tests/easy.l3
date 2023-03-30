@@ -1,13 +1,8 @@
-struct cooper; 
-struct cooper {
-    int param;
-    int param2;
-    int param3;
-};
+//test typecheck
 
-int main(){
-    struct cooper *a;
-    a = alloc(struct cooper);
-    int x = (*a).param;
-    return x;
+typedef struct boba *bb;
+
+int main() {
+	bb star = alloc(struct boba);
+	return **(star->am.peach);
 }
