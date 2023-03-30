@@ -212,8 +212,16 @@ exp :
     ident = Ident; 
     { Ast.StructDot {field = ident; str = e} }
   | e = m(exp);
+    Dot;
+    ident = TypeIdent; 
+    { Ast.StructDot {field = ident; str = e} }
+  | e = m(exp);
     Arrow;
     ident = Ident; 
+    { Ast.StructArr {field = ident; str = e} }
+  | e = m(exp);
+    Arrow;
+    ident = TypeIdent; 
     { Ast.StructArr {field = ident; str = e} }
   | lhs = m(exp);
     op = binop;
