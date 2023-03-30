@@ -1,31 +1,22 @@
-//test return 10
+//test error
+// Return type of function must be small
 
-int two() {
-    return 2;
+struct test
+{
+    int x;
+    int y;
+    int [] z;
+};
+
+struct test func()
+{
+    struct test * nTesting = alloc(struct test);
+
+    return *nTesting;
 }
 
-int succ(int x) {
-    return x + 1;
-}
-
-bool positive(int x) {
-    return x > 0;
-}
-
-void noop(int x, bool b) {
-    int z = x;
-    z--;
-    return;
-}
-
-int main() {
-    int two = two();
-    if(two == succ(two)) {
-        return 5;
-    }
-    while(positive(10 - two)) {
-        two = succ(two);
-        noop(1, false);
-    }
-    return two;
+int main()
+{
+    func();
+    return 0;
 }

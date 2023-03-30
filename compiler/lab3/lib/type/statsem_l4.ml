@@ -125,11 +125,12 @@ let struct_t_ufind (sdef : T.ssig_real SM.t) (suse : struct_t SH.t) (s : Symbol.
     2. arg names are not type names 
     3. arg names are not struct names
     4. arg types are all small types  *)
-let validate_args tdef (args : Symbol.t list) ((ats, _) : T.fsig_real) : unit =
+let validate_args tdef (args : Symbol.t list) ((ats, rett) : T.fsig_real) : unit =
   let chk (arg, t) =
     if SM.mem tdef arg
-    then raise TypeError
-    (* else if SM.mem sdec arg
+    then
+      raise TypeError
+      (* else if SM.mem sdec arg
     then raise TypeError *)
     else if not (Int.equal (List.length args) (SS.length (SS.of_list args)))
     then raise TypeError
@@ -138,6 +139,13 @@ let validate_args tdef (args : Symbol.t list) ((ats, _) : T.fsig_real) : unit =
       ())
   in
   let check_list = List.zip_exn args ats in
+  let () =
+    match rett with
+    | None -> ()
+    | Some t ->
+      let (_ : int) = small_type_size t in
+      ()
+  in
   List.iter check_list ~f:chk
 ;;
 
@@ -192,9 +200,11 @@ let struct_in_field (ssig : T.ssig_real) : SS.t =
   SS.of_list structs
 ;;
 
-let rec struct_cyclic_chk (sdef : T.ssig_real SM.t) (scur : Symbol.t) (ssig : T.ssig_real) : unit = 
+let rec struct_cyclic_chk (sdef : T.ssig_real SM.t) (scur : Symbol.t) (ssig : T.ssig_real)
+  : unit
+  =
   let s_in_flds = struct_in_field ssig in
-  let checkset = SM.data (SM.filter_keys sdef ~f:(SS.mem s_in_flds)) in 
+  let checkset = SM.data (SM.filter_keys sdef ~f:(SS.mem s_in_flds)) in
   let () = if SS.mem s_in_flds scur then raise TypeError else () in
   (* self definition *)
   let iterf (ssig : T.ssig_real) = struct_cyclic_chk sdef scur ssig in
@@ -440,6 +450,7 @@ let not_declared_yet (vdec : (T.t * int) SM.t) (s : Symbol.t) =
   | Some _ -> raise TypeError
   | None -> ()
 ;;
+
 (* 
 let not_struct_names (sdec : SS.t) (s : Symbol.t) =
   match SS.find sdec ~f:(Symbol.equal s) with
