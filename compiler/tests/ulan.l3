@@ -1,16 +1,5 @@
-//test memerror
-/* erstwhile of gorgonzola's test suite */
+//test return 0
 
-struct s {
-  int a;
-};
-
-int main() {
-    struct s* s;
-
-    s = NULL;
-    s->a;
-
-    return 0;
+int main () {
+    return (NULL == NULL ? 0 : 1);
 }
-

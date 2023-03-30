@@ -112,10 +112,10 @@ let translate_efkt (get_final : AS.operand * X86.size -> X86.operand) (errLabel 
 
 let translate_set get_final = function
   | AS.Set { typ; src } ->
-    [ X86.Set { op = typ; src = X86.Reg { reg = R.EAX; size = 4 } }
+    [ X86.Set { op = typ; src = X86.Reg { reg = R.EAX; size = 2 } }
     ; X86.BinCommand
         { op = Movzx
-        ; src = X86.Reg { reg = R.EAX; size = 4 }
+        ; src = X86.Reg { reg = R.EAX; size = 2 }
         ; dest = X86.Reg { reg = R.EAX; size = 4 }
         ; size = X86.L
         }
