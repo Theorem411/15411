@@ -78,8 +78,9 @@ let rec tr_exp_rev
     let cond : T.cond =
       match T.size ec with
       | 4 -> SCond { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4 }
-      | 8 -> LCond { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4 }
-      | _ -> failwith "trans: encounter cmp size not 4 or 8"
+      | _ ->
+        failwith
+          "trans: ternary loop guard encounters exp of size not 4, it must be a boolean"
     in
     let finisher = T.If { cond; lt = l1; lf = l2 } in
     let acc, b = update acc b ~finisher ~newlab:l1 in
@@ -405,8 +406,11 @@ let rec tr_stm_rev
 let tr_stm (env : Temp.t S.t) (stm : A.stm) (binit : block_tobe) : T.block list =
   let acc_rev, bleft = tr_stm_rev env stm ([] : T.block list) binit in
   (*_ finish off any leftover block by adding a jret *)
-  let bfinal : T.block = { label = bleft.l; block = bleft.code; jump = T.JRet } in
-  let acc_rev = bfinal :: acc_rev in
+  let acc_rev =
+    match bleft.code with
+    | [] -> acc_rev
+    | code -> { label = bleft.l; block = code; jump = T.JRet } :: acc_rev
+  in
   (*_ reminder: blocks are in original order; blocks are in reverse order *)
   let acc = List.rev acc_rev in
   acc

@@ -1,5 +1,17 @@
 //test error
-// alloc_array (foo) not an lvalue.
+/* recursively defined struct */
+
+struct tree;
+
+struct list {
+  struct tree head;
+  struct list * tail;
+};
+
+struct tree {
+  int data;
+  struct list subtrees;
+};
 
 int main ()
 {
