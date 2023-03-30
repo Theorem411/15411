@@ -182,7 +182,7 @@ let resolve_ssig (tdef : T.t SM.t) (ssig : T.ssig) : T.ssig_real * SS.t =
   ssig_real, SS.union_list snames
 ;;
 
-let struct_in_field (ssig : T.ssig) : SS.t =
+let struct_in_field (ssig : T.ssig_real) : SS.t =
   let structs =
     List.filter_map ssig ~f:(fun (_, t) ->
       match t with
@@ -190,6 +190,16 @@ let struct_in_field (ssig : T.ssig) : SS.t =
       | _ -> None)
   in
   SS.of_list structs
+;;
+
+let rec struct_cyclic_chk (sdef : T.ssig_real SM.t) (scur : Symbol.t) (ssig : T.ssig_real) : unit = 
+  let s_in_flds = struct_in_field ssig in
+  let checkset = SM.data (SM.filter_keys sdef ~f:(SS.mem s_in_flds)) in 
+  let () = if SS.mem s_in_flds scur then raise TypeError else () in
+  (* self definition *)
+  let iterf (ssig : T.ssig_real) = struct_cyclic_chk sdef scur ssig in
+  (*_ for every struct names in ssig that have ssig definition *)
+  List.iter checkset ~f:iterf
 ;;
 
 (*_ helper: extended type equation for polymorphic compare op *)
@@ -703,13 +713,7 @@ let static_semantic_gdecl
     { fdef; fdec; tdef; sdec = SS.add sdec s; sdef; suse }, SS.empty, None
   | A.Sdef { sname; ssig } ->
     let ssig_real, sname_implicit = resolve_ssig tdef ssig in
-    let sname_explicit = struct_in_field ssig in
-    (* let () =
-      printf
-        ">>> structs = %s\n"
-        (List.to_string ~f:Symbol.name (SS.to_list sname_explicit))
-    in *)
-    let () = if SS.mem sname_explicit sname then raise TypeError else () in
+    let () = struct_cyclic_chk sdef sname ssig_real in
     let sdef' = SM.add_exn sdef ~key:sname ~data:ssig_real in
     not_func_names (SM.key_set fdec) sname;
     not_type_names tdef sname;
