@@ -1,5 +1,20 @@
-int ret7(int a){ int  x =1; return 7;}
+//test return 111111
+// pass by value
 
-int main(){
-    return ret7(42);
+void f(int b) {
+  b = b + 1;
+  assert(b < 6);
+}
+
+int main() {
+  int b = 1;
+  int x = 0;
+
+  x += b; x *= 10; f(b);
+  x += b; x *= 10; f(b);
+  x += b; x *= 10; f(b);
+  x += b; x *= 10; f(b);
+  x += b; x *= 10; f(b);
+  x += b;
+  return x;
 }
