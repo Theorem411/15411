@@ -73,11 +73,12 @@ let __coloring ?(debug_mode_translate = no_reg_alloc) (fspace : AS.fspace)
     then (
       let program : AS.instr list = concat_blocks fdef_blocks in
       __coloring_debug program)
-      else (
+    else (
       let graph = Live.mk_graph_fspace (Block.of_fspace fspace) in
       Graph.coloring graph)
-    (* else failwith "reg alloc is not implemented yet." *)
 ;;
+
+(* else failwith "reg alloc is not implemented yet." *)
 
 (* pattern *)
 (* if debug_mode_translate
@@ -228,10 +229,14 @@ let get_reg_map
 ;;
 
 let print_reg_map (reg_map : X86.operand AS.Map.t) =
-  AS.Map.iteri
-    ~f:(fun ~key ~data ->
-      prerr_endline (sprintf "%s -> %s" (AS.format_operand key) (X86.format_operand data)))
-    reg_map
+  if false
+  then
+    AS.Map.iteri
+      ~f:(fun ~key ~data ->
+        prerr_endline
+          (sprintf "%s -> %s" (AS.format_operand key) (X86.format_operand data)))
+      reg_map
+  else ()
 ;;
 
 let reg_alloc (fspace : AS.fspace) =

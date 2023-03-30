@@ -384,13 +384,6 @@ let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr lis
             in
             AS.Lab label :: block))
     in
-    let x =
-      List.mapi block_instrs ~f:(fun _ l ->
-          String.concat
-            ~sep:","
-            (List.mapi l ~f:(fun i instr -> sprintf "%d:%s" i (AS.format_instr instr))))
-    in
-    prerr_endline (String.concat ~sep:";\n" x);
     let translated instructions : X86.instr list =
       List.fold instructions ~init:[] ~f:(translate_line (retLabel, errLabel) final)
     in
