@@ -83,7 +83,7 @@ let type_size suse (typ : T.t) =
   | _ -> small_type_size typ
 ;;
 
-(* let pp_suse (suse : struct_t SH.t) : string = 
+let pp_suse (suse : struct_t SH.t) : string = 
   let pp_sinfo ({ f_offset; tot_size; align } : struct_t) =
     sprintf
       "{\n%s\ntot:%s\nmax:%s\n}"
@@ -99,7 +99,7 @@ let type_size suse (typ : T.t) =
          ~f:(fun (s, sinfo) -> sprintf "%s=%s" (Symbol.name s) (pp_sinfo sinfo))
          (SH.to_alist suse)
       |> String.concat ~sep:"\n"))
-;; *)
+;;
 (*_ given a struct signature (either declared or undeclared), as long as all
    the field's struct types are defined, can calculate struct size, max align, all field offsets*)
 let struct_info (sdef : struct_t SH.t) (ssig : T.ssig_real) =
@@ -442,6 +442,7 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
         (match SH.find exp_ctx.suse s with
         | None ->
           let ssig = SM.find_exn exp_ctx.sdef s in
+          let () = prerr_endline (pp_suse exp_ctx.suse) in
           let struct_info = struct_info exp_ctx.suse ssig in
           SH.update exp_ctx.suse s ~f:(fun _ -> struct_info);
           struct_info.tot_size

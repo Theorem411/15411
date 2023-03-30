@@ -1,8 +1,35 @@
-//test return 0
+//test div-by-zero
+
+struct z {
+  int x;
+  int y;
+  int z;
+};
+typedef struct z* z;
+
+struct x {
+  int x; 
+  int y;
+  struct z z;
+};
+typedef struct x* x;
+
+struct y {
+  x x;
+  struct z y;
+  z z;
+};
+typedef struct y* y;
 
 int main() {
-  int[] a1 = alloc_array(int, 1000);
-  int[] a2 = alloc_array(int, 1000);
-  if(a1 == a2) return 1;
-  else return 0;
+  x a = alloc(struct x);
+  a->x = 15;
+  a->y = 18;
+  /*a->z.x = 13;
+  a->z.y = 15; // sum of 15 + 18 = 33, shift-out-of-range
+  a->z.z = 18;
+  y b = alloc(struct y);
+  b->x = a;
+  return (b->x)->y >> (b->x->z.z + b->x->z.y);*/
+  return 1;
 }

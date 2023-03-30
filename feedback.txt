@@ -13,7 +13,7 @@
 * quenya-lab4-return01.l4 negative another linked list check
 * ponyta-namespace.l4 negative same / smaller as squirtle-so_many_mains.l4
 * paras-return08.l4 negative same / smaller as squirtle-so_many_mains.l4
-* positive
+* chromium-exception02.l4 negative too easy bound check
 * positive
 * tyrion-t1.l4 positive found namespace bug
 * squirtle-so_many_mains.l4 positive found another namespace bug
