@@ -149,7 +149,12 @@ type stm =
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignMem of
+  | AssignToPtrMem of
+      { dest : Symbol.t
+      ; op : intop option
+      ; exp : mexp
+      }
+  | AssignToArrMem of
       { dest : Symbol.t
       ; op : intop option
       ; exp : mexp
@@ -265,7 +270,8 @@ module Print = struct
       sprintf
         "(%s (%s))"
         (Symbol.name name)
-        (List.map args ~f:(fun (e, i) -> sprintf "%s of size [%s]" (pp_exp e) (Int.to_string i))
+        (List.map args ~f:(fun (e, i) ->
+           sprintf "%s of size [%s]" (pp_exp e) (Int.to_string i))
         |> String.concat ~sep:", ")
     | Deref addr -> sprintf "deref(%s)" (pp_ptraddr addr)
     | ArrayAccess addr -> sprintf "arr[%s]" (pp_arraddr addr)
@@ -288,7 +294,7 @@ module Print = struct
       (Int.to_string size)
       (Int.to_string extra)
 
-  and pp_mexp ((e, _) : mexp) = (pp_exp e)
+  and pp_mexp ((e, _) : mexp) = pp_exp e
 
   let rec pp_stm = function
     | Declare { var; assign; body } ->
@@ -297,10 +303,14 @@ module Print = struct
        | Some (e, _) ->
          sprintf "decl %s=%s;\n%s" (Symbol.name var) (pp_exp e) (pp_stm body))
     | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
-    | AssignMem { dest; op = None; exp } ->
-      sprintf "(%s) = %s" (Symbol.name dest) (pp_mexp exp)
-    | AssignMem { dest; op = Some o; exp } ->
-      sprintf "(%s) %s= %s" (Symbol.name dest) (pp_binop o) (pp_mexp exp)
+    | AssignToPtrMem { dest; op = None; exp } ->
+      sprintf "(%s)p = %s" (Symbol.name dest) (pp_mexp exp)
+    | AssignToPtrMem { dest; op = Some o; exp } ->
+      sprintf "(%s)p %s= %s" (Symbol.name dest) (pp_binop o) (pp_mexp exp)
+    | AssignToArrMem { dest; op = None; exp } ->
+      sprintf "(%s)a = %s" (Symbol.name dest) (pp_mexp exp)
+    | AssignToArrMem { dest; op = Some o; exp } ->
+      sprintf "(%s)a %s= %s" (Symbol.name dest) (pp_binop o) (pp_mexp exp)
     | If { cond; lb; rb } ->
       sprintf "if (%s) {\n%s\n}\nelse {\n%s\n}" (pp_mexp cond) (pp_stm lb) (pp_stm rb)
     | While { cond; body } -> sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_stm body)

@@ -39,8 +39,7 @@ type unop =
 type exp =
   | True
   | False
-  | Var of
-      Symbol.t
+  | Var of Symbol.t
   | Const of Int32.t
   | Ternary of
       { cond : mexp
@@ -108,7 +107,12 @@ type stm =
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignMem of (*_ assign to mem of dest *)
+  | AssignToPtrMem of
+      { dest : Symbol.t
+      ; op : intop option
+      ; exp : mexp
+      }
+  | AssignToArrMem of
       { dest : Symbol.t
       ; op : intop option
       ; exp : mexp
@@ -148,7 +152,6 @@ val ptrop_cmp : A.binop_cmp -> intop_cmp
 val unop : A.unop -> unop
 val ptraddr_exn : exp -> ptraddr
 val arraddr_exn : exp -> arraddr
-
 val size : mexp -> int
 
 module Print : sig
