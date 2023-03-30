@@ -113,7 +113,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
         [ A.PureBinop { op = A.Sub; size = A.L; dest = t3; lhs = a; rhs = eight8 }
         ; A.MovFrom { dest = t4; size = A.S; src = t3 }
         ; A.Cmp { size = A.S; lhs = b; rhs = t4 }
-        ; A.Cjmp { typ = A.Jle; l = mfl }
+        ; A.Cjmp { typ = A.Jge; l = mfl }
         ]
         |> List.rev
       in
