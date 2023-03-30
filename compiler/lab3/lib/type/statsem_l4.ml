@@ -440,12 +440,12 @@ let not_declared_yet (vdec : (T.t * int) SM.t) (s : Symbol.t) =
   | Some _ -> raise TypeError
   | None -> ()
 ;;
-
+(* 
 let not_struct_names (sdec : SS.t) (s : Symbol.t) =
   match SS.find sdec ~f:(Symbol.equal s) with
   | Some _ -> raise TypeError
   | None -> ()
-;;
+;; *)
 
 let rec static_semantic_stm
   (mstm : A.mstm)
@@ -459,7 +459,6 @@ let rec static_semantic_stm
     (*_ var is not type names, not redeclared, not struct names*)
     let () = not_type_names tdef var in
     let () = not_declared_yet vdec var in
-    let () = not_struct_names sdec var in
     let size = small_type_size t in
     let vdec' = SM.add_exn vdec ~key:var ~data:(t, size) in
     (match assign with

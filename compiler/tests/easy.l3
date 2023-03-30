@@ -1,18 +1,11 @@
-//test error
-/* recursively defined struct */
-
-struct tree;
-
-struct list {
-  struct tree head;
-  struct list * tail;
+//test return 11
+struct s {
+  int a;
 };
 
-struct tree {
-  int data;
-  struct list subtrees;
-};
-
-int main () {
-  return -1;
+int main() {
+  struct s* s;
+  s = NULL;
+  s->a;
+  return 0;
 }
