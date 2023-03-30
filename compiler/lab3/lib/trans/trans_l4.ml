@@ -314,7 +314,7 @@ let rec tr_stm_rev
     let acc = new_block :: acc in
     let b = { l = Label.BlockLbl l2; code = [] } in
     acc, b
-  | While { cond = A.False, _; body } -> tr_stm_rev env body acc_rev block_rev
+  | While { cond = A.False, _; _ } -> acc_rev, block_rev (*while of false is equivalent of NOP*)
   | While { cond = A.CmpBinop { op; size; lhs; rhs }, _; body } ->
     let l1 = Label.create () in
     let l2 = Label.create () in
