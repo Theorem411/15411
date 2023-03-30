@@ -1,11 +1,11 @@
 * anakin-return0.l4 negative just quicksort again
 * arya-test_pointer05.l4 negative just another structs, was tested already
-* negative
-* negative
-* negative
-* negative
-* negative
-* negative
+* dobby-t40.l4 negative another linked list check
+* zirconium-return-array-equality.l4 negative same as deepimpact-fresh_zero_array.l4
+* zinc-return08.l4 negative no-comments (jk, just another linked list)
+* utah-werid2.l4 negative just another fancy big struct :/
+* utah-lvalduction.l4 negative just another fancy big struct :/
+* trex-arraycomp.l4 negative same as deepimpact-fresh_zero_array.l4
 * negative
 * negative
 * ankylosaurus-error02.l4 positive helpful for checking function return type size
@@ -16,5 +16,5 @@
 * positive
 * positive
 * positive
-* positive
+* tyrion-t1.l4 positive found namespace bug
 * deepimpact-fresh_zero_array.l4 positive finding weird alloc array bug

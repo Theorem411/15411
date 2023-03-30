@@ -1,11 +1,11 @@
-//test memerror
-//../tests/l4-large/captainamerica-3.l4 
-int testy(int x, int y);
-int testy(int x, int y);
+//test return 100
 
-int main() { 
-    int[] s=alloc_array(int, 5);
-    int i = -1;
-    s[-1]= 100; 
-    return i % 5;
+struct main {
+  int main;
+};
+
+int main() {
+  struct main * main = alloc(struct main);
+  (*main).main = 100;
+  return main->main;
 }
