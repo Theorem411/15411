@@ -1,10 +1,18 @@
 //test error
 /* recursively defined struct */
 
-int main() {
-  if (1 < 2) {
-    return 0;
-  } else {
-    return 1;
-  }
+struct tree;
+
+struct list {
+  struct tree head;
+  struct list * tail;
+};
+
+struct tree {
+  int data;
+  struct list subtrees;
+};
+
+int main () {
+  return -1;
 }

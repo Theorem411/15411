@@ -46,6 +46,11 @@ let rec _tau_tostring = function
   | Struct s -> sprintf "struct %s" (Symbol.name s)
 ;;
 
+let _ssig_real_tostring (ssig : ssig_real) =
+  List.map ssig ~f:(fun (s, t) -> sprintf "%s:%s" (Symbol.name s) (_t_tostring t))
+  |> String.concat ~sep:", "
+;;
+
 let _fsig_tostring ((argtyps, ret) : fsig) : string =
   let rettyp =
     match ret with
