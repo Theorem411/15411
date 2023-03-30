@@ -32,6 +32,15 @@ let symbol (name : string) : t =
     t
 ;;
 
+let create_fresh (_ : unit) : t =
+    let unique_id = !next_unique_id in
+    let name = sprintf "%s%d" "fresh_lvaluelol" unique_id in 
+    let t = { name; unique_id } in
+    incr next_unique_id;
+    Hashtbl.add_exn cache ~key:name ~data:t;
+    t
+;;
+
 let name : t -> string = fun x -> x.name
 
 include Comparable.Make (T)
