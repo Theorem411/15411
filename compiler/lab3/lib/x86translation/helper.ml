@@ -3,7 +3,7 @@ module AS = Assem_l4
 module V = Graph.Vertex
 module R = Register
 
-let no_reg_alloc = true
+let no_reg_alloc = false
 let should_print_reg_map = false
 
 type color = int [@@deriving compare, equal, sexp]
