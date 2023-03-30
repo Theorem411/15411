@@ -68,7 +68,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
       let t1 = A.Temp (Temp.create ()) in
       let t2 = A.Temp (Temp.create ()) in
       A.PureBinop { op; dest; size = A.S; lhs = t1; rhs = t2 }
-      :: (munch_exp_rev ~mfl t2 lhs @ munch_exp_rev ~mfl t1 rhs)
+      :: (munch_exp_rev ~mfl t2 rhs @ munch_exp_rev ~mfl t1 lhs)
     | T.Cmpop { op; size; lhs = e1; rhs = e2 } ->
       let typ = cmp_to_set_t op in
       let lhs = A.Temp (Temp.create ()) in

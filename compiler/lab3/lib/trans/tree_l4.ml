@@ -256,7 +256,7 @@ module Print = struct
 
   let pp_block ({ label; block; jump } : block) =
     sprintf
-      "%s\n%s-------[%s]---------"
+      "%s\n%s\n-------[%s]---------"
       (Label.name_bt label)
       (List.map block ~f:pp_stm |> String.concat ~sep:"\n")
       (pp_jump jump)

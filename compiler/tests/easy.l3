@@ -1,9 +1,18 @@
 //test error
-// alloc_array (foo) not an lvalue.
+/* recursively defined struct */
 
-typedef struct *A A; 
-int main ()
-{
-  int x = 1 + 2 + 3;
-  return 0;
+struct tree;
+
+struct list {
+  struct tree head;
+  struct list * tail;
+};
+
+struct tree {
+  int data;
+  struct list subtrees;
+};
+
+int main () {
+  return -1;
 }
