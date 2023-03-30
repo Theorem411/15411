@@ -1,5 +1,5 @@
-* negative 
-* negative
+* anakin-return0.l4 negative just quicksort again
+* arya-test_pointer05.l4 negative just another structs, was tested already
 * negative
 * negative
 * negative
@@ -17,4 +17,4 @@
 * positive
 * positive
 * positive
-* positive
+* deepimpact-fresh_zero_array.l4 positive finding weird alloc array bug

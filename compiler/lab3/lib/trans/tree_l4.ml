@@ -210,7 +210,7 @@ module Print = struct
         (Int.to_string typ_size)
         (Int.to_string extra)
 
-  and pp_mpexp ((e, sz) : mpexp) = (pp_pexp e ^ ":{{" ^ (Int.to_string sz) ^ "}}")
+  and pp_mpexp ((e, _) : mpexp) = (pp_pexp e)
 
   let pp_if_cond = function
     | LCond { cmp; p1; p2 } ->

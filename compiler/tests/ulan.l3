@@ -1,20 +1,11 @@
-//test return 111111
-// pass by value
+//test memerror
+//../tests/l4-large/captainamerica-3.l4 
+int testy(int x, int y);
+int testy(int x, int y);
 
-void f(int b) {
-  b = b + 1;
-  assert(b < 6);
-}
-
-int main() {
-  int b = 1;
-  int x = 0;
-
-  x += b; x *= 10; f(b);
-  x += b; x *= 10; f(b);
-  x += b; x *= 10; f(b);
-  x += b; x *= 10; f(b);
-  x += b; x *= 10; f(b);
-  x += b;
-  return x;
+int main() { 
+    int[] s=alloc_array(int, 5);
+    int i = -1;
+    s[-1]= 100; 
+    return i % 5;
 }

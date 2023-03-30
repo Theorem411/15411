@@ -288,7 +288,7 @@ module Print = struct
       (Int.to_string size)
       (Int.to_string extra)
 
-  and pp_mexp ((e, sz) : mexp) = (pp_exp e ^ ":`" ^ Int.to_string sz ^ "`")
+  and pp_mexp ((e, _) : mexp) = (pp_exp e)
 
   let rec pp_stm = function
     | Declare { var; assign; body } ->
