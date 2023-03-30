@@ -6,9 +6,9 @@
 
 .PHONY: lab*
 
-default: lab3
-lab3: bin
-	$(MAKE) -C compiler/$@
+default: lab4
+lab4: bin
+	$(MAKE) -C compiler/lab3
 
 bin:
 	mkdir bin

@@ -240,7 +240,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     let sz, cmp, e1, e2 =
       match cond with
       | LCond cond -> A.L, cond.cmp, cond.p1, cond.p2
-      | SCond cond -> A.L, cond.cmp, cond.p1, cond.p2
+      | SCond cond -> A.S, cond.cmp, cond.p1, cond.p2
     in
     let jmptyp = if_cond_to_rev_jump_t cmp in
     let t1 = A.Temp (Temp.create ()) in

@@ -1,12 +1,17 @@
-//test return 366
+//test return 5050
 
-int f(int [] A, int i, int v){
-  A[i] = v;
-  return A[i] + 10000;
-}
+int main ()
+{
+  int n;
+  int sum;
+  int i;
 
-int main () {
-  int[] A = alloc_array(int, 10);
-  int i = 100;
-  return f(A, i, 1);
+  n = 100;
+  sum = 0;
+  i = 0;
+  while (i <= n) {
+    sum += i;
+    i += 1;
+  }
+  return sum;
 }
