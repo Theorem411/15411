@@ -1,18 +1,19 @@
-//test error
-/* recursively defined struct */
+//test return 431
+/* erstwhile of brie's gratuitous obscenities */
+/* how dost thou alias? */
+/* also, do you do your name resolution properly? */
 
-struct tree;
+struct s02 {int pad;};
+struct s01 {int pad; struct s02* lol;};
+struct s00 {int pad; struct s01* lol;};
 
-struct list {
-  struct tree head;
-  struct list * tail;
-};
+int alias(struct s00* s00)
+{
+	s00->lol->pad += s00->lol->lol->pad;
+	return s00->pad;
+}
 
-struct tree {
-  int data;
-  struct list subtrees;
-};
-
-int main () {
-  return -1;
+int main()
+{
+	return 0;
 }

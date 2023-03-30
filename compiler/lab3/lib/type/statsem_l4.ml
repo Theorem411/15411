@@ -125,12 +125,12 @@ let struct_t_ufind (sdef : T.ssig_real SM.t) (suse : struct_t SH.t) (s : Symbol.
     2. arg names are not type names 
     3. arg names are not struct names
     4. arg types are all small types  *)
-let validate_args tdef sdec (args : Symbol.t list) ((ats, _) : T.fsig_real) : unit =
+let validate_args tdef (args : Symbol.t list) ((ats, _) : T.fsig_real) : unit =
   let chk (arg, t) =
     if SM.mem tdef arg
     then raise TypeError
-    else if SM.mem sdec arg
-    then raise TypeError
+    (* else if SM.mem sdec arg
+    then raise TypeError *)
     else if not (Int.equal (List.length args) (SS.length (SS.of_list args)))
     then raise TypeError
     else (
@@ -440,8 +440,8 @@ let not_declared_yet (vdec : (T.t * int) SM.t) (s : Symbol.t) =
   | Some _ -> raise TypeError
   | None -> ()
 ;;
-
-(* let not_struct_names (sdec : SS.t) (s : Symbol.t) =
+(* 
+let not_struct_names (sdec : SS.t) (s : Symbol.t) =
   match SS.find sdec ~f:(Symbol.equal s) with
   | Some _ -> raise TypeError
   | None -> ()
@@ -459,7 +459,6 @@ let rec static_semantic_stm
     (*_ var is not type names, not redeclared, not struct names*)
     let () = not_type_names tdef var in
     let () = not_declared_yet vdec var in
-    (* let () = not_struct_names sdec var in *)
     let size = small_type_size t in
     let vdec' = SM.add_exn vdec ~key:var ~data:(t, size) in
     (match assign with
@@ -646,7 +645,7 @@ let static_semantic_gdecl
       , None ))
   | A.Fundecl { f; fsig; args } ->
     let fsig_real, snames = resolve_fsig tdef fsig in
-    let () = validate_args tdef sdef args fsig_real in
+    let () = validate_args tdef args fsig_real in
     (match f_declared fdec f with
      | None ->
        (*_ if f hasn't been declared yet, check: f not type name *)
@@ -672,7 +671,7 @@ let static_semantic_gdecl
       | Some _ -> raise TypeError
     in
     (*_ validate args *)
-    let () = validate_args tdef sdef args fsig_real in
+    let () = validate_args tdef args fsig_real in
     (*_ f is not redefined *)
     let () = if f_defined fdef f then raise TypeError else () in
     (*_ if f is declared, check fsig equality *)

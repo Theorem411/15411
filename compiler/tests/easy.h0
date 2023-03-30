@@ -1,16 +1,9 @@
-//test memerror
-/* erstwhile of gorgonzola's test suite */
+// Uses int arrays as strings
+// Here be undefined behavior, if not '\0'-terminated
 
-struct s {
-  int a;
-};
+int strlen(int[] A);
 
-int main() {
-    struct s* s;
-
-    s = NULL;
-    s->a;
-
-    return 0;
-}
+// Warning! You can't actually use this in the autograder
+// Printing to standard error interferes with autograder's reading the integer
+void puts(int[] A); 
 
