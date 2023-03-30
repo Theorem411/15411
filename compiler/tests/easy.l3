@@ -1,11 +1,19 @@
-//test return 11
-struct s {
-  int a;
-};
+//test return 431
+/* erstwhile of brie's gratuitous obscenities */
+/* how dost thou alias? */
+/* also, do you do your name resolution properly? */
 
-int main() {
-  struct s* s;
-  s = NULL;
-  s->a;
-  return 0;
+struct s02 {int pad;};
+struct s01 {int pad; struct s02* lol;};
+struct s00 {int pad; struct s01* lol;};
+
+int alias(struct s00* s00)
+{
+	s00->lol->pad += s00->lol->lol->pad;
+	return s00->pad;
+}
+
+int main()
+{
+	return 0;
 }
