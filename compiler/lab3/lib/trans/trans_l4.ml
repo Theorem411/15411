@@ -244,7 +244,7 @@ let rec tr_stm_rev
   | If { cond = A.True, _; lb; _ } -> tr_stm_rev env lb acc_rev block_rev
   | If { cond = A.False, _; rb; _ } -> tr_stm_rev env rb acc_rev block_rev
   | If { cond = A.Unop { op = A.LogNot; operand }, _; lb; rb } ->
-    tr_stm_rev env (If { cond = operand; rb; lb }) acc_rev block_rev
+    tr_stm_rev env (If { cond = operand; lb = rb; rb = lb }) acc_rev block_rev
   | If { cond = A.CmpBinop { op; size; lhs; rhs }, _; lb; rb } ->
     let l1 = Label.create () in
     let l2 = Label.create () in
