@@ -465,17 +465,17 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     { res = A'.Alloc_array { type_size; len = lres }, 8; typ = T.Array t; used }
 ;;
 
-let not_type_names (tdef : T.t SM.t) (s : Symbol.t) =
+(* let not_type_names (tdef : T.t SM.t) (s : Symbol.t) =
   match t_defined tdef s with
   | Some _ -> raise TypeError
   | None -> ()
-;;
+;; *)
 
-let not_func_names (fdec : SS.t) s =
+(* let not_func_names (fdec : SS.t) s =
   match SS.find fdec ~f:(Symbol.equal s) with
   | Some _ -> raise TypeError
   | None -> ()
-;;
+;; *)
 
 let not_declared_yet (vdec : (T.t * int) SM.t) (s : Symbol.t) =
   match SM.find vdec s with
@@ -750,16 +750,16 @@ let static_semantic_gdecl
     , used
     , Some { f; args = List.map args_size ~f:(fun (x, (_, i)) -> x, i); fdef = res } )
   | A.Sdecl s ->
-    not_func_names (SM.key_set fdec) s;
-    not_type_names tdef s;
+    (* not_func_names (SM.key_set fdec) s;
+    not_type_names tdef s; *)
     { fdef; fdec; tdef; sdec = SS.add sdec s; sdef; suse }, SS.empty, None
   | A.Sdef { sname; ssig } ->
     let ssig_real, sname_implicit = resolve_ssig tdef ssig in
     (* let () = printf ">>> ssig_real = %s\n" (T._ssig_real_tostring ssig_real) in *)
     (* let () = struct_cyclic_chk sdef sname ssig_real in *)
     let sdef' = SM.add_exn sdef ~key:sname ~data:ssig_real in
-    not_func_names (SM.key_set fdec) sname;
-    not_type_names tdef sname;
+    (* not_func_names (SM.key_set fdec) sname;
+    not_type_names tdef sname; *)
     ( { fdef
       ; fdec
       ; tdef
