@@ -45,6 +45,7 @@ type operation =
   | Call
   | Test
   | Div
+  | Movsl
 [@@deriving equal, compare, sexp]
 
 type size =

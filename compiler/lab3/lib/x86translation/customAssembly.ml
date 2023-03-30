@@ -61,30 +61,27 @@ let get_alloc_function memErrLabel =
 
 let alloc_array_fname = "____allocarray_javaway"
 (* c0_alloc_array:
-        movsxl	%esi, %r10
-        movq	%r10, %r11
-        pushq	%rbx
-        pushq	%r15
-        movl	%esi, %r15d
-        movq	%rdi, %rbx
-        testl	%r10d, %r10d
-        js	.L8
-        testq	%rdi, %rdi
-        je	.L7
-        movl	$1073741816, %eax
-        xorl	%edx, %edx
-        div	%rdi
-        cmpq	%r10, %rax
-        jb	.L6
-    .L7:
-        imulq	%r10, %rbx
-        movl	$1, %edi
-        leaq	8(%rbx), %rsi
-        call	calloc
-        movl	%r15d, (%rax)
-        addq	$8, %rax
-        popq	%r15
-        popq	%rbx
+____allocarray_javaway:
+        - pushq   %rbx
+        - testl   %esi, %esi
+        - js      .L8
+        - movl    %esi, %ebx
+        - movslq  %esi, %rcx
+        testq   %rdi, %rdi
+        je      .L3333
+        movl    $1073741816, %eax
+        xorl    %edx, %edx
+        divq    %rdi
+        cmpq    %rcx, %rax
+        jb      .L6
+    .L3333:
+        imulq   %rcx, %rdi
+        leaq    8(%rdi), %rsi
+        movl    $1, %edi
+        call    calloc
+        movl    %ebx, (%rax)
+        addq    $8, %rax
+        popq    %rbx
         ret
 .L1:
         comment "not negative"
@@ -98,38 +95,25 @@ let get_arrayalloc_function memErrLabel =
   [ X86.Directive (sprintf ".globl %s" alloc_array_fname)
   ; X86.Directive (sprintf ".type\t%s, @function" alloc_array_fname)
   ; X86.FunName alloc_array_fname
-  ; X86.BinCommand
-      { op = X86.Movsx
-      ; dest = X86.Reg { reg = R.R10D; size = 8 }
-      ; src = X86.Reg { reg = R.ESI; size = 4 }
-      ; size = X86.L
-      }
-  ; X86.BinCommand
-      { op = X86.Mov
-      ; dest = X86.Reg { reg = R.R11D; size = 8 }
-      ; src = X86.Reg { reg = R.R10D; size = 8 }
-      ; size = X86.Q
-      }
   ; X86.UnCommand { op = X86.Pushq; src = X86.Reg { reg = R.RBX; size = 8 } }
-  ; X86.UnCommand { op = X86.Pushq; src = X86.Reg { reg = R.R15D; size = 8 } }
-  ; X86.BinCommand
-      { op = X86.Mov
-      ; dest = X86.Reg { reg = R.R15D; size = 4 }
-      ; src = X86.Reg { reg = R.ESI; size = 4 }
-      ; size = X86.L
-      }
-  ; X86.BinCommand
-      { op = X86.Mov
-      ; dest = X86.Reg { reg = R.RBX; size = 8 }
-      ; src = X86.Reg { reg = R.RDI; size = 8 }
-      ; size = X86.Q
-      }
   ; X86.Test
-      { rhs = X86.Reg { reg = R.R10D; size = 4 }
-      ; lhs = X86.Reg { reg = R.R10D; size = 4 }
+      { rhs = X86.Reg { reg = R.RSI; size = 4 }
+      ; lhs = X86.Reg { reg = R.RSI; size = 4 }
       ; size = X86.L
       }
   ; X86.Jump { label = l1; op = Some AS.Js }
+  ; X86.BinCommand
+      { op = X86.Mov
+      ; src = X86.Reg { reg = R.ESI; size = 4 }
+      ; dest = X86.Reg { reg = R.EBX; size = 4 }
+      ; size = X86.L
+      }
+  ; X86.BinCommand
+      { op = X86.Movsl
+      ; src = X86.Reg { reg = R.RSI; size = 4 }
+      ; dest = X86.Reg { reg = R.RCX; size = 8 }
+      ; size = X86.Q
+      }
   ; X86.Test
       { rhs = X86.Reg { reg = R.EDI; size = 8 }
       ; lhs = X86.Reg { reg = R.EDI; size = 8 }
@@ -150,30 +134,24 @@ let get_arrayalloc_function memErrLabel =
       }
   ; X86.UnCommand { op = X86.Div; src = X86.Reg { reg = R.EDI; size = 8 } }
   ; X86.Cmp
-      { rhs = X86.Reg { reg = R.EAX; size = 8 }
-      ; lhs = X86.Reg { reg = R.R10D; size = 8 }
+      { rhs = X86.Reg { reg = R.RCX; size = 8 }
+      ; lhs = X86.Reg { reg = R.EAX; size = 8 }
       ; size = X86.Q
       }
   ; X86.Jump { label = l3; op = Some AS.Jb }
   ; X86.Lbl l2 (* .L2 *)
   ; X86.BinCommand
       { op = X86.IMul
-      ; dest = X86.Reg { reg = R.EBX; size = 8 }
-      ; src = X86.Reg { reg = R.R10D; size = 8 }
+      ; dest = X86.Reg { reg = R.RDI; size = 8 }
+      ; src = X86.Reg { reg = R.RCX; size = 8 }
       ; size = X86.Q
-      }
-  ; X86.BinCommand
-      { op = X86.Mov
-      ; dest = X86.Reg { reg = R.EDI; size = 4 }
-      ; src = Imm Int32.one
-      ; size = X86.L
       }
   ; X86.Lea
       { dest = X86.Reg { reg = R.ESI; size = 8 }
       ; src =
           X86.Mem
             { disp = Some 8
-            ; base_reg = { reg = R.EBX; size = 8 }
+            ; base_reg = { reg = R.RDI; size = 8 }
             ; idx_reg = None
             ; scale = None
             }
@@ -182,7 +160,7 @@ let get_arrayalloc_function memErrLabel =
   ; X86.Call "calloc"
   ; X86.MovTo
       { dest = X86.Reg { reg = R.EAX; size = 8 }
-      ; src = X86.Reg { reg = R.R15D; size = 4 }
+      ; src = X86.Reg { reg = R.EBX; size = 4 }
       ; size = X86.L
       }
   ; X86.BinCommand
@@ -191,7 +169,6 @@ let get_arrayalloc_function memErrLabel =
       ; src = Imm (Int32.of_int_exn 8)
       ; size = X86.Q
       }
-  ; X86.UnCommand { op = X86.Popq; src = X86.Reg { reg = R.R15D; size = 8 } }
   ; X86.UnCommand { op = X86.Popq; src = X86.Reg { reg = R.RBX; size = 8 } }
   ; X86.Ret
   ; X86.Lbl l1 (* .L1 *)

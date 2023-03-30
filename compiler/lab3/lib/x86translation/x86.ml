@@ -76,6 +76,7 @@ type operation =
   | Call
   | Test
   | Div
+  | Movsl
 [@@deriving equal, compare, sexp]
 
 type size =
@@ -121,6 +122,7 @@ let format_operation = function
   | Call -> "call"
   | Test -> "test"
   | Div -> "div"
+  | Movsl -> "movsl"
 ;;
 
 let format_jump j =

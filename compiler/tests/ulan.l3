@@ -1,16 +1,11 @@
-//test return 0
 
-typedef int foo;
+//test return 11
 
-struct bar {
-       foo foo;
-};
-
-typedef struct bar bar;
-
-int main () {
-    1;
-    bar *p;
-    p = alloc(struct bar);
-    return p->foo;
+int main() {
+  int[] A = alloc_array(int, 3);
+  A[0] = 0x6C6C6548; //  'l' 'l' 'e' 'H'
+  A[1] = 0x6F57206F; //  'o' 'W' ' ' 'o'
+  A[2] = 0x00646C72; // '\0' 'd' 'l' 'r'
+  puts(A);// <- May be useful for testing, but interferes with autograder
+  return strlen(A);
 }
