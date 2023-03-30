@@ -6,15 +6,15 @@
 * utah-werid2.l4 negative just another fancy big struct :/
 * utah-lvalduction.l4 negative just another fancy big struct :/
 * trex-arraycomp.l4 negative same as deepimpact-fresh_zero_array.l4
-* negative
-* negative
+* silver-return11.l4 negative in root same as tyrion-t1.l4
+* samwell-test17.l4 negative same as squirtle-so_many_mains.l4
 * ankylosaurus-error02.l4 positive helpful for checking function return type size
-* positive
-* positive
-* positive
-* positive
-* positive
+* radium-sum_llist.l4 negative another linked list check
+* quenya-lab4-return01.l4 negative another linked list check
+* ponyta-namespace.l4 negative same / smaller as squirtle-so_many_mains.l4
+* paras-return08.l4 negative same / smaller as squirtle-so_many_mains.l4
 * positive
 * positive
 * tyrion-t1.l4 positive found namespace bug
+* squirtle-so_many_mains.l4 positive found another namespace bug
 * deepimpact-fresh_zero_array.l4 positive finding weird alloc array bug

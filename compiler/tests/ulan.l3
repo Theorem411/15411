@@ -1,11 +1,13 @@
-//test return 100
+//test return 0
+//
 
-struct main {
-  int main;
+
+typedef int complex;
+struct complex {
+       struct complex* p;
+       complex* q;
 };
 
 int main() {
-  struct main * main = alloc(struct main);
-  (*main).main = 100;
-  return main->main;
+    return 0;
 }
