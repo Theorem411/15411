@@ -248,7 +248,7 @@ let format = function
       (format_operand binop.src)
       (format_operand binop.dest)
   | Movsxd binop ->
-    sprintf "\tmovsxdt%s, %s" (format_operand binop.src) (format_operand binop.dest)
+    sprintf "\tmovsxd\t%s, %s" (format_operand binop.src) (format_operand binop.dest)
   | MovFrom binop ->
     sprintf
       "\tmov%s\t(%s), %s"

@@ -3,6 +3,7 @@
 
 int main ()
 {
-  int x = 1 + 2 + 3;
-  return 0;
+  int[] a = alloc_array(int, 2);
+  a[1] = 1;
+  return a[0] + a[1];
 }

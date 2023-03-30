@@ -113,7 +113,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
         [ A.PureBinop { op = A.Sub; size = A.L; dest = t3; lhs = a; rhs = eight8 }
         ; A.MovFrom { dest = t4; size = A.S; src = t3 }
         ; A.Cmp { size = A.S; lhs = b; rhs = t4 }
-        ; A.Cjmp { typ = A.Jge; l = mfl }
+        ; A.Cjmp { typ = A.Jle; l = mfl }
         ]
         |> List.rev
       in
@@ -129,7 +129,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
             ; lhs = b
             ; rhs = A.Imm (Int32.of_int_exn typ_size)
             }
-        ; A.PureBinop { op = A.Add; size = A.L; dest = t1; lhs = t1; rhs = t1 }
+        ; A.PureBinop { op = A.Add; size = A.L; dest = t1; lhs = t1; rhs = t2 }
         ; A.PureBinop
             { op = A.Add
             ; size = A.L

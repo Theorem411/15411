@@ -236,14 +236,14 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
     (match src_final, d_final with
     | Stack _, Stack _ ->
       [ X86.BinCommand
-          { op = Mov; dest = X86.get_free size; src = src_final; size = X86.Q }
-      ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free size; size }
+          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
+      ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free X86.Q; size }
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
       ]
-    | Stack _, _ ->
+  | Stack _, _ ->
       (* mov mem, mem *)
       [ X86.BinCommand
-          { op = Mov; dest = X86.get_free size; src = src_final; size = X86.Q }
+          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
       ; X86.MovFrom { dest = d_final; src = X86.get_free size; size }
       ]
     | Imm _, _ -> failwith "deref of an imm"
