@@ -84,16 +84,16 @@ let translate_efkt (get_final : AS.operand * X86.size -> X86.operand) (errLabel 
           { op = Mov; dest = X86.Reg { reg = R.ECX; size = 4 }; src = rhs_final; size }
         (* check for the shift >= 32 *)
       ; X86.Cmp
-          { rhs = X86.Reg { reg = R.ECX; size = 4 }
-          ; lhs = Imm (Int32.of_int_exn 32)
+          { lhs = X86.Reg { reg = R.ECX; size = 4 }
+          ; rhs = Imm (Int32.of_int_exn 32)
           ; size
           }
       ; X86.Jump { op = Some AS.Jge; label = errLabel }
         (* pre check end *)
         (* check for the shift < 32 *)
       ; X86.Cmp
-          { rhs = X86.Reg { reg = R.ECX; size = 4 }
-          ; lhs = Imm (Int32.of_int_exn 0)
+          { lhs = X86.Reg { reg = R.ECX; size = 4 }
+          ; rhs = Imm (Int32.of_int_exn 0)
           ; size
           }
       ; X86.Jump { op = Some AS.Jl; label = errLabel }
@@ -240,7 +240,7 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free X86.Q; size }
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
       ]
-  | Stack _, _ ->
+    | Stack _, _ ->
       (* mov mem, mem *)
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
@@ -372,13 +372,33 @@ let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr lis
     in
     let final = get_final reg_map in
     let b, e, retLabel = Helper.get_function_be (fname, __args) reg_map mem_cell_count in
-    let block_instrs = List.map fdef_blocks ~f:(fun { block; _ } -> block) in
+    let block_instrs =
+      List.mapi fdef_blocks ~f:(fun i { block; label = labelbt; _ } ->
+          if i = 0
+          then []
+          else (
+            let label =
+              match labelbt with
+              | Label.BlockLbl b -> b
+              | FunName _ -> failwith "not first block has a functionname"
+            in
+            AS.Lab label :: block))
+    in
+    let x =
+      List.mapi block_instrs ~f:(fun _ l ->
+          String.concat
+            ~sep:","
+            (List.mapi l ~f:(fun i instr -> sprintf "%d:%s" i (AS.format_instr instr))))
+    in
+    prerr_endline (String.concat ~sep:";\n" x);
     let translated instructions : X86.instr list =
       List.fold instructions ~init:[] ~f:(translate_line (retLabel, errLabel) final)
     in
     let res = List.concat_map ~f:translated block_instrs in
+    let x = (List.nth_exn fdef_blocks 0).block in
+    let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
     let full_rev = List.rev_append e res in
-    b @ List.rev full_rev
+    b @ first_block_code @ List.rev full_rev
 ;;
 
 let translate (fs : AS.program) ~mfail =

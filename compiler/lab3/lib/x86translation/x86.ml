@@ -266,18 +266,12 @@ let format = function
   | Ret -> sprintf "\t%s" "ret"
   | Cmp { rhs; lhs; size } ->
     (match rhs with
-    | Imm _ ->
-      sprintf
-        "\tcmp%s\t%s, %s"
-        (format_size size)
-        (format_operand rhs)
-        (format_operand lhs)
     | _ ->
       sprintf
         "\tcmp%s\t%s, %s"
         (format_size size)
-        (format_operand lhs)
-        (format_operand rhs))
+        (format_operand rhs)
+        (format_operand lhs))
   | Test { rhs; lhs; size } ->
     sprintf
       "\ttest%s\t%s, %s"
