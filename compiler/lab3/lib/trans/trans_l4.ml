@@ -56,11 +56,11 @@ let update acc b ~(finisher : T.stm) ~(newlab : Label.t) =
 type tr_exp_t = T.mpexp * T.block list * block_tobe
 
 let rec tr_exp_rev
-  (env : Temp.t S.t)
-  (exp : A.mexp)
-  (acc_rev : T.block list)
-  (block_rev : block_tobe)
-  : tr_exp_t
+    (env : Temp.t S.t)
+    (exp : A.mexp)
+    (acc_rev : T.block list)
+    (block_rev : block_tobe)
+    : tr_exp_t
   =
   let e, esize = exp in
   match e with
@@ -188,11 +188,11 @@ let rec tr_exp_rev
 type tr_stm_t = T.block list * block_tobe
 
 let rec tr_stm_rev
-  (env : Temp.t S.t)
-  (stm : A.stm)
-  (acc_rev : T.block list)
-  (block_rev : block_tobe)
-  : tr_stm_t
+    (env : Temp.t S.t)
+    (stm : A.stm)
+    (acc_rev : T.block list)
+    (block_rev : block_tobe)
+    : tr_stm_t
   =
   match stm with
   | Declare { var; assign = None; body; _ } ->
@@ -244,7 +244,7 @@ let rec tr_stm_rev
   | If { cond = A.True, _; lb; _ } -> tr_stm_rev env lb acc_rev block_rev
   | If { cond = A.False, _; rb; _ } -> tr_stm_rev env rb acc_rev block_rev
   | If { cond = A.Unop { op = A.LogNot; operand }, _; lb; rb } ->
-    tr_stm_rev env (If { cond = operand; rb; lb }) acc_rev block_rev
+    tr_stm_rev env (If { cond = operand; lb = rb; rb = lb }) acc_rev block_rev
   | If { cond = A.CmpBinop { op; size; lhs; rhs }, _; lb; rb } ->
     let l1 = Label.create () in
     let l2 = Label.create () in
@@ -314,7 +314,8 @@ let rec tr_stm_rev
     let acc = new_block :: acc in
     let b = { l = Label.BlockLbl l2; code = [] } in
     acc, b
-  | While { cond = A.False, _; body } -> tr_stm_rev env body acc_rev block_rev
+  | While { cond = A.False, _; _ } ->
+    acc_rev, block_rev (*while of false is equivalent of NOP*)
   | While { cond = A.CmpBinop { op; size; lhs; rhs }, _; body } ->
     let l1 = Label.create () in
     let l2 = Label.create () in

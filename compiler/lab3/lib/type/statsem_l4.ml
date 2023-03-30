@@ -542,7 +542,7 @@ let rec static_semantic_stm
     let stm_ctx = { fdec; tdef; vdef; vdec; sdec; sdef; suse } in
     let { res = rd, _; typ = td; used = ud } = static_semantic_exp dest stm_ctx in
     let { res = re; typ = te; used = ue } = static_semantic_exp exp stm_ctx in
-    let dest = Symbol.symbol "lvalue" in
+    let dest = Symbol.create_fresh () in
     (*_ depends on the shape of rd, do differently *)
     let lvalue =
       match rd with
@@ -565,7 +565,7 @@ let rec static_semantic_stm
     let stm_ctx = { fdec; tdef; vdef; vdec; sdec; sdef; suse } in
     let { res = rd, _; typ = td; used = ud } = static_semantic_exp dest stm_ctx in
     let { res = re; typ = te; used = ue } = static_semantic_exp exp stm_ctx in
-    let dest = Symbol.symbol "lvalue" in
+    let dest = Symbol.create_fresh () in
     (* let () = printf ">>> rd=%s" (A'.Print.pp_exp rd) in *)
     let lvalue =
       match rd with

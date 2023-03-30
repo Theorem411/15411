@@ -35,9 +35,9 @@ type t = T.t
 include Comparable.S with type t := t
 
 val symbol : string -> t (* generates a new symbol with given name *)
+val create_fresh: unit -> t
 
 val name : t -> string (* returns a name associated with symbol *)
-
 val pp_sm : 'a Map.t -> f:('a -> string) -> string
 
 val pp_ss : Set.t -> string
