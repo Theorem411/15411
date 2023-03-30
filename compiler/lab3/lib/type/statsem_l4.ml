@@ -83,9 +83,27 @@ let type_size suse (typ : T.t) =
   | _ -> small_type_size typ
 ;;
 
+(* let pp_suse (suse : struct_t SH.t) : string = 
+  let pp_sinfo ({ f_offset; tot_size; align } : struct_t) =
+    sprintf
+      "{\n%s\ntot:%s\nmax:%s\n}"
+      (SM.to_alist ~key_order:`Increasing f_offset
+      |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i))
+      |> String.concat ~sep:"\n")
+      (Int.to_string tot_size)
+      (Int.to_string align)
+  in
+    (sprintf
+      "suse = \n%s\n"
+      (List.map
+         ~f:(fun (s, sinfo) -> sprintf "%s=%s" (Symbol.name s) (pp_sinfo sinfo))
+         (SH.to_alist suse)
+      |> String.concat ~sep:"\n"))
+;; *)
 (*_ given a struct signature (either declared or undeclared), as long as all
    the field's struct types are defined, can calculate struct size, max align, all field offsets*)
 let struct_info (sdef : struct_t SH.t) (ssig : T.ssig_real) =
+  (* let () = prerr_endline (sprintf "ssig_real: %s\nsdef: %s\n" (T._ssig_real_tostring ssig) (pp_suse sdef)) in *)
   let size : T.t -> int = function
     | T.Struct s ->
       let { tot_size; _ } = SH.find_exn sdef s in
@@ -99,10 +117,13 @@ let struct_info (sdef : struct_t SH.t) (ssig : T.ssig_real) =
     | t -> small_type_size t
   in
   let fold_f ((sm, accum, offset) : int SM.t * int * int) ((f, t) : Symbol.t * T.t) =
+    (* let () = prerr_endline (sprintf "{%s}, accum=%s, offset=%s\n" (SM.to_alist sm |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string accum) (Int.to_string offset)) in *)
     let sub = accum % align t in
-    let offset' = accum + sub in
     let accum' = accum + sub + size t in
-    SM.add_exn sm ~key:f ~data:offset, accum', offset'
+    let offset' = accum' + sub in
+    let sm' = SM.add_exn sm ~key:f ~data:offset in
+    (* let () = prerr_endline (sprintf "{%s}, align=%s, accum'=%s, offset'=%s\n------\n" (SM.to_alist sm' |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string (align t)) (Int.to_string accum') (Int.to_string offset')) in *)
+    sm', accum', offset'
   in
   let max_align = List.fold ssig ~init:1 ~f:(fun acc (_, t) -> Int.max acc (align t)) in
   let f_offset, accum, _ = List.fold ssig ~init:(SM.empty, 0, 0) ~f:fold_f in
@@ -200,16 +221,25 @@ let struct_in_field (ssig : T.ssig_real) : SS.t =
   SS.of_list structs
 ;;
 
-let rec struct_cyclic_chk (sdef : T.ssig_real SM.t) (scur : Symbol.t) (ssig : T.ssig_real)
-  : unit
-  =
-  let s_in_flds = struct_in_field ssig in
-  let checkset = SM.data (SM.filter_keys sdef ~f:(SS.mem s_in_flds)) in
-  let () = if SS.mem s_in_flds scur then raise TypeError else () in
-  (* self definition *)
-  let iterf (ssig : T.ssig_real) = struct_cyclic_chk sdef scur ssig in
-  (*_ for every struct names in ssig that have ssig definition *)
-  List.iter checkset ~f:iterf
+let struct_cyclic_chk (sdec : SS.t) (sdef : T.ssig_real SM.t) : unit =
+  let vs : SS.t = SS.union sdec (SM.key_set sdef) in
+  let es = SM.of_key_set vs ~f:(fun _ -> SS.empty) in
+  let update ~key ~data acc =
+    let flds = struct_in_field data in
+    SM.update acc key ~f:(fun _ -> flds)
+  in
+  let es = SM.fold sdef ~init:es ~f:update in
+  let vinit = SS.empty in
+  let rec dfs (v : Symbol.t) (visited : SS.t) : SS.t =
+    if SS.mem visited v
+    then raise TypeError
+    else (
+      let visited' = SS.add visited v in
+      let nbrs = SM.find_exn es v in
+      SS.fold ~init:visited' nbrs ~f:(fun acc u -> dfs u acc))
+  in
+  let (_ : SS.t) = SS.fold vs ~init:vinit ~f:(fun acc v -> dfs v acc) in
+  ()
 ;;
 
 (*_ helper: extended type equation for polymorphic compare op *)
@@ -360,7 +390,7 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     ; used = SS.union uarr ui
     }
   | A.StructDot { str; field } ->
-    let { res = sres, ssize; typ = styp; used } = static_semantic_exp str exp_ctx in
+    let { res = sres, _; typ = styp; used } = static_semantic_exp str exp_ctx in
     let s =
       match styp with
       | T.Struct s -> s
@@ -373,11 +403,13 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     let i = SM.find_exn f_offset field in
     let res =
       match sres with
-      | A'.PtrAddr (A'.Ptr { start; off }) ->
+      | A'.Deref (A'.Ptr { start; off }) ->
         A'.StructAccess (A'.Ptr { start; off = off + i })
-      | A'.ArrAddr { head; idx; size; extra } ->
+      | A'.ArrayAccess { head; idx; size; extra } ->
         A'.ArrayAccess { head; idx; size; extra = extra + i }
-      | _ -> A'.StructAccess (A'.Ptr { start = sres, ssize; off = 0 })
+      | A'.StructAccess (A'.Ptr {start; off}) ->
+        A'.StructAccess (A'.Ptr {start; off=off+i})
+      | _ -> failwith "statsem: structDot encounters incorrect lvalue"
     in
     { res = res, type_size exp_ctx.suse typ; typ; used }
   | A.StructArr { str; field } ->
@@ -724,7 +756,7 @@ let static_semantic_gdecl
   | A.Sdef { sname; ssig } ->
     let ssig_real, sname_implicit = resolve_ssig tdef ssig in
     (* let () = printf ">>> ssig_real = %s\n" (T._ssig_real_tostring ssig_real) in *)
-    let () = struct_cyclic_chk sdef sname ssig_real in
+    (* let () = struct_cyclic_chk sdef sname ssig_real in *)
     let sdef' = SM.add_exn sdef ~key:sname ~data:ssig_real in
     not_func_names (SM.key_set fdec) sname;
     not_type_names tdef sname;
@@ -783,9 +815,12 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) : A'.program =
   let () =
     if SS.mem global_ctx_src.fdef (Symbol.symbol "main") then () else raise TypeError
   in
-  (* let () = print_set_ulan "used'" used' in  *)
   (* let () = print_set_ulan "globalfdef" global_ctx_src.fdef in  *)
   (*_ all used functions are declared *)
   let () = if SS.is_subset used' ~of_:global_ctx_src.fdef then () else raise TypeError in
+  (*_ struct defs are not cyclic *)
+  let () = struct_cyclic_chk global_ctx_src.sdec global_ctx_src.sdef in
+  (*_ prrint fstruct offsets and stuff *)
+  (* let () = prerr_endline (pp_suse global_ctx_src.suse) in *)
   program
 ;;

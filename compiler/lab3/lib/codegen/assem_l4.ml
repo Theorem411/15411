@@ -29,7 +29,7 @@ type operand =
   | Imm of Int32.t
   | Reg of reg
   | Temp of Temp.t
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, hash]
 
 type pure_operation =
   | Add
@@ -38,16 +38,16 @@ type pure_operation =
   | BitAnd
   | BitOr
   | BitXor
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, hash]
 
-type unary_operation = BitNot [@@deriving equal, sexp, compare]
+type unary_operation = BitNot [@@deriving equal, sexp, compare, hash]
 
 type efkt_operation =
   | Div
   | Mod
   | ShiftL
   | ShiftR
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, hash]
 
 type jump_t =
   | Je (*_ jump if p1 == p2 *)
@@ -58,7 +58,7 @@ type jump_t =
   | Jg
   | Js
   | Jb
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, hash]
 
 (*_ what is potentially missing? 
   - Any parity flag related jumps: e.g., jp, jpe
@@ -75,12 +75,12 @@ type set_t =
   | Setge
   | Setl
   | Setle
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, hash]
 
 type size =
   | L
   | S
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, hash]
 
 type instr =
   (* dest <- lhs op rhs *)
@@ -152,7 +152,7 @@ type instr =
   | Directive of string
   (* Human-friendly comment. *)
   | Comment of string
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, hash]
 
 type assem_jump_tag_t =
   | JRet
@@ -161,14 +161,14 @@ type assem_jump_tag_t =
       ; jf : Label.t
       }
   | JUncon of Label.t
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, hash]
 
 type block =
   { label : Label.bt
   ; block : instr list
   ; jump : assem_jump_tag_t
   }
-[@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare, hash]
 
 type fspace =
   { fname : Symbol.t
