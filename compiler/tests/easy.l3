@@ -1,19 +1,31 @@
-//test return 431
-/* erstwhile of brie's gratuitous obscenities */
-/* how dost thou alias? */
-/* also, do you do your name resolution properly? */
+//test return 10
 
-struct s02 {int pad;};
-struct s01 {int pad; struct s02* lol;};
-struct s00 {int pad; struct s01* lol;};
-
-int alias(struct s00* s00)
-{
-	s00->lol->pad += s00->lol->lol->pad;
-	return s00->pad;
+int two() {
+    return 2;
 }
 
-int main()
-{
-	return 0;
+int succ(int x) {
+    return x + 1;
+}
+
+bool positive(int x) {
+    return x > 0;
+}
+
+void noop(int x, bool b) {
+    int z = x;
+    z--;
+    return;
+}
+
+int main() {
+    int two = two();
+    if(two == succ(two)) {
+        return 5;
+    }
+    while(positive(10 - two)) {
+        two = succ(two);
+        noop(1, false);
+    }
+    return two;
 }
