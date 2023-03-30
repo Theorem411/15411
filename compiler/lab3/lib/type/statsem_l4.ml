@@ -713,6 +713,7 @@ let static_semantic_gdecl
     { fdef; fdec; tdef; sdec = SS.add sdec s; sdef; suse }, SS.empty, None
   | A.Sdef { sname; ssig } ->
     let ssig_real, sname_implicit = resolve_ssig tdef ssig in
+    (* let () = printf ">>> ssig_real = %s\n" (T._ssig_real_tostring ssig_real) in *)
     let () = struct_cyclic_chk sdef sname ssig_real in
     let sdef' = SM.add_exn sdef ~key:sname ~data:ssig_real in
     not_func_names (SM.key_set fdec) sname;
