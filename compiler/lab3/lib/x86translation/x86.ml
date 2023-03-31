@@ -27,14 +27,14 @@ let as_to_reg_enum : AS.reg -> R.reg_enum = function
 ;;
 
 type operand =
-  | Imm of Int32.t
+  | Imm of Int64.t
   | Stack of int
   | Reg of R.reg
 [@@deriving equal, compare, sexp]
 
 (* Stack n means that the varialbe is in -n(%rbp) *)
 let format_operand = function
-  | Imm n -> "$" ^ Int32.to_string n
+  | Imm n -> "$" ^ Int64.to_string n
   | Reg r -> R.format_reg r
   | Stack n -> string_of_int n ^ "(%rsp)"
 ;;

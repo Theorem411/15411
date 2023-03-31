@@ -11,12 +11,14 @@ type jump_tag_t =
       ; jf : Label.t
       }
   | JUncon of Label.t
+  [@@derive compare, equal, sexp]
 
 type block =
   { label : Label.bt
   ; block : (int * AS.instr) list
   ; jump : jump_tag_t
   }
+  [@@derive compare, equal, sexp]
 
 let format_jump_tag = function
   | JRet -> "ret"

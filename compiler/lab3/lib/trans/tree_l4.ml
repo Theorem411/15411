@@ -246,7 +246,7 @@ module Print = struct
       let fstr = Symbol.name fname in
       let argstr = List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mpexp e ^ ", ") in
       (match dest with
-       | None -> Printf.sprintf "%s(%s)" fstr argstr
+       | None -> Printf.sprintf "void <-- %s(%s)" fstr argstr
        | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
     | MovToMem { addr = Null; src; opopt } -> sprintf "(null) %s<-- %s" (pp_opt opopt) (pp_mpexp src)
     | MovToMem { addr = Ptr { start; off }; src; opopt } ->

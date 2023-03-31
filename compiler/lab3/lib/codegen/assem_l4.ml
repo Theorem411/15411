@@ -26,7 +26,7 @@ type reg =
 [@@deriving equal, sexp, compare, enum, hash]
 
 type operand =
-  | Imm of Int32.t
+  | Imm of Int64.t
   | Reg of reg
   | Temp of Temp.t
 [@@deriving equal, sexp, compare, hash]
@@ -186,7 +186,7 @@ let mem_fail_lab = Label.create ()
 let format_reg r = sexp_of_reg r |> string_of_sexp
 
 let format_operand = function
-  | Imm n -> "$" ^ Int32.to_string n
+  | Imm n -> "$" ^ Int64.to_string n
   | Temp t -> Temp.name t
   | Reg r -> format_reg r
 ;;

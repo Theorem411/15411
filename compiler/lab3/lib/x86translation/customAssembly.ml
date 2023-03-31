@@ -23,12 +23,12 @@ let get_alloc_function memErrLabel =
   ; X86.Directive (sprintf ".type\t%s, @function" alloc_fname)
   ; X86.FunName alloc_fname
   ; X86.Cmp
-      { lhs = X86.Reg { reg = R.EDI; size = 4 }; rhs = Imm Int32.zero; size = X86.L }
+      { lhs = X86.Reg { reg = R.EDI; size = 4 }; rhs = Imm Int64.zero; size = X86.L }
   ; X86.Jump { label = l1; op = Some AS.Jne }
   ; X86.BinCommand
       { op = X86.Mov
       ; dest = X86.Reg { reg = R.EDI; size = 4 }
-      ; src = Imm Int32.one
+      ; src = Imm Int64.one
       ; size = X86.L
       }
   ; X86.Lbl l1
@@ -48,12 +48,12 @@ let get_alloc_function memErrLabel =
   ; X86.BinCommand
       { op = X86.Mov
       ; dest = X86.Reg { reg = R.EDI; size = 4 }
-      ; src = Imm Int32.one
+      ; src = Imm Int64.one
       ; size = X86.L
       }
   ; X86.Call "calloc"
   ; X86.Cmp
-      { lhs = X86.Reg { reg = R.EAX; size = 8 }; rhs = Imm Int32.zero; size = X86.Q }
+      { lhs = X86.Reg { reg = R.EAX; size = 8 }; rhs = Imm Int64.zero; size = X86.Q }
   ; X86.Jump { label = memErrLabel; op = Some AS.Je }
   ; X86.Ret
   ]
@@ -123,7 +123,7 @@ let get_arrayalloc_function memErrLabel =
   ; X86.BinCommand
       { op = X86.Mov
       ; dest = X86.Reg { reg = R.EAX; size = 4 }
-      ; src = Imm (Int32.of_int_exn 1073741816)
+      ; src = Imm (Int64.of_int_exn 1073741816)
       ; size = X86.L
       }
   ; X86.BinCommand
@@ -166,7 +166,7 @@ let get_arrayalloc_function memErrLabel =
   ; X86.BinCommand
       { op = X86.Add
       ; dest = X86.Reg { reg = R.EAX; size = 8 }
-      ; src = Imm (Int32.of_int_exn 8)
+      ; src = Imm (Int64.of_int_exn 8)
       ; size = X86.Q
       }
   ; X86.UnCommand { op = X86.Popq; src = X86.Reg { reg = R.RBX; size = 8 } }

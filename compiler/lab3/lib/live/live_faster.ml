@@ -13,11 +13,6 @@ module LM = Map.Make (T)
 module LS = Set.Make (T)
 module LT = Hashtbl.Make (T)
 
-module T' = struct 
-    type t = AS.block [@@deriving compare, equal, sexp, hash]
-end 
-module BS = Set.Make (T')
-
 (*_ For general passing: important data for each blocks *)
 type block_du_t =
   { bdef : V.Set.t
@@ -32,21 +27,25 @@ type block_lv_t =
   }
 
 type block_in_out = block_lv_t LT.t
-type cfg_pred = BS.t LM.t
+type cfg_pred = LS.t LM.t
+
+type lab_to_block = B.block LM.t 
 
 (*_ many init functions *)
-
+let lab_to_block_init ({ fdef_blocks; _} : AS.fspace) = 
+  let 
+;;
 let wq_init ({ fdef_blocks; _ } : AS.fspace) = Queue.of_list fdef_blocks
 
 let cfg_pred_init ({ fdef_blocks; _ } : AS.fspace) : cfg_pred =
-  let mapf (block : AS.block) =
-    match block.jump with
-    | AS.JCon { jt; jf } -> [ L.bt jt, block; L.bt jf, block ]
-    | AS.JUncon l -> [ L.bt l, block ]
+  let mapf ({label; jump; _} : AS.block) =
+    match jump with
+    | AS.JCon { jt; jf } -> [ L.bt jt, label; L.bt jf, label ]
+    | AS.JUncon l -> [ L.bt l, label ]
     | _ -> []
   in
   let l2p = List.map fdef_blocks ~f:mapf |> List.concat in
-  LM.map ~f:BS.of_list (LM.of_alist_multi l2p)
+  LM.map ~f:LS.of_list (LM.of_alist_multi l2p)
 ;;
 
 let block_def_use_init ({ fdef_blocks; _ } : AS.fspace) : block_def_use =

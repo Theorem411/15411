@@ -63,7 +63,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
     =
     let e, esize = exp in
     match e with
-    | T.Const n -> [ A.Mov { dest; size = A.S; src = A.Imm n } ]
+    | T.Const n -> [ A.Mov { dest; size = A.S; src = A.Imm (Int64.of_int32_exn n) } ]
     | T.Temp t -> [ A.Mov { dest; size = munch_size esize; src = A.Temp t } ]
     | T.Binop { op; lhs; rhs } ->
       let op = munch_binary_op op in
@@ -86,8 +86,8 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
     | T.Mem (T.Ptr { start; off }) ->
       let t1 = A.Temp (Temp.create ()) in
       let t2 = A.Temp (Temp.create ()) in
-      let zero8 = A.Imm (Int32.of_int_exn 0) in
-      let off8 = A.Imm (Int32.of_int_exn off) in
+      let zero8 = A.Imm (Int64.of_int_exn 0) in
+      let off8 = A.Imm (Int64.of_int_exn off) in
       (* let size = munch_size off in *)
       let size = munch_size esize in
       [ A.MovFrom { dest; src = t2; size }
@@ -99,7 +99,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
     | T.Mem (T.Arr { head; idx; typ_size; extra }) ->
       let a = A.Temp (Temp.create ()) in
       let b = A.Temp (Temp.create ()) in
-      let zero8 = A.Imm (Int32.of_int_exn 0) in
+      let zero8 = A.Imm (Int64.of_int_exn 0) in
       let chk_head_null_rev =
         [ A.Cmp { size = A.L; lhs = a; rhs = zero8 }; A.Cjmp { typ = A.Je; l = mfl } ]
         |> List.rev
@@ -110,7 +110,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
       in
       let t3 = A.Temp (Temp.create ()) in
       let t4 = A.Temp (Temp.create ()) in
-      let eight8 = A.Imm (Int32.of_int_exn 8) in
+      let eight8 = A.Imm (Int64.of_int_exn 8) in
       let chk_idx_len_rev =
         [ A.PureBinop { op = A.Sub; size = A.L; dest = t3; lhs = a; rhs = eight8 }
         ; A.MovFrom { dest = t4; size = A.S; src = t3 }
@@ -129,7 +129,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
             ; size = A.L
             ; dest = t2
             ; lhs = b
-            ; rhs = A.Imm (Int32.of_int_exn typ_size)
+            ; rhs = A.Imm (Int64.of_int_exn typ_size)
             }
         ; A.PureBinop { op = A.Add; size = A.L; dest = t1; lhs = t1; rhs = t2 }
         ; A.PureBinop
@@ -137,7 +137,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
             ; size = A.L
             ; dest = t1
             ; lhs = t1
-            ; rhs = A.Imm (Int32.of_int_exn extra)
+            ; rhs = A.Imm (Int64.of_int_exn extra)
             }
         ; A.MovFrom { dest; size = munch_size esize; src = t1 }
         ]
@@ -152,11 +152,11 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
       ; munch_exp_rev ~mfl a head
       ]
       |> List.concat
-    | T.Addr T.Null -> [ A.Mov { dest; size = A.L; src = A.Imm (Int32.of_int_exn 0) } ]
+    | T.Addr T.Null -> [ A.Mov { dest; size = A.L; src = A.Imm (Int64.of_int_exn 0) } ]
     | T.Addr (T.Ptr { start; off }) ->
       let t = A.Temp (Temp.create ()) in
       A.PureBinop
-        { op = A.Add; size = A.L; dest; lhs = t; rhs = A.Imm (Int32.of_int_exn off) }
+        { op = A.Add; size = A.L; dest; lhs = t; rhs = A.Imm (Int64.of_int_exn off) }
       :: munch_exp_rev ~mfl t start
     | T.Addr (T.Arr { head; idx; typ_size; extra }) ->
       let t1 = A.Temp (Temp.create ()) in
@@ -170,7 +170,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
             ; size = A.L
             ; lhs = b
             ; op = A.Mul
-            ; rhs = A.Imm (Int32.of_int_exn typ_size)
+            ; rhs = A.Imm (Int64.of_int_exn typ_size)
             }
         ; A.Mov { dest = t2; size = A.L; src = a }
         ; A.PureBinop { dest = t2; size = A.L; lhs = t2; op = A.Add; rhs = t1 }
@@ -179,7 +179,7 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
             ; size = A.L
             ; lhs = t2
             ; op = A.Add
-            ; rhs = A.Imm (Int32.of_int_exn extra)
+            ; rhs = A.Imm (Int64.of_int_exn extra)
             }
         ; A.Mov { dest; size = A.L; src = t2 }
         ]
@@ -211,7 +211,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
   | T.AssertFail -> [ A.AssertFail ]
   | T.Alloc { dest; size } ->
     [ (* edi <-4 size *)
-      A.Mov { dest = A.Reg A.RDI; size = A.S; src = A.Imm (Int32.of_int_exn size) }
+      A.Mov { dest = A.Reg A.RDI; size = A.S; src = A.Imm (Int64.of_int_exn size) }
       (* call allocjavaway *)
     ; A.Call
         { fname = Symbol.symbol CustomAssembly.alloc_fname
@@ -225,7 +225,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     let t1 = A.Temp (Temp.create ()) in
     [ munch_exp t1 len ~mfl
     ; [ (* edi <-4 typ *)
-        A.Mov { dest = A.Reg A.RDI; size = A.S; src = A.Imm (Int32.of_int_exn typ) }
+        A.Mov { dest = A.Reg A.RDI; size = A.S; src = A.Imm (Int64.of_int_exn typ) }
         (* edi <-4 len *)
       ; A.Mov { dest = A.Reg A.RSI; size = A.S; src = t1 } (* call allocjavaway *)
       ; A.Call
@@ -266,9 +266,9 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
           ; size = A.L
           ; lhs = ts
           ; op = A.Add
-          ; rhs = A.Imm (Int32.of_int_exn off)
+          ; rhs = A.Imm (Int64.of_int_exn off)
           }
-      ; A.Cmp { lhs = t; size = A.L; rhs = A.Imm (Int32.of_int_exn 0) }
+      ; A.Cmp { lhs = t; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
       ; A.Cjmp { typ = A.Je; l = mfl }
       ]
     in
@@ -309,17 +309,17 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     let codegen_head = munch_exp th (head) ~mfl in
     let codegen_idx = munch_exp ti idx ~mfl in
     let bound_chk = [
-      A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int32.of_int_exn 0) }
+      A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
     ; A.Cjmp { typ = A.Je; l = mfl }
     ; A.MovSxd { dest=ti'; src=ti}
-    ; A.Cmp { lhs = ti; size = A.S; rhs = A.Imm (Int32.of_int_exn 0) }
+    ; A.Cmp { lhs = ti; size = A.S; rhs = A.Imm (Int64.of_int_exn 0) }
     ; A.Cjmp { typ = A.Jl; l = mfl }
-    ; A.PureBinop { dest = tm; size = A.L; lhs = th; op=A.Sub; rhs = A.Imm (Int32.of_int_exn 8) }
+    ; A.PureBinop { dest = tm; size = A.L; lhs = th; op=A.Sub; rhs = A.Imm (Int64.of_int_exn 8) }
     ; A.MovFrom { dest = tl; size = A.S; src = tm }
     ; A.Cmp { lhs = ti; size = A.S; rhs = tl }
     ; A.Cjmp { typ = A.Jge; l = mfl }
-    ; A.PureBinop { dest = t1; size = A.L; lhs = ti'; op=A.Mul; rhs = A.Imm (Int32.of_int_exn typ_size) }
-    ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op=A.Add; rhs = A.Imm (Int32.of_int_exn extra) }
+    ; A.PureBinop { dest = t1; size = A.L; lhs = ti'; op=A.Mul; rhs = A.Imm (Int64.of_int_exn typ_size) }
+    ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op=A.Add; rhs = A.Imm (Int64.of_int_exn extra) }
     ; A.PureBinop { dest = t; size = A.L; lhs = th; op=A.Add; rhs = t2 }
     ; ] in
     let tr = A.Temp (Temp.create ()) in

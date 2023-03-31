@@ -3,7 +3,7 @@ module AS = Assem_l4
 module R = Register
 
 type operand =
-  | Imm of Int32.t
+  | Imm of Int64.t
   | Stack of int
   | Reg of R.reg
 [@@deriving equal, compare, sexp]
