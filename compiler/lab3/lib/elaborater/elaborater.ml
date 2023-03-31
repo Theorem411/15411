@@ -207,6 +207,7 @@ let rec elab_mexp (m_e : Ast.mexp) : AstElab.mexp =
   | Alloc t -> copy_mark m_e (AstElab.Alloc t)
   | Alloc_array { typ; len } ->
     copy_mark m_e (AstElab.Alloc_array { typ; len = elab_mexp len })
+  | PostOp _ -> failwith "Postop insider expression that is not naked"
 ;;
 
 let elab_assign_with_op_to_var
@@ -246,28 +247,28 @@ let elab_assign m_s =
   | _ -> failwith "elab_assign recieved not assign"
 ;;
 
-let elab_postop m_s =
-  let s = Mark.data m_s in
-  match s with
+let elab_postop m_e =
+  let e = Mark.data m_e in
+  match e with
   | Ast.PostOp { left = m_l; op } ->
     (match op with
     | Ast.Plus ->
       elab_assign
         (copy_mark
-           m_s
+           m_e
            (Ast.Assign
               { left = m_l
               ; asgnop = Some Ast.Plus
-              ; right = copy_mark m_s (Ast.Const Int32.one)
+              ; right = copy_mark m_e (Ast.Const Int32.one)
               }))
     | Ast.Minus ->
       elab_assign
         (copy_mark
-           m_s
+           m_e
            (Ast.Assign
               { left = m_l
               ; asgnop = Some Ast.Minus
-              ; right = copy_mark m_s (Ast.Const Int32.one)
+              ; right = copy_mark m_e (Ast.Const Int32.one)
               }))
     | _ -> failwith "post op is not + or -")
   | _ -> failwith "elab_postop recieved not a postop"
@@ -326,6 +327,7 @@ and elab_stm_exp e =
   | Ast.Call { name; args } ->
     let argsnew = List.map ~f:elab_mexp args in
     AstElab.NakedCall { name; args = argsnew }
+  | Ast.PostOp {left; _} -> vldt_lval left; (elab_postop e)
   | _ -> AstElab.NakedExpr (elab_mexp e)
 
 and elab m_s : AstElab.stm Mark.t =
@@ -341,7 +343,6 @@ and elab m_s : AstElab.stm Mark.t =
       (match Mark.data m_s with
       | Ast.Nop -> AstElab.Nop
       | Ast.Assign _ -> elab_assign m_s
-      | Ast.PostOp _ -> elab_postop m_s
       | Ast.Return _ -> elab_return m_s
       | Ast.Exp e -> elab_stm_exp e
       | Ast.If _ -> elab_if m_s

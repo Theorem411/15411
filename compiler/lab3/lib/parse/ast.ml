@@ -101,6 +101,10 @@ type exp =
       { typ : T.tau
       ; len : mexp
       }
+  | PostOp of
+      { left : mexp
+      ; op : binop
+      }
 
 and mexp = exp Mark.t
 
@@ -114,10 +118,6 @@ type stm =
       { left : mexp
       ; right : mexp
       ; asgnop : binop option
-      }
-  | PostOp of
-      { left : mexp
-      ; op : binop
       }
   | Return of mexp option
   | Exp of mexp
@@ -227,6 +227,7 @@ module Print = struct
     | Alloc tau -> sprintf "alloc(%s)" (T._tau_tostring tau)
     | Alloc_array { typ; len } ->
       sprintf "calloc(%s, %s)" (T._tau_tostring typ) (pp_mexp len)
+    | PostOp { left = e; op } -> sprintf "%s%s%s" (pp_mexp e) (pp_binop op) (pp_binop op)
 
   and pp_mexp e = pp_exp (Mark.data e)
 
@@ -256,7 +257,6 @@ module Print = struct
       sprintf "%s = %s;" (pp_mexp lhs) (pp_mexp rhs)
     | Assign { left = lhs; right = rhs; asgnop = Some op } ->
       sprintf "%s %s= %s;" (pp_mexp lhs) (pp_binop op) (pp_mexp rhs)
-    | PostOp { left = e; op } -> sprintf "%s%s%s" (pp_mexp e) (pp_binop op) (pp_binop op)
     | Exp e -> sprintf "%s" (pp_mexp e)
     | If { elsestm = None; thenstm = t; cond = e } ->
       sprintf "if (%s) [\n%s;]" (pp_mexp e) (pp_mstm t)

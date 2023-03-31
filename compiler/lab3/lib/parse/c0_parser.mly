@@ -78,6 +78,7 @@ let mark
 %left Plus Minus
 %left Star Slash Percent
 %right Unary
+%right Plus_plus Minus_minus
 %nonassoc Dot Arrow L_square
 
 %nonassoc else_hack_1
@@ -179,9 +180,6 @@ simp :
     op = asnop;
     rhs = m(exp);
       { Ast.Assign {left=lhs; right=rhs; asgnop=op} }
-  | lhs = m(exp);
-    op = postop;
-    { Ast.PostOp {left=lhs; op=op}  }
   | d = decl;
       { Ast.Declare d }
   | e = m(exp);
@@ -197,6 +195,9 @@ simpopt :
 exp :
   | L_paren; e = exp; R_paren;
       { e }
+  | lhs = m(exp);
+    op = postop;
+    { Ast.PostOp {left=lhs; op=op}  }
   | c = int_const;
       { Ast.Const c }
   | True; { Ast.True }
@@ -466,9 +467,9 @@ asnop :
 
 
 postop : 
-  | Plus_plus 
+  | Plus_plus ;
       { Ast.Plus }
-  | Minus_minus 
+  | Minus_minus ;
       { Ast.Minus }
   ;
 %%

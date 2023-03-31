@@ -101,6 +101,10 @@ type exp =
       { typ : T.tau
       ; len : mexp
       }
+  | PostOp of
+      { left : mexp
+      ; op : binop
+      }
 
 and mexp = exp Mark.t
 
@@ -114,10 +118,6 @@ type stm =
       { left : mexp
       ; right : mexp
       ; asgnop : binop option
-      }
-  | PostOp of
-      { left : mexp
-      ; op : binop
       }
   | Return of mexp option
   | Exp of mexp
