@@ -121,10 +121,10 @@ let struct_info (sdef : struct_t SH.t) (ssig : T.ssig_real) =
     let align = align t in
     let pad = accum % align in
     let cur_off = accum + pad in
-    let () = prerr_endline (sprintf "{%s}, accum=%s, pad=%s, offset=%s\n" (SM.to_alist sm |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string accum) (Int.to_string pad) (Int.to_string cur_off)) in
+    (* let () = prerr_endline (sprintf "{%s}, accum=%s, pad=%s, offset=%s\n" (SM.to_alist sm |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string accum) (Int.to_string pad) (Int.to_string cur_off)) in *)
     let accum' = accum + pad + size t in
     let sm' = SM.add_exn sm ~key:f ~data:cur_off in
-    let () = prerr_endline (sprintf "{%s}, accum'=%s\n------\n" (SM.to_alist sm' |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string accum')) in
+    (* let () = prerr_endline (sprintf "{%s}, accum'=%s\n------\n" (SM.to_alist sm' |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string accum')) in *)
     sm', accum'
   in
   let max_align = List.fold ssig ~init:1 ~f:(fun acc (_, t) -> Int.max acc (align t)) in
