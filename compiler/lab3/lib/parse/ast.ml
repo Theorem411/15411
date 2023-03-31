@@ -220,7 +220,7 @@ module Print = struct
     | Ternary t ->
       sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.first) (pp_mexp t.second)
     | Null -> "null"
-    | Deref p -> sprintf "*%s" (pp_mexp p)
+    | Deref p -> sprintf "DEREF_STAR(%s)" (pp_mexp p)
     | ArrAccess { arr; idx } -> sprintf "%s[%s]" (pp_mexp arr) (pp_mexp idx)
     | StructDot { str; field } -> sprintf "%s.%s" (pp_mexp str) (Symbol.name field)
     | StructArr { str; field } -> sprintf "%s->%s" (pp_mexp str) (Symbol.name field)

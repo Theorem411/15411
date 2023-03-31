@@ -1,4 +1,25 @@
-//test compile
-int main() {   // cannot statically reject this, even though we know what will happen!   
-  return *(true ? (true ? NULL : alloc(int)) : NULL); 
-} 
+//test error
+//1376
+
+struct s{
+  int* height;
+  int count;
+};
+
+void jump(struct s* s);
+typedef int s;
+
+int main(){
+  s * height = alloc(int); //I can't actually modify this value
+  *height++;
+  struct s* ss= alloc(struct s);
+  while(*height > 0){
+    jump(ss);
+  }
+  return *height;
+}
+
+void jump(struct s* ss){
+  *(ss->height)*=2;
+  ss->count++;
+}

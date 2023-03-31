@@ -248,7 +248,7 @@ module Print = struct
       | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
       | Asop { dest; op; exp } ->
         (match op with
-         | Some o -> sprintf "%s %s= %s;" (pp_mexp dest) (pp_binop o) (pp_mexp exp)
+         | Some o -> sprintf "[%s] %s= %s;" (pp_mexp dest) (pp_binop o) (pp_mexp exp)
          | None -> sprintf "%s = %s;" (pp_mexp dest) (pp_mexp exp))
       | If { cond; lb; rb } ->
         sprintf
