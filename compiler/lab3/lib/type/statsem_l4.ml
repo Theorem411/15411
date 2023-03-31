@@ -484,11 +484,8 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     in
     { res = A'.Alloc size, 8; typ = T.Star t; used = SS.empty }
   | A.Alloc_array { typ; len } ->
-    let t, snames = resolve exp_ctx.tdef typ in
-    let () =
-      if SS.is_subset snames ~of_:(SM.key_set exp_ctx.sdef) then () else raise TypeError
-    in
-    let { res = lres; used; _ } = static_semantic_exp len exp_ctx in
+    let t, _ = resolve exp_ctx.tdef typ in
+    let { res = lres; used; typ=lt } = static_semantic_exp len exp_ctx in
     let type_size =
       match t with
       | T.Struct s ->
@@ -501,6 +498,7 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
          | Some { tot_size; _ } -> tot_size)
       | _ -> small_type_size t
     in
+    type_unify_exn lt T.Int;
     { res = A'.Alloc_array { type_size; len = lres }, 8; typ = T.Array t; used }
 ;;
 
@@ -538,6 +536,7 @@ let rec static_semantic_stm
   match Mark.data mstm with
   | A.Declare { var; typ; assign; body } ->
     let t, snames = resolve tdef typ in
+    (* let () = printf "what is the declare type? %s\n" (T._t_tostring t) in *)
     (*_ var is not type names, not redeclared, not struct names*)
     let () = not_type_names tdef var in
     let () = not_declared_yet vdec var in
@@ -559,6 +558,7 @@ let rec static_semantic_stm
        let { res = eres; typ; used = ue } =
          static_semantic_exp ae { fdec; tdef; vdef; vdec; sdec; sdef; suse }
        in
+       (* let () = printf "what is t? %s\n" (T._t_tostring t) in *)
        let { vdef = vdef'; res = body; used = us } =
          static_semantic_stm
            body

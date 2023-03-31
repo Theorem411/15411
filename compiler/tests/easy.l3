@@ -1,8 +1,11 @@
 //test typecheck
 
-typedef struct boba *bb;
-
 int main() {
-	bb star = alloc(struct boba);
-	return **(star->am.peach);
+    int len = 12;
+    int sum = 0;
+    struct hello * [] a = alloc_array(struct hello *, len);
+    for (int i = 0; i < len; i++) {
+        sum += i;
+    }
+    return sum;
 }
