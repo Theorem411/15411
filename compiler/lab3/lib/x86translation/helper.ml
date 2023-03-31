@@ -345,9 +345,9 @@ let get_function_be
     [ X86.Directive (sprintf ".globl %s" (Symbol.name fname))
     ; X86.Directive (sprintf ".type\t%s, @function" (Symbol.name fname))
     ; X86.FunName (Symbol.name fname) (* ; X86.UnCommand { op = X86.Pushq; src = rbp } *)
-    ; X86.BinCommand { op = Mov; dest = rbp; src = rsp; size = X86.Q }
     ]
     @ cee_start
+    @ [ X86.BinCommand { op = Mov; dest = rbp; src = rsp; size = X86.Q }]
     @ (if __sub_count = 0
       then []
       else
