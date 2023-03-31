@@ -14,7 +14,7 @@ let dump_liveness : bool ref = ref false
     prerr_endline)
 ;; *)
 
-let print_info _ = ()
+let print_info = prerr_endline
 
 type ht_entry =
   { d : V.Set.t
@@ -168,7 +168,10 @@ let handle_instrs
     (* the first line in the function defintion has to define all the args *)
     let d =
       if equal first_index i
-      then V.Set.of_list (List.map ~f:(fun t -> V.T t) (Option.value args ~default:[]))
+      then
+        V.Set.union
+          info.d
+          (V.Set.of_list (List.map ~f:(fun t -> V.T t) (Option.value args ~default:[])))
       else info.d
     in
     (* let all_succs = succ i in *)
@@ -248,14 +251,16 @@ let get_all_vertices (b : B.fspace) =
   V.Set.union_list (List.map b.fdef_blocks ~f:get_block_vertices)
 ;;
 
+let cartesian l l' =
+  List.concat (List.map ~f:(fun e -> List.map ~f:(fun e' -> e, e') l') l)
+;;
+
 let get_edges (table : t) : (V.t * V.t) list =
   let f ~key ~data:info acc =
     let d, lout, lin =
       V.Set.to_list info.d, V.Set.to_list info.lout, V.Set.to_list info.lin
     in
-    let cartesian l l' =
-      List.concat (List.map ~f:(fun e -> List.map ~f:(fun e' -> e, e') l') l)
-    in
+    (* remove d lin later *)
     let out_ed, in_ed = cartesian d lout, cartesian d lin in
     print_info
       (sprintf
@@ -271,8 +276,40 @@ let get_edges (table : t) : (V.t * V.t) list =
   IntTable.fold table ~init ~f
 ;;
 
-let get_edges_vertices t b =
-  let e = get_edges t in
+let get_edges_vertices t (b : B.fspace) =
+  let args =
+    List.filter_opt (List.map ~f:(fun t -> V.op_to_vertex_opt (AS.Temp t)) b.args)
+  in
+  let arg_edges = cartesian args args in
+  let e = arg_edges @ get_edges t in
   let v = get_all_vertices b in
   v, e
+;;
+
+let uses_defs_block (b : B.block) =
+  let fargs : Temp.t list =
+    match b.label with
+    | Label.BlockLbl _ -> []
+    | Label.FunName f -> f.args
+  in
+  (* basically (def,use) of a line, but adds function arguments into  *)
+  let local_def_n_use instr =
+    let dx, ux = def_n_use instr in
+    (* of load from stack add temp args to define *)
+    let d =
+      match instr with
+      | AS.LoadFromStack _ ->
+        let fargs_def = V.Set.of_list (List.map ~f:(fun t -> V.T t) fargs) in
+        V.Set.union fargs_def dx
+      | _ -> dx
+    in
+    d, ux
+  in
+  let ub, db = V.Set.empty, V.Set.empty in
+  let ufinal, dfinal =
+    List.fold b.block ~init:(ub, db) ~f:(fun (ub, db) (_, instr) ->
+        let dl, ul = local_def_n_use instr in
+        V.Set.diff (V.Set.union ub ul) db, V.Set.union db dl)
+  in
+  ufinal, dfinal
 ;;

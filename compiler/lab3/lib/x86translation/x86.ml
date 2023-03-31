@@ -324,7 +324,6 @@ let caller_saved oper =
 
 let all_available_regs =
   [
-    
   (* AS.EAX *)
     (* AS.EDX *)
     (* AS.EDI
@@ -332,8 +331,6 @@ let all_available_regs =
   *)
     (* AS.R8D
   ; AS.R9D
-  ; AS.R10D
-  ; AS.EBX 
   ; AS.R12D
   ; AS.R13D
   ; AS.R14D

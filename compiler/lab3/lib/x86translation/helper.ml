@@ -36,8 +36,8 @@ let get_all_addressable_line instr =
       | _ -> false)
 ;;
 
-let get_all_nodes (f:AS.fspace) instrs =
-  let temps = List.map f.args ~f:(fun(t, _) -> AS.Temp t) in 
+let get_all_nodes (f : AS.fspace) instrs =
+  let temps = List.map f.args ~f:(fun (t, _) -> AS.Temp t) in
   List.dedup_and_sort
     ~compare:AS.compare_operand
     (List.concat (temps :: List.map instrs ~f:get_all_addressable_line))
@@ -52,7 +52,7 @@ let back_coloring_adapter : AS.operand * color -> V.t * color = function
   | _ -> raise (Failure "Can not happen")
 ;;
 
-let __coloring_debug (f: AS.fspace) (program : AS.instr list) : (V.t * color) list =
+let __coloring_debug (f : AS.fspace) (program : AS.instr list) : (V.t * color) list =
   let nodes = get_all_nodes f program in
   let max_color = List.length nodes in
   let all_colors : color list = List.range 1 (max_color + 1) in
@@ -208,14 +208,28 @@ let get_callee_regs (reg_map : X86.operand AS.Map.t) =
   AS.Map.data used_map
 ;;
 
+let override_to_q (r : X86.operand) =
+  match r with
+  | X86.Reg { reg; _ } -> X86.Reg { reg; size = 8 }
+  | _ -> r
+;;
+
+let override_to_sz_int (sz : int) (r : X86.operand) =
+  match r with
+  | X86.Reg { reg; _ } -> X86.Reg { reg; size = sz }
+  | _ -> r
+;;
+
 let callee_handle reg_map =
   let callee_regs = get_callee_regs reg_map in
   (* save them into stack *)
   let callee_start =
-    List.map callee_regs ~f:(fun r -> X86.UnCommand { op = X86.Pushq; src = r })
+    List.map callee_regs ~f:(fun r ->
+        X86.UnCommand { op = X86.Pushq; src = override_to_q r })
   in
   let callee_finish =
-    List.map (List.rev callee_regs) ~f:(fun r -> X86.UnCommand { op = X86.Popq; src = r })
+    List.map (List.rev callee_regs) ~f:(fun r ->
+        X86.UnCommand { op = X86.Popq; src = override_to_q r })
   in
   callee_regs, callee_start, callee_finish
 ;;
@@ -267,7 +281,11 @@ let do_arg_moves
       List.mapi reg_args ~f:(fun i (_, sz) ->
           sz, X86.Reg (R.arg_i_to_reg (sz_to_reg_size_int sz) i))
     in
-    let dests = List.map reg_args ~f:(fun (r, _) -> AS.Map.find_exn reg_map r) in
+    let dests =
+      List.map reg_args ~f:(fun (r, sz) ->
+          let dest_reg = AS.Map.find_exn reg_map r in
+          override_to_sz_int (sz_to_reg_size_int sz) dest_reg)
+    in
     let create d (sz, s) = X86.BinCommand { op = Mov; dest = d; src = s; size = sz } in
     List.map2_exn dests srcs ~f:create
   in

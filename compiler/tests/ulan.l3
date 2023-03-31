@@ -1,34 +1,20 @@
-//test div-by-zero
+//test return 73
 
-struct z {
+int swap (int * p, int * q) {
   int x;
-  int y;
-  int z;
-};
-typedef struct z* z;
+  x = *p;
+  *p = *q;
+  *q = x;
+  return 0;
+}
 
-struct x {
-  int x; 
-  int y;
-  struct z z;
-};
-typedef struct x* x;
-
-struct y {
-  x x;
-  struct z y;
-  z z;
-};
-typedef struct y* y;
-
-int main() {
-  x a = alloc(struct x);
-  a->x = 15;
-  a->y = 18;
-  a->z.x = 13;
-  a->z.y = 15; // sum of 15 + 18 = 33, shift-out-of-range
-  a->z.z = 18;
-  y b = alloc(struct y);
-  b->x = a;
-  return (b->x)->y >> (b->x->z.z + b->x->z.y);
+int main () {
+  int * p;
+  int * q;
+  p = alloc(int);
+  q = alloc(int);
+  *p = 3;
+  *q = 7;
+  swap(p,q);
+  return 10;
 }

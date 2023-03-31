@@ -232,7 +232,7 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
   | AS.MovFrom { dest = d; src = s; size } ->
     let size = X86.to_size size in
     let d_final = get_final (d, size) in
-    let src_final = get_final (s, size) in
+    let src_final = get_final (s, X86.Q) in
     (match src_final, d_final with
     | Stack _, Stack _ ->
       [ X86.BinCommand
@@ -244,35 +244,37 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       (* mov mem, mem *)
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
-      ; X86.MovFrom { dest = d_final; src = X86.get_free size; size }
+      ; X86.MovFrom { dest = d_final; src = X86.get_free X86.Q; size }
       ]
     | Imm _, _ -> failwith "deref of an imm"
-    | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
+    | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ]
+    )
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;
 
 let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = function
   | AS.MovTo { dest = d; src = s; size } ->
     let size = X86.to_size size in
-    let d_final = get_final (d, size) in
+    let d_final = get_final (d, X86.Q) in
     let src_final = get_final (s, size) in
     (match d_final, src_final with
-    | Stack _, Stack _ ->
+    | _ ->
       (* mov mem, mem *)
       [ (* X86.BinCommand { op = Mov; dest = X86.get_free size; src = src_final; size } *)
         X86.BinCommand
-          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
+          { op = Mov; dest = X86.get_free size; src = src_final; size = size }
       ; X86.BinCommand
           { op = Mov; dest = X86.get_memfree X86.Q; src = d_final; size = X86.Q }
       ; X86.MovTo { src = X86.get_free size; dest = X86.get_memfree X86.Q; size }
       ]
-    | Stack _, _ ->
+    (* | Stack _, _ ->
       [ X86.BinCommand
-          { op = Mov; dest = X86.get_free size; src = src_final; size = X86.Q }
-      ; X86.MovTo { src = src_final; dest = X86.get_free size; size }
+          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
+      ; X86.MovTo { src = src_final; dest = X86.get_free X86.Q; size }
       ]
     | Imm _, _ -> failwith "deref of an imm"
-    | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
+    | _ -> [ X86.MovTo { dest = d_final; src = src_final; size } ] *)
+    )
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;
 
@@ -403,6 +405,24 @@ let translate (fs : AS.program) ~mfail =
   @ List.map ~f:(fun f -> translate_function arithErrLabel f) fs
 ;;
 
+let speed_up (p : X86.instr list) : X86.instr list =
+  List.rev
+    (List.fold ~init:[] p ~f:(fun prev i ->
+         match prev, i with
+         | ( X86.BinCommand ({ op = X86.Mov; _ } as m1) :: _
+           , X86.BinCommand ({ op = X86.Mov; _ } as m2) ) ->
+           if X86.equal_size m1.size m2.size
+              && X86.equal_operand m1.src m2.dest
+              && X86.equal_operand m2.src m1.dest
+           then X86.Comment (X86.format i) :: prev
+           else i :: prev
+         | _, _ -> i :: prev))
+;;
+
+let speed_up_off = false
+
 (* let pp_fspace l = List.map ~f:(X86.format) l
 let pp_program l = List.concat_map ~f:pp_fspace l *)
-let get_string_list p : X86.instr list = List.concat p
+let get_string_list p : X86.instr list =
+  if speed_up_off then List.concat p else speed_up (List.concat p)
+;;
