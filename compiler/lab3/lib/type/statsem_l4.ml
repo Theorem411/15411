@@ -419,7 +419,7 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
   | A.Deref e ->
     let { res; typ; used } = static_semantic_exp e exp_ctx in
     let paddr = A'.Ptr { start = res; off = 0 } in
-    prerr_endline ("414: " ^ T._t_tostring typ);
+    (* prerr_endline ("414: " ^ T._t_tostring typ); *)
     (match typ with
     | T.Star t -> { res = A'.Deref paddr, type_size exp_ctx.suse t; typ = t; used }
     (* | T.Any -> { res = A'.Deref A'.Null, 8; typ = t; used } *)
