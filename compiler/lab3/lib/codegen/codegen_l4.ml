@@ -91,9 +91,9 @@ let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
       (* let size = munch_size off in *)
       let size = munch_size esize in
       [ A.MovFrom { dest; src = t2; size }
-      ; A.Cjmp { typ = A.Je; l = mfl }
-      ; A.Cmp { lhs = t2; rhs = zero8; size = A.L }
       ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
+      ; A.Cjmp { typ = A.Je; l = mfl }
+      ; A.Cmp { lhs = t1; rhs = zero8; size = A.L }
       ]
       @ munch_exp_rev ~mfl t1 start
     | T.Mem (T.Arr { head; idx; typ_size; extra }) ->
