@@ -171,6 +171,11 @@ let validate_args tdef (args : Symbol.t list) ((ats, rett) : T.fsig_real) : unit
   List.iter check_list ~f:chk
 ;;
 
+let validate_ssig (ssig : T.ssig) : unit = 
+  let flds, _= List.unzip ssig in
+  if SS.length (SS.of_list flds) = List.length ssig then () else raise TypeError
+;;
+
 (*_ resolve named types and return set of struct names implicitly used *)
 let rec resolve tdef tau =
   match tau with
@@ -659,9 +664,10 @@ let rec static_semantic_stm
     in
     { vdef = vdef2; res = A'.Seq (res1, res2); used = SS.union used1 used2 }
   | A.NakedExpr e ->
-    let { res; used; _ } =
+    let { res; used; typ } =
       static_semantic_exp e { fdec; tdef; vdec; vdef; sdec; sdef; suse }
     in
+    let _ : int = small_type_size typ in
     { vdef; res = A'.NakedExpr res; used }
   | A.AssertFail -> { vdef; res = A'.AssertFail; used = SS.empty }
   | A.NakedCall { name; args } ->
@@ -777,6 +783,7 @@ let static_semantic_gdecl
     not_type_names tdef s; *)
     { fdef; fdec; tdef; sdec = SS.add sdec s; sdef; suse }, SS.empty, None
   | A.Sdef { sname; ssig } ->
+    let () = validate_ssig ssig in
     let ssig_real, sname_implicit = resolve_ssig tdef ssig in
     (* let () = printf ">>> ssig_real = %s\n" (T._ssig_real_tostring ssig_real) in *)
     let sdef' = SM.add_exn sdef ~key:sname ~data:ssig_real in
