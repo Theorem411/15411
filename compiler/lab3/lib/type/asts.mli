@@ -107,9 +107,13 @@ type stm =
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignMem of
-      { (*_ assign to mem of dest *)
-        dest : Symbol.t
+  | A2PA of
+      { addr : ptraddr
+      ; op : intop option
+      ; exp : mexp
+      }
+  | A2AA of
+      { addr : arraddr
       ; op : intop option
       ; exp : mexp
       }

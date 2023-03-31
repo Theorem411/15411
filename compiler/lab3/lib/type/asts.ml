@@ -149,8 +149,13 @@ type stm =
       { var : Symbol.t
       ; exp : mexp
       }
-  | AssignMem of
-      { dest : Symbol.t
+  | A2PA of
+      { addr : ptraddr
+      ; op : intop option
+      ; exp : mexp
+      }
+  | A2AA of
+      { addr : arraddr
       ; op : intop option
       ; exp : mexp
       }
@@ -298,10 +303,14 @@ module Print = struct
       | Some (e, _) ->
         sprintf "decl %s=%s;\n%s" (Symbol.name var) (pp_exp e) (pp_stm body))
     | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
-    | AssignMem { dest; op = None; exp } ->
-      sprintf "(%s) = %s" (Symbol.name dest) (pp_mexp exp)
-    | AssignMem { dest; op = Some o; exp } ->
-      sprintf "(%s) %s= %s" (Symbol.name dest) (pp_binop o) (pp_mexp exp)
+    | A2PA { addr; op = None; exp} ->
+      sprintf "(%s)p = %s" (pp_ptraddr addr) (pp_mexp exp)
+    | A2PA { addr; op = Some o; exp } ->
+      sprintf "(%s)p %s= %s" (pp_ptraddr addr) (pp_binop o) (pp_mexp exp)
+    | A2AA { addr; op = None; exp; _ } ->
+      sprintf "(%s)a = %s" (pp_arraddr addr) (pp_mexp exp)
+    | A2AA { addr; op = Some o; exp; _ } ->
+      sprintf "(%s)a %s= %s" (pp_arraddr addr) (pp_binop o) (pp_mexp exp)
     | If { cond; lb; rb } ->
       sprintf "if (%s) {\n%s\n}\nelse {\n%s\n}" (pp_mexp cond) (pp_stm lb) (pp_stm rb)
     | While { cond; body } -> sprintf "while(%s) {\n%s}" (pp_mexp cond) (pp_stm body)

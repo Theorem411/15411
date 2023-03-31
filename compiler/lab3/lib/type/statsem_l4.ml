@@ -549,21 +549,13 @@ let rec static_semantic_stm
     let stm_ctx = { fdec; tdef; vdef; vdec; sdec; sdef; suse } in
     let { res = rd, _; typ = td; used = ud } = static_semantic_exp dest stm_ctx in
     let { res = re; typ = te; used = ue } = static_semantic_exp exp stm_ctx in
-    let dest = Symbol.create_fresh () in
     (*_ depends on the shape of rd, do differently *)
     let lvalue =
       match rd with
-      | A'.Deref ptraddr -> A'.PtrAddr ptraddr
-      | A'.ArrayAccess arraddr -> A'.ArrAddr arraddr
-      | A'.StructAccess ptraddr -> A'.PtrAddr ptraddr
+      | A'.Deref addr -> A'.A2PA { addr; op = Some (A'.intop o); exp = re }
+      | A'.ArrayAccess addr -> A'.A2AA { addr; op = Some (A'.intop o); exp = re }
+      | A'.StructAccess addr -> A'.A2PA { addr; op = Some (A'.intop o); exp = re }
       | _ -> failwith "incorrect lvalue shape for in statsem"
-    in
-    let res =
-      A'.Declare
-        { var = dest
-        ; assign = Some (lvalue, 8)
-        ; body = A'.AssignMem { dest; op = Some (A'.intop o); exp = re }
-        }
     in
     type_unify_exn td T.Int;
     type_unify_exn te T.Int;
@@ -572,21 +564,13 @@ let rec static_semantic_stm
     let stm_ctx = { fdec; tdef; vdef; vdec; sdec; sdef; suse } in
     let { res = rd, _; typ = td; used = ud } = static_semantic_exp dest stm_ctx in
     let { res = re; typ = te; used = ue } = static_semantic_exp exp stm_ctx in
-    let dest = Symbol.create_fresh () in
     (* let () = printf ">>> rd=%s" (A'.Print.pp_exp rd) in *)
     let lvalue =
       match rd with
-      | A'.Deref ptraddr -> A'.PtrAddr ptraddr
-      | A'.ArrayAccess arraddr -> A'.ArrAddr arraddr
-      | A'.StructAccess ptraddr -> A'.PtrAddr ptraddr
+      | A'.Deref ptraddr -> A'.A2PA { addr = ptraddr; op = None; exp = re }
+      | A'.ArrayAccess arraddr -> A'.A2AA { addr = arraddr; op = None; exp = re }
+      | A'.StructAccess ptraddr -> A'.A2PA { addr = ptraddr; op = None; exp = re }
       | _ -> failwith "incorrect lvalue shape for in statsem"
-    in
-    let res =
-      A'.Declare
-        { var = dest
-        ; assign = Some (lvalue, 8)
-        ; body = A'.AssignMem { dest; op = None; exp = re }
-        }
     in
     type_unify_exn td te;
     { vdef; res; used = SS.union ud ue }

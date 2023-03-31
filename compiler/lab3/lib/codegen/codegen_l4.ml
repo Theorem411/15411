@@ -54,8 +54,9 @@ let munch_size = function
   | 4 -> A.S
   | 8 -> A.L
   | _ -> A.L
-  (* | i -> failwith ("codegen: size is not 4 or 8. it is " ^ (Int.to_string i)) *)
 ;;
+
+(* | i -> failwith ("codegen: size is not 4 or 8. it is " ^ (Int.to_string i)) *)
 
 let munch_exp (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list =
   let rec munch_exp_rev (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t) : A.instr list
@@ -254,12 +255,98 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
       ]
     ]
     |> List.concat
-  | T.MovToMem { mem; src } ->
+  | T.MovToMem { addr = T.Null; _ } -> [ A.Jmp mfl ]
+  | T.MovToMem { addr = T.Ptr { start; off }; src; opopt } ->
+    let ts = A.Temp (Temp.create ()) in
+    let codegen_start = munch_exp ts start ~mfl in
+    let t = A.Temp (Temp.create ()) in
+    let nullchk =
+      [ A.PureBinop
+          { dest = t
+          ; size = A.L
+          ; lhs = ts
+          ; op = A.Add
+          ; rhs = A.Imm (Int32.of_int_exn off)
+          }
+      ; A.Cmp { lhs = t; size = A.L; rhs = A.Imm (Int32.of_int_exn 0) }
+      ; A.Cjmp { typ = A.Je; l = mfl }
+      ]
+    in
+    let tr = A.Temp (Temp.create ()) in
+    let codegen_src = munch_exp tr src ~mfl in
+    let mov =
+      match opopt with
+      | Some (T.Pure o) ->
+        let t' = A.Temp (Temp.create ()) in
+        let t'' = A.Temp (Temp.create ()) in
+        let sz = munch_size (T.size src) in
+        let op = munch_binary_op o in
+        [ A.MovFrom { dest = t'; size = sz; src = t }
+        ; A.PureBinop { dest = t''; size = sz; lhs = t'; op; rhs = tr }
+        ; A.MovTo { dest = t'; size = sz; src = t'' }
+        ]
+      | Some (T.Efkt o) ->
+        let t' = A.Temp (Temp.create ()) in
+        let t'' = A.Temp (Temp.create ()) in
+        let sz = munch_size (T.size src) in
+        let op = munch_efkt_op o in
+        [ A.MovFrom { dest = t'; size = sz; src = t }
+        ; A.EfktBinop { dest = t''; lhs = t'; op; rhs = tr }
+        ; A.MovTo { dest = t'; size = sz; src = t'' }
+        ]
+      | None -> [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ]
+    in
+    [ codegen_start; nullchk; codegen_src; mov ] |> List.concat
+  | T.MovToMem { addr = T.Arr { head; idx; typ_size; extra }; src; opopt } ->
+    let th = A.Temp (Temp.create ()) in
+    let ti = A.Temp (Temp.create ()) in
+    let ti' = A.Temp (Temp.create ()) in
+    let tm = A.Temp (Temp.create ()) in
+    let tl = A.Temp (Temp.create ()) in
     let t1 = A.Temp (Temp.create ()) in
-    [ munch_exp t1 src ~mfl
-    ; [ A.MovTo { dest = A.Temp mem; size = munch_size (T.size src); src = t1 } ]
-    ]
-    |> List.concat
+    let t2 = A.Temp (Temp.create ()) in
+    let t = A.Temp (Temp.create ()) in
+    let codegen_head = munch_exp th (head) ~mfl in
+    let codegen_idx = munch_exp ti idx ~mfl in
+    let bound_chk = [
+      A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int32.of_int_exn 0) }
+    ; A.Cjmp { typ = A.Je; l = mfl }
+    ; A.MovSxd { dest=ti; src=ti'}
+    ; A.Cmp { lhs = ti'; size = A.L; rhs = A.Imm (Int32.of_int_exn 0) }
+    ; A.Cjmp { typ = A.Jl; l = mfl }
+    ; A.PureBinop { dest = tm; size = A.L; lhs = ti'; op=A.Sub; rhs = A.Imm (Int32.of_int_exn 8) }
+    ; A.MovFrom { dest = tl; size = A.S; src = tm }
+    ; A.Cmp { lhs = ti; size = A.S; rhs = tl }
+    ; A.Cjmp { typ = A.Jge; l = mfl }
+    ; A.PureBinop { dest = t1; size = A.L; lhs = ti'; op=A.Mul; rhs = A.Imm (Int32.of_int_exn typ_size) }
+    ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op=A.Add; rhs = A.Imm (Int32.of_int_exn extra) }
+    ; A.PureBinop { dest = t; size = A.L; lhs = th; op=A.Add; rhs = t2 }
+    ; ] in
+    let tr = A.Temp (Temp.create ()) in
+    let codegen_src = munch_exp tr src ~mfl in
+    let mov =
+      match opopt with
+      | Some (T.Pure o) ->
+        let t' = A.Temp (Temp.create ()) in
+        let t'' = A.Temp (Temp.create ()) in
+        let sz = munch_size (T.size src) in
+        let op = munch_binary_op o in
+        [ A.MovFrom { dest = t'; size = sz; src = t }
+        ; A.PureBinop { dest = t''; size = sz; lhs = t'; op; rhs = tr }
+        ; A.MovTo { dest = t'; size = sz; src = t'' }
+        ]
+      | Some (T.Efkt o) ->
+        let t' = A.Temp (Temp.create ()) in
+        let t'' = A.Temp (Temp.create ()) in
+        let sz = munch_size (T.size src) in
+        let op = munch_efkt_op o in
+        [ A.MovFrom { dest = t'; size = sz; src = t }
+        ; A.EfktBinop { dest = t''; lhs = t'; op; rhs = tr }
+        ; A.MovTo { dest = t'; size = sz; src = t'' }
+        ]
+      | None -> [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ]
+    in
+    [codegen_head; codegen_idx; bound_chk; codegen_src; mov] |> List.concat
   | T.MovFuncApp { dest; fname; args } ->
     let cogen_arg e =
       let t = Temp.create () in

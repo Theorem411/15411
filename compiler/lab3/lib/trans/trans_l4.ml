@@ -28,6 +28,11 @@ let intop_to_ebop = function
   | A.ShiftR -> T.ShftR
 ;;
 
+let intop_to_ibop = function 
+  | A.Pure o -> T.Pure (intop_to_pbop o)
+  | A.Efkt o -> T.Efkt (intop_to_ebop o)
+;;
+
 (*_ block handling *)
 (*_ given A.stm list in rev order, produce a block *)
 type block_tobe =
@@ -56,11 +61,11 @@ let update acc b ~(finisher : T.stm) ~(newlab : Label.t) =
 type tr_exp_t = T.mpexp * T.block list * block_tobe
 
 let rec tr_exp_rev
-    (env : Temp.t S.t)
-    (exp : A.mexp)
-    (acc_rev : T.block list)
-    (block_rev : block_tobe)
-    : tr_exp_t
+  (env : Temp.t S.t)
+  (exp : A.mexp)
+  (acc_rev : T.block list)
+  (block_rev : block_tobe)
+  : tr_exp_t
   =
   let e, esize = exp in
   match e with
@@ -188,11 +193,11 @@ let rec tr_exp_rev
 type tr_stm_t = T.block list * block_tobe
 
 let rec tr_stm_rev
-    (env : Temp.t S.t)
-    (stm : A.stm)
-    (acc_rev : T.block list)
-    (block_rev : block_tobe)
-    : tr_stm_t
+  (env : Temp.t S.t)
+  (stm : A.stm)
+  (acc_rev : T.block list)
+  (block_rev : block_tobe)
+  : tr_stm_t
   =
   match stm with
   | Declare { var; assign = None; body; _ } ->
@@ -214,32 +219,24 @@ let rec tr_stm_rev
     let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
     let b = { b with code = T.MovPureExp { dest = t; src = e } :: b.code } in
     acc, b
-  | AssignMem { dest; op = None; exp } ->
-    let t = S.find_exn env dest in
-    let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
-    let b = { b with code = T.MovToMem { mem = t; src = e } :: b.code } in
+  | A2PA { addr = A.Ptr {start; off}; op; exp } ->
+    let start, acc, b = tr_exp_rev env start acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env exp acc b in
+    let opopt = Option.map op ~f:(intop_to_ibop) in
+    let b = { b with code = T.MovToMem { addr=T.Ptr { start; off }; src = e; opopt } :: b.code } in
     acc, b
-  | AssignMem { dest; op = Some (Pure op); exp } ->
-    let t = S.find_exn env dest in
+  | A2PA { addr = A.Null; op; exp} -> 
     let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
-    let op = intop_to_pbop op in
-    let deref_t = T.Mem (T.Ptr { start = T.Temp t, 8; off = 0 }) in
-    let src = T.Binop { lhs = deref_t, T.size e; op; rhs = e } in
-    let b = { b with code = T.MovToMem { mem = t; src = src, T.size e } :: b.code } in
+    let opopt = Option.map op ~f:(intop_to_ibop) in
+    let b = { b with code = T.MovToMem { addr=T.Null; src = e; opopt } :: b.code } in
     acc, b
-  | AssignMem { dest; op = Some (Efkt op); exp } ->
-    let t = S.find_exn env dest in
-    let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
-    let ebop = intop_to_ebop op in
-    let deref_t = T.Mem (T.Ptr { start = T.Temp t, 8; off = 0 }) in
-    let t' = Temp.create () in
-    let code =
-      (*_ view in reverse order; reminder: block_tobe is in reverse order *)
-      T.MovToMem { mem = t; src = T.Temp t', T.size e }
-      :: T.MovEfktExp { dest = t'; lhs = deref_t, T.size e; ebop; rhs = e }
-      :: b.code
-    in
-    let b = { b with code } in
+  | A2AA { addr = { head; idx; size; extra }; op; exp } -> 
+    let head, acc, b = tr_exp_rev env head acc_rev block_rev in
+    let idx, acc, b = tr_exp_rev env idx acc b in
+    let e, acc, b = tr_exp_rev env exp acc b in
+    let addr = T.Arr {head; idx; typ_size=size; extra} in
+    let opopt = Option.map op ~f:intop_to_ibop in
+    let b = { b with code = T.MovToMem {addr; src=e; opopt} :: b.code} in
     acc, b
   | If { cond = A.True, _; lb; _ } -> tr_stm_rev env lb acc_rev block_rev
   | If { cond = A.False, _; rb; _ } -> tr_stm_rev env rb acc_rev block_rev
@@ -407,7 +404,11 @@ let rec tr_stm_rev
 let tr_stm (env : Temp.t S.t) (stm : A.stm) (binit : block_tobe) : T.block list =
   let acc_rev, bleft = tr_stm_rev env stm ([] : T.block list) binit in
   (*_ finish off any leftover block by adding a jret *)
-  let rem_intrs = match bleft.code with [] -> [T.Return None] | _ -> bleft.code in 
+  let rem_intrs =
+    match bleft.code with
+    | [] -> [ T.Return None ]
+    | _ -> bleft.code
+  in
   let acc_rev =
     ({ label = bleft.l; block = rem_intrs; jump = T.JRet } : T.block) :: acc_rev
   in
