@@ -311,8 +311,8 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     let bound_chk = [
       A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int32.of_int_exn 0) }
     ; A.Cjmp { typ = A.Je; l = mfl }
-    ; A.MovSxd { dest=ti; src=ti'}
-    ; A.Cmp { lhs = ti'; size = A.L; rhs = A.Imm (Int32.of_int_exn 0) }
+    ; A.MovSxd { dest=ti'; src=ti}
+    ; A.Cmp { lhs = ti; size = A.S; rhs = A.Imm (Int32.of_int_exn 0) }
     ; A.Cjmp { typ = A.Jl; l = mfl }
     ; A.PureBinop { dest = tm; size = A.L; lhs = ti'; op=A.Sub; rhs = A.Imm (Int32.of_int_exn 8) }
     ; A.MovFrom { dest = tl; size = A.S; src = tm }
