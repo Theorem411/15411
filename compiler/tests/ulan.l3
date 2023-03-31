@@ -1,25 +1,68 @@
-//test error
-//1376
+//test return -44850
 
-struct s{
-  int* height;
-  int count;
-};
+struct eye;
+struct eye *see(int u, int uu, int uuu, int uuuu, int uuuuu);
+int wat(int w, int a, int t, struct eye*[]*[]*[] wat);
 
-void jump(struct s* s);
-typedef int s;
-
-int main(){
-  s * height = alloc(int); //I can't actually modify this value
-  *height++;
-  struct s* ss= alloc(struct s);
-  while(*height > 0){
-    jump(ss);
-  }
-  return *height;
+int main() {
+    int c = 0;
+    int e = 3;
+    int r = 4;
+    int m = 5;
+    struct eye*[]*[]*[] elon = alloc_array(struct eye*[]*[]*, e);
+    for (int i = 0; i < e; i++) {
+        struct eye*[]*[] dknm = alloc_array(struct eye*[]*, r);
+        elon[i] = alloc(struct eye*[]*[]);
+        *elon[i] = dknm;
+        for (int j = 0; j < r; j++) {
+            struct eye*[] cjml = alloc_array(struct eye*, m);
+            dknm[j] = alloc(struct eye*[]);
+            *dknm[j] = cjml;
+            for (int k = 0; k < m; k++) {
+                cjml[k] = see(c + 0, c + 1, c + 2, c + 3, c + 4);
+                c += 5;
+            }
+        }
+    }
+    return wat(e, r, m, elon);
 }
 
-void jump(struct s* ss){
-  *(ss->height)*=2;
-  ss->count++;
+struct eye {
+    int angible;
+    int eresting;
+    int imidate;
+    int onation;
+    int uition;
+};
+
+struct eye *see(int a, int e, int i, int o, int u) {
+    struct eye *z = alloc(struct eye);
+    z->angible = a;
+    z->eresting = e;
+    z->imidate = i;
+    z->onation = o;
+    z->uition = u;
+    return z;
+}
+
+int score(struct eye *i) {
+    return i->angible * i->eresting + i->imidate - i->onation * i->uition;
+}
+
+int wat(int m, int n, int o, struct eye*[]*[]*[] wat) {
+    int result = 0;
+    for (int i = 0; i < m; i++) {
+        struct eye*[]*[] a = *wat[i];
+        assert(wat[i] != NULL);
+        for (int j = 0; j < n; j++) {
+            struct eye*[] b = *a[j];
+            assert(a[j] != NULL);
+            for (int k = 0; k < o; k++) {
+                struct eye* c = b[k];
+                assert(b[k] != NULL);
+                result += score(c);
+            }
+        }
+    }
+    return result;
 }
