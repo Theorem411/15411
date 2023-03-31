@@ -314,7 +314,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     ; A.MovSxd { dest=ti'; src=ti}
     ; A.Cmp { lhs = ti; size = A.S; rhs = A.Imm (Int32.of_int_exn 0) }
     ; A.Cjmp { typ = A.Jl; l = mfl }
-    ; A.PureBinop { dest = tm; size = A.L; lhs = ti'; op=A.Sub; rhs = A.Imm (Int32.of_int_exn 8) }
+    ; A.PureBinop { dest = tm; size = A.L; lhs = th; op=A.Sub; rhs = A.Imm (Int32.of_int_exn 8) }
     ; A.MovFrom { dest = tl; size = A.S; src = tm }
     ; A.Cmp { lhs = ti; size = A.S; rhs = tl }
     ; A.Cjmp { typ = A.Jge; l = mfl }
