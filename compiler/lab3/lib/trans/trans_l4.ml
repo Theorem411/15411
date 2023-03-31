@@ -131,11 +131,11 @@ let rec tr_exp_rev
     (T.Unop { op = T.BitNot; p = e }, esize), acc, b
   | A.Call { name; args } ->
     let t = Temp.create () in
-    let fold_f a (es, acc, b) =
+    let fold_f (es, acc, b) a =
       let e, acc, b = tr_exp_rev env a acc b in
       e :: es, acc, b
     in
-    let es, acc, b = List.fold_right args ~init:([], acc_rev, block_rev) ~f:fold_f in
+    let es, acc, b = List.fold args ~init:([], acc_rev, block_rev) ~f:fold_f in
     let es = List.rev es in
     let b =
       { b with
@@ -389,11 +389,11 @@ let rec tr_stm_rev
     let b = { block_rev with code = T.AssertFail :: block_rev.code } in
     acc_rev, b
   | NakedCall { name; args } ->
-    let fold_f a (es, acc, b)=
+    let fold_f (es, acc, b) a =
       let e, acc, b = tr_exp_rev env a acc b in
       e :: es, acc, b
     in
-    let es, acc, b = List.fold_right args ~init:([], acc_rev, block_rev) ~f:fold_f in
+    let es, acc, b = List.fold args ~init:([], acc_rev, block_rev) ~f:fold_f in
     let es = List.rev es in
     let b =
       { b with code = T.MovFuncApp { dest = None; fname = name; args = es } :: b.code }

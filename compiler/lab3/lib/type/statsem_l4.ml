@@ -476,10 +476,7 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     let res = A'.StructAccess (A'.Ptr { start = sres; off = i }) in
     { res = res, type_size exp_ctx.suse typ; typ; used }
   | A.Alloc tau ->
-    let t, snames = resolve exp_ctx.tdef tau in
-    let () =
-      if SS.is_subset snames ~of_:(SM.key_set exp_ctx.sdef) then () else raise TypeError
-    in
+    let t, _ = resolve exp_ctx.tdef tau in
     let size =
       match t with
       | T.Struct s ->
