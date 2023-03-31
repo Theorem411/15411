@@ -1,20 +1,16 @@
-//test return 73
+//test return 89
 
-int swap (int * p, int * q) {
-  int x;
-  x = *p;
-  *p = *q;
-  *q = x;
-  return 0;
+int fib(int n) {
+  int i;
+  int[] f;
+  f = alloc_array(int, n+1);
+  f[0] = 1;
+  f[1] = 1;
+  for (i = 2; i <= n; i += 1)
+    f[i] = f[i-1]+f[i-2];
+  return f[n];
 }
 
 int main () {
-  int * p;
-  int * q;
-  p = alloc(int);
-  q = alloc(int);
-  *p = 3;
-  *q = 7;
-  swap(p,q);
-  return *p*10+*q;
+  return fib(10);
 }
