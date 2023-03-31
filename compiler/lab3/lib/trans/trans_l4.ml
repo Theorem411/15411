@@ -240,7 +240,7 @@ let rec tr_stm_rev
         T.MovToMem { addr; src = T.Temp t', 4 }
         :: T.MovEfktExp { dest = t'; ebop; lhs = T.Temp t, 4; rhs = e }
         :: b.code
-      | None -> T.MovToMem { addr; src = T.Temp t, T.size e } :: b.code
+      | None -> T.MovToMem { addr; src = e } :: b.code
     in
     let b = { b with code } in
     acc, b
@@ -265,7 +265,7 @@ let rec tr_stm_rev
         T.MovToMem { addr = T.Null; src = T.Temp t', 4 }
         :: T.MovEfktExp { dest = t'; ebop; lhs = T.Temp t, 4; rhs = e }
         :: b.code
-      | None -> T.MovToMem { addr = T.Null; src = T.Temp t, T.size e } :: b.code
+      | None -> T.MovToMem { addr = T.Null; src = e } :: b.code
     in
     let b = { b with code } in
     (* let b = { b with code = T.MovToMem { addr=T.Null; src = e; } :: b.code } in *)
@@ -293,7 +293,7 @@ let rec tr_stm_rev
         T.MovToMem { addr; src = T.Temp t', 4 }
         :: T.MovEfktExp { dest = t'; ebop; lhs = T.Temp t, 4; rhs = e }
         :: b.code
-      | None -> T.MovToMem { addr; src = T.Temp t, T.size e } :: b.code
+      | None -> T.MovToMem { addr; src = e } :: b.code
     in
     let b = { b with code } in
     acc, b
