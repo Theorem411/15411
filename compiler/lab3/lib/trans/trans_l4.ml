@@ -284,28 +284,28 @@ let rec tr_stm_rev
     let idx, acc, b = tr_exp_rev env idx acc b in
     let addr = T.Arr { head; idx; typ_size = size; extra } in
     (*_ translate read from mem first *)
-    (* let t = Temp.create () in
+    let t = Temp.create () in
     let b =
       { b with code = T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } :: b.code }
-    in *)
+    in
     (*_ then translate e *)
     let e, acc, b = tr_exp_rev env exp acc b in
     (* let opopt = Option.map op ~f:intop_to_ibop in *)
     let code =
       match op with
       | Some (A.Pure op) ->
-        let t = Temp.create () in
+        (* let t = Temp.create () in *)
         let op = intop_to_pbop op in
         T.MovToMem { addr; src = T.Binop { op; lhs = T.Temp t, 4; rhs = e }, 4 } 
-        :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp }
+        (* :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } *)
         :: b.code
       | Some (A.Efkt op) ->
         let ebop = intop_to_ebop op in
-        let t = Temp.create () in
+        (* let t = Temp.create () in *)
         let t' = Temp.create () in
         T.MovToMem { addr; src = T.Temp t', 4 }
         :: T.MovEfktExp { dest = t'; ebop; lhs = T.Temp t, 4; rhs = e }
-        :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp }
+        (* :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } *)
         :: b.code
       | None -> T.MovToMem { addr; src = e } :: b.code
     in
