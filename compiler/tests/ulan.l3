@@ -1,8 +1,35 @@
-//test return 73
+//test return 0
 
+//nested structs
 
-int main () {
-  int[] a = alloc_array(int, 5);
-  a[1] = 5;
-  return a[1];
+struct s1
+{
+        int x;
+};
+
+struct s2
+{
+        struct s1 a;
+};
+
+struct s3
+{
+        struct s2 b;
+};
+
+struct s4
+{
+        struct s3 c;
+};
+
+struct s5
+{
+        struct s4 d;
+};
+
+int main()
+{
+        struct s5* this = alloc(struct s5);
+
+        return this->d.c.b.a.x;
 }

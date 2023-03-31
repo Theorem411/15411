@@ -83,7 +83,7 @@ let type_size suse (typ : T.t) =
   | _ -> small_type_size typ
 ;;
 
-let pp_suse (suse : struct_t SH.t) : string =
+(* let pp_suse (suse : struct_t SH.t) : string =
   let pp_sinfo ({ f_offset; tot_size; align } : struct_t) =
     sprintf
       "{\n%s\ntot:%s\nmax:%s\n}"
@@ -99,7 +99,7 @@ let pp_suse (suse : struct_t SH.t) : string =
        ~f:(fun (s, sinfo) -> sprintf "%s=%s" (Symbol.name s) (pp_sinfo sinfo))
        (SH.to_alist suse)
     |> String.concat ~sep:"\n")
-;;
+;; *)
 
 (*_ given a struct signature (either declared or undeclared), as long as all
    the field's struct types are defined, can calculate struct size, max align, all field offsets*)
@@ -258,7 +258,7 @@ let struct_cyclic_chk (sdec : SS.t) (sdef : T.ssig_real SM.t) : unit =
   in
   let es = SM.fold sdef ~init:es ~f:update in
   (*_ debug scene *)
-  let es_lst = SM.to_alist ~key_order:`Increasing es in
+  (* let es_lst = SM.to_alist ~key_order:`Increasing es in
   let es_lst = List.map es_lst ~f:(fun (s, ss) -> s, SS.to_list ss) in
   let es_str =
     List.map es_lst ~f:(fun (s, es) ->
@@ -266,12 +266,12 @@ let struct_cyclic_chk (sdec : SS.t) (sdef : T.ssig_real SM.t) : unit =
         "%s:%s"
         (Symbol.name s)
         (List.map es ~f:Symbol.name |> String.concat ~sep:", "))
-  in
-  let debug_s = sprintf "es=\n%s\n" (String.concat es_str ~sep:"\n") in
-  let () = prerr_endline debug_s in
+  in *)
+  (* let debug_s = sprintf "es=\n%s\n" (String.concat es_str ~sep:"\n") in *)
+  (* let () = prerr_endline debug_s in *)
   (*_ begin debug scene *)
-  let debug_s = String.concat ~sep:"," (List.map ~f:Symbol.name (SS.to_list vs)) in
-  let () = prerr_endline (sprintf "vs=%s" debug_s) in
+  (* let debug_s = String.concat ~sep:"," (List.map ~f:Symbol.name (SS.to_list vs)) in *)
+  (* let () = prerr_endline (sprintf "vs=%s" debug_s) in *)
   (*_ end debug scene *)
   detect_cycle es
 ;;
@@ -844,6 +844,6 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) : A'.program =
   (*_ struct defs are not cyclic *)
   let () = struct_cyclic_chk global_ctx_src.sdec global_ctx_src.sdef in
   (*_ prrint fstruct offsets and stuff *)
-  let () = prerr_endline (pp_suse global_ctx_src.suse) in
+  (* let () = prerr_endline (pp_suse global_ctx_src.suse) in *)
   program
 ;;
