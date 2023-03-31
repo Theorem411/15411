@@ -240,7 +240,7 @@ let format_instr' = function
       (format_operand unop.dest)
   | Mov mv -> sprintf "%s <-- %s" (format_operand mv.dest) (format_operand mv.src)
   | MovSxd { dest; src } ->
-    sprintf "movsxd %s, %s" (format_operand dest) (format_operand src)
+    sprintf "movsxd %s <-- %s" (format_operand dest) (format_operand src)
   | Directive dir -> sprintf "%s" dir
   | Comment comment -> sprintf "/* %s */" comment
   | Jmp l -> "jump" ^ Label.name l
