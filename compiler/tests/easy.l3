@@ -1,11 +1,20 @@
-//test typecheck
+//test error
+// non-lvalue
 
-int main() {
-    int len = 12;
-    int sum = 0;
-    struct hello * [] a = alloc_array(struct hello *, len);
-    for (int i = 0; i < len; i++) {
-        sum += i;
+int[] makeArray(int n, int* ref){
+    (*ref)++;
+    int[] A = alloc_array(int, n);
+    return A;
+}
+
+int main(){
+    int * ref = alloc(int);
+    *ref = 0;
+    (makeArray(5, ref)[2])++;
+    if (*ref == 1){
+        return 42;
     }
-    return sum;
+    else{
+        return 0;
+    }
 }
