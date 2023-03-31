@@ -83,7 +83,7 @@ let type_size suse (typ : T.t) =
   | _ -> small_type_size typ
 ;;
 
-let pp_suse (suse : struct_t SH.t) : string =
+(* let pp_suse (suse : struct_t SH.t) : string =
   let pp_sinfo ({ f_offset; tot_size; align } : struct_t) =
     sprintf
       "{\n%s\ntot:%s\nmax:%s\n}"
@@ -99,7 +99,7 @@ let pp_suse (suse : struct_t SH.t) : string =
        ~f:(fun (s, sinfo) -> sprintf "%s=%s" (Symbol.name s) (pp_sinfo sinfo))
        (SH.to_alist suse)
     |> String.concat ~sep:"\n")
-;;
+;; *)
 
 (*_ given a struct signature (either declared or undeclared), as long as all
    the field's struct types are defined, can calculate struct size, max align, all field offsets*)
@@ -855,6 +855,6 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) : A'.program =
   (*_ struct defs are not cyclic *)
   let () = struct_cyclic_chk global_ctx_src.sdec global_ctx_src.sdef in
   (*_ prrint fstruct offsets and stuff *)
-  let () = prerr_endline (pp_suse global_ctx_src.suse) in
+  (* let () = prerr_endline (pp_suse global_ctx_src.suse) in *)
   program
 ;;

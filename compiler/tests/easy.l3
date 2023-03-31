@@ -1,13 +1,29 @@
 //test memerror
-//Dereferences null pointer from calloced memory
 
-struct s {
-  struct s* next;
-  int val;
+struct node;
+typedef struct node node;
+
+struct node {
+  int data;
+  node* pred;
+  node* succ;
 };
-typedef struct s t;
+
+node* create_node(int data) {
+  node* n = alloc(node);
+  n->data = data;
+  return n;
+}
+
+void link_node(node* a, node* b) {
+  a->succ = b;
+  b->pred = a;
+}
+
 int main() {
-  struct s* b = alloc(t);
-  b = b->next;
-  return b->val;
+  node* head = create_node(1);
+  link_node(head, create_node(2));
+  link_node(head->succ, NULL);
+  link_node(head->succ->succ, head); 
+  return 0;
 }
