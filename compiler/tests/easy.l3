@@ -1,16 +1,20 @@
-//test return 89
+//test return 0
+//struct fields
 
-int fib(int n) {
-  int i;
-  int[] f;
-  f = alloc_array(int, n+1);
-  f[0] = 1;
-  f[1] = 1;
-  for (i = 2; i <= n; i += 1)
-    f[i] = f[i-1]+f[i-2];
-  return f[n];
-}
+struct s {
+    int a;
+};
 
-int main () {
-  return fib(10);
+struct t {
+    int a;
+};
+
+int main() {
+    struct s* first = alloc(struct s);
+    struct t* second = alloc(struct t);
+
+    (*first).a = 0;
+    (*second).a = 1;
+
+    return (*first).a;
 }
