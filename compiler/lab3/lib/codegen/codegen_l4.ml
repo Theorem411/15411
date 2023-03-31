@@ -283,7 +283,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
         let op = munch_binary_op o in
         [ A.MovFrom { dest = t'; size = sz; src = t }
         ; A.PureBinop { dest = t''; size = sz; lhs = t'; op; rhs = tr }
-        ; A.MovTo { dest = t'; size = sz; src = t'' }
+        ; A.MovTo { dest = t; size = sz; src = t'' }
         ]
       | Some (T.Efkt o) ->
         let t' = A.Temp (Temp.create ()) in
@@ -292,7 +292,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
         let op = munch_efkt_op o in
         [ A.MovFrom { dest = t'; size = sz; src = t }
         ; A.EfktBinop { dest = t''; lhs = t'; op; rhs = tr }
-        ; A.MovTo { dest = t'; size = sz; src = t'' }
+        ; A.MovTo { dest = t; size = sz; src = t'' }
         ]
       | None -> [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ]
     in
@@ -333,7 +333,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
         let op = munch_binary_op o in
         [ A.MovFrom { dest = t'; size = sz; src = t }
         ; A.PureBinop { dest = t''; size = sz; lhs = t'; op; rhs = tr }
-        ; A.MovTo { dest = t'; size = sz; src = t'' }
+        ; A.MovTo { dest = t; size = sz; src = t'' }
         ]
       | Some (T.Efkt o) ->
         let t' = A.Temp (Temp.create ()) in
@@ -342,7 +342,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
         let op = munch_efkt_op o in
         [ A.MovFrom { dest = t'; size = sz; src = t }
         ; A.EfktBinop { dest = t''; lhs = t'; op; rhs = tr }
-        ; A.MovTo { dest = t'; size = sz; src = t'' }
+        ; A.MovTo { dest = t; size = sz; src = t'' }
         ]
       | None -> [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ]
     in
