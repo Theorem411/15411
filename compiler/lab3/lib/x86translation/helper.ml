@@ -8,6 +8,9 @@ let should_print_reg_map = false
 
 type color = int [@@deriving compare, equal, sexp]
 
+let rbp = X86.Reg { reg = R.RBP; size = 8 }
+let rsp = X86.Reg { reg = R.RSP; size = 8 }
+
 (* let templist_to_opr l = List.map ~f:(fun t -> AS.Temp t) l *)
 let tempsize_list_to_opr l = List.map ~f:(fun (t, _) -> AS.Temp t) l
 
@@ -205,7 +208,8 @@ let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) l
 
 let get_callee_regs (reg_map : X86.operand AS.Map.t) =
   let used_map = AS.Map.filter ~f:(fun o -> X86.is_reg o && X86.callee_saved o) reg_map in
-  AS.Map.data used_map
+  (* TODO add check if rbp is already inside. *)
+  rbp :: AS.Map.data used_map
 ;;
 
 let override_to_q (r : X86.operand) =
@@ -317,8 +321,6 @@ let do_arg_moves
 
 (* arg[7 + i] <- rsp has some size so recalculate *)
 
-let rbp = X86.Reg { reg = R.RBP; size = 8 }
-let rsp = X86.Reg { reg = R.RSP; size = 8 }
 
 let get_function_be
     ((fname, __args) : Symbol.t * (Temp.t * AS.size) list)
@@ -342,8 +344,7 @@ let get_function_be
   let enter =
     [ X86.Directive (sprintf ".globl %s" (Symbol.name fname))
     ; X86.Directive (sprintf ".type\t%s, @function" (Symbol.name fname))
-    ; X86.FunName (Symbol.name fname)
-    ; X86.UnCommand { op = X86.Pushq; src = rbp }
+    ; X86.FunName (Symbol.name fname) (* ; X86.UnCommand { op = X86.Pushq; src = rbp } *)
     ; X86.BinCommand { op = Mov; dest = rbp; src = rsp; size = X86.Q }
     ]
     @ cee_start
@@ -364,7 +365,7 @@ let get_function_be
             { op = X86.Add; dest = rsp; src = X86.Imm sub_count; size = X86.Q }
         ])
     @ cee_finish
-    @ [ X86.UnCommand { op = X86.Popq; src = rbp }; X86.Ret ]
+    @ [ (* X86.UnCommand { op = X86.Popq; src = rbp }; *) X86.Ret ]
   in
   enter, exit, ret_label
 ;;
