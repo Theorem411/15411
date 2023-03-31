@@ -13,6 +13,7 @@ type block =
   ; block : (int * AS.instr) list
   ; jump : jump_tag_t
   }
+  [@@derive compare, equal, sexp, hash]
 
 type fspace =
   { fname : Symbol.t

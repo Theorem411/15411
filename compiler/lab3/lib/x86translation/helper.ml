@@ -334,7 +334,7 @@ let get_function_be
   let m = n + List.length cee_regs in
   (* total size of frame (added regs)*)
   let __sub_count : int = if m % 2 = 0 then n * 8 else (n * 8) + 8 in
-  let sub_count = Int32.of_int_exn __sub_count in
+  let sub_count = Int64.of_int_exn __sub_count in
   let total_size = __sub_count + (List.length cee_regs * 8) in
   let locals = do_arg_moves reg_map args total_size in
   let ret_label = Label.create () in

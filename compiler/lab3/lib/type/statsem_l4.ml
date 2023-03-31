@@ -171,6 +171,11 @@ let validate_args tdef (args : Symbol.t list) ((ats, rett) : T.fsig_real) : unit
   List.iter check_list ~f:chk
 ;;
 
+let validate_ssig (ssig : T.ssig) : unit = 
+  let flds, _= List.unzip ssig in
+  if SS.length (SS.of_list flds) = List.length ssig then () else raise TypeError
+;;
+
 (*_ resolve named types and return set of struct names implicitly used *)
 let rec resolve tdef tau =
   match tau with
@@ -414,7 +419,7 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
   | A.Deref e ->
     let { res; typ; used } = static_semantic_exp e exp_ctx in
     let paddr = A'.Ptr { start = res; off = 0 } in
-    prerr_endline ("414: " ^ T._t_tostring typ);
+    (* prerr_endline ("414: " ^ T._t_tostring typ); *)
     (match typ with
     | T.Star t -> { res = A'.Deref paddr, type_size exp_ctx.suse t; typ = t; used }
     (* | T.Any -> { res = A'.Deref A'.Null, 8; typ = t; used } *)
@@ -489,11 +494,8 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     in
     { res = A'.Alloc size, 8; typ = T.Star t; used = SS.empty }
   | A.Alloc_array { typ; len } ->
-    let t, snames = resolve exp_ctx.tdef typ in
-    let () =
-      if SS.is_subset snames ~of_:(SM.key_set exp_ctx.sdef) then () else raise TypeError
-    in
-    let { res = lres; used; _ } = static_semantic_exp len exp_ctx in
+    let t, _ = resolve exp_ctx.tdef typ in
+    let { res = lres; used; typ=lt } = static_semantic_exp len exp_ctx in
     let type_size =
       match t with
       | T.Struct s ->
@@ -506,6 +508,7 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
         | Some { tot_size; _ } -> tot_size)
       | _ -> small_type_size t
     in
+    type_unify_exn lt T.Int;
     { res = A'.Alloc_array { type_size; len = lres }, 8; typ = T.Array t; used }
 ;;
 
@@ -543,6 +546,7 @@ let rec static_semantic_stm
   match Mark.data mstm with
   | A.Declare { var; typ; assign; body } ->
     let t, snames = resolve tdef typ in
+    (* let () = printf "what is the declare type? %s\n" (T._t_tostring t) in *)
     (*_ var is not type names, not redeclared, not struct names*)
     let () = not_type_names tdef var in
     let () = not_declared_yet vdec var in
@@ -564,6 +568,7 @@ let rec static_semantic_stm
       let { res = eres; typ; used = ue } =
         static_semantic_exp ae { fdec; tdef; vdef; vdec; sdec; sdef; suse }
       in
+       (* let () = printf "what is t? %s\n" (T._t_tostring t) in *)
       let { vdef = vdef'; res = body; used = us } =
         static_semantic_stm
           body
@@ -609,6 +614,7 @@ let rec static_semantic_stm
       | A'.StructAccess ptraddr -> A'.A2PA { addr = ptraddr; op = None; exp = re }
       | _ -> failwith "incorrect lvalue shape for in statsem"
     in
+    let _ : int = small_type_size td in
     type_unify_exn td te;
     { vdef; res; used = SS.union ud ue }
   | A.Assign { var; exp } ->
@@ -664,9 +670,10 @@ let rec static_semantic_stm
     in
     { vdef = vdef2; res = A'.Seq (res1, res2); used = SS.union used1 used2 }
   | A.NakedExpr e ->
-    let { res; used; _ } =
+    let { res; used; typ } =
       static_semantic_exp e { fdec; tdef; vdec; vdef; sdec; sdef; suse }
     in
+    let _ : int = small_type_size typ in
     { vdef; res = A'.NakedExpr res; used }
   | A.AssertFail -> { vdef; res = A'.AssertFail; used = SS.empty }
   | A.NakedCall { name; args } ->
@@ -782,6 +789,7 @@ let static_semantic_gdecl
     not_type_names tdef s; *)
     { fdef; fdec; tdef; sdec = SS.add sdec s; sdef; suse }, SS.empty, None
   | A.Sdef { sname; ssig } ->
+    let () = validate_ssig ssig in
     let ssig_real, sname_implicit = resolve_ssig tdef ssig in
     (* let () = printf ">>> ssig_real = %s\n" (T._ssig_real_tostring ssig_real) in *)
     let sdef' = SM.add_exn sdef ~key:sname ~data:ssig_real in

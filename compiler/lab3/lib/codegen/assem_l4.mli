@@ -25,7 +25,7 @@ type reg =
 [@@deriving equal, sexp, compare, enum, hash]
 
 type operand =
-  | Imm of Int32.t
+  | Imm of Int64.t
   | Reg of reg
   | Temp of Temp.t
 [@@deriving equal, sexp, compare, hash]

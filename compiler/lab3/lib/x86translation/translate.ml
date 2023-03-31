@@ -85,7 +85,7 @@ let translate_efkt (get_final : AS.operand * X86.size -> X86.operand) (errLabel 
         (* check for the shift >= 32 *)
       ; X86.Cmp
           { lhs = X86.Reg { reg = R.ECX; size = 4 }
-          ; rhs = Imm (Int32.of_int_exn 32)
+          ; rhs = Imm (Int64.of_int_exn 32)
           ; size
           }
       ; X86.Jump { op = Some AS.Jge; label = errLabel }
@@ -93,7 +93,7 @@ let translate_efkt (get_final : AS.operand * X86.size -> X86.operand) (errLabel 
         (* check for the shift < 32 *)
       ; X86.Cmp
           { lhs = X86.Reg { reg = R.ECX; size = 4 }
-          ; rhs = Imm (Int32.of_int_exn 0)
+          ; rhs = Imm (Int64.of_int_exn 0)
           ; size
           }
       ; X86.Jump { op = Some AS.Jl; label = errLabel }
@@ -140,7 +140,7 @@ let translate_call
   then call
   else (
     let jump_int = List.length stack_args * 8 in
-    let jump_size = Int32.of_int_exn jump_int in
+    let jump_size = Int64.of_int_exn jump_int in
     let arg_moves =
       List.concat_mapi
         ~f:(fun i (t, sz) ->
@@ -320,13 +320,13 @@ let get_error_block errLabel =
   ; X86.BinCommand
       { op = X86.Mov
       ; dest = X86.Reg { reg = R.EAX; size = 4 }
-      ; src = X86.Imm Int32.one
+      ; src = X86.Imm Int64.one
       ; size = X86.L
       }
   ; X86.BinCommand
       { op = X86.Mov
       ; dest = X86.Reg { reg = R.ECX; size = 4 }
-      ; src = X86.Imm Int32.zero
+      ; src = X86.Imm Int64.zero
       ; size = X86.L
       }
   ; X86.ZeroCommand { op = X86.Cltd }
@@ -340,7 +340,7 @@ let get_memErrLabel_block memErrLabel =
   ; X86.BinCommand
       { op = X86.Mov
       ; dest = X86.Reg { reg = R.RDI; size = 4 }
-      ; src = X86.Imm (Int32.of_int_exn 12)
+      ; src = X86.Imm (Int64.of_int_exn 12)
       ; size = X86.L
       }
   ; X86.Call "raise"
