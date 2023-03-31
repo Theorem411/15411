@@ -305,7 +305,7 @@ let translate_line
   | AS.Set s -> List.rev_append (translate_set get_final (AS.Set s)) prev_lines
   | AS.Ret -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
   (* | AS.App _ -> failwith "app is not allowed :(" *)
-  | AS.AssertFail -> [ X86.Call "abort" ] @ prev_lines
+  | AS.AssertFail -> [ X86.Call "abort@plt" ] @ prev_lines
   | AS.Call { fname; args_overflow = stack_args; _ } ->
     translate_call get_final (Symbol.name fname) stack_args @ prev_lines
   | AS.LoadFromStack _ -> prev_lines
@@ -343,7 +343,7 @@ let get_memErrLabel_block memErrLabel =
       ; src = X86.Imm (Int64.of_int_exn 12)
       ; size = X86.L
       }
-  ; X86.Call "raise"
+  ; X86.Call "raise@plt"
   ]
 ;;
 

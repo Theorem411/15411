@@ -1,6 +1,10 @@
+//test abort
 
-int main(){
-    int* x = alloc(int);
-    *x++;
-    return *x;
+int main () {
+        int *p = alloc(int);
+        *p = 5;
+        int *q = alloc(int);
+        *q = 5;
+        assert (p==q);
+        return 0;
 }

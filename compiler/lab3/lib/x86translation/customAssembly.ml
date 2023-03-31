@@ -51,7 +51,7 @@ let get_alloc_function memErrLabel =
       ; src = Imm Int64.one
       ; size = X86.L
       }
-  ; X86.Call "calloc"
+  ; X86.Call "calloc@plt"
   ; X86.Cmp
       { lhs = X86.Reg { reg = R.EAX; size = 8 }; rhs = Imm Int64.zero; size = X86.Q }
   ; X86.Jump { label = memErrLabel; op = Some AS.Je }
@@ -157,7 +157,7 @@ let get_arrayalloc_function memErrLabel =
             }
       ; size = X86.Q
       }
-  ; X86.Call "calloc"
+  ; X86.Call "calloc@plt"
   ; X86.MovTo
       { dest = X86.Reg { reg = R.EAX; size = 8 }
       ; src = X86.Reg { reg = R.EBX; size = 4 }
