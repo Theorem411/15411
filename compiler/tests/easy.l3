@@ -1,18 +1,8 @@
-//test error
+//test memerror
 
-struct x;
-
-struct x{
-	int a;
-	int b;
-};
+struct s {int a; int b;};
 
 int main(){
-	struct x* temp = alloc(struct x);
-	return temp->a;
+  struct s* s = NULL;
+  return s -> b;
 }
-
-struct x{
-	int a;
-	int b;
-};
