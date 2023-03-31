@@ -116,7 +116,8 @@ type stm =
       }
   | MovToMem of
       { (*_ this means deref the lhs *)
-        mem : Temp.t
+        addr : addr
+      ; opopt : ibop option
       ; src : mpexp
       }
   | Return of mpexp option
@@ -172,6 +173,10 @@ module Print = struct
     | ShftR -> ">>"
   ;;
 
+  let pp_ibop = function 
+  | Pure o -> pp_pbop o
+  | Efkt o -> pp_ebop o
+;;
   let pp_unop = function
     | BitNot -> "~"
   ;;
@@ -192,7 +197,8 @@ module Print = struct
         (pp_mpexp rhs)
     | Unop { op; p } -> sprintf "%s%s" (pp_unop op) (pp_mpexp p)
     | Mem Null -> "(null)"
-    | Mem (Ptr { start; off }) -> sprintf "deref (%s, %s)" (pp_mpexp start) (Int.to_string off)
+    | Mem (Ptr { start; off }) ->
+      sprintf "deref (%s, %s)" (pp_mpexp start) (Int.to_string off)
     | Mem (Arr { head; idx; typ_size; extra }) ->
       sprintf
         "(%s, %s, %s, %s)"
@@ -201,7 +207,8 @@ module Print = struct
         (Int.to_string typ_size)
         (Int.to_string extra)
     | Addr Null -> "null"
-    | Addr (Ptr { start; off }) -> sprintf "addr(%s, %s)" (pp_mpexp start) (Int.to_string off)
+    | Addr (Ptr { start; off }) ->
+      sprintf "addr(%s, %s)" (pp_mpexp start) (Int.to_string off)
     | Addr (Arr { head; idx; typ_size; extra }) ->
       sprintf
         "addr{%s, %s, %s, %s}"
@@ -210,7 +217,7 @@ module Print = struct
         (Int.to_string typ_size)
         (Int.to_string extra)
 
-  and pp_mpexp ((e, _) : mpexp) = (pp_pexp e)
+  and pp_mpexp ((e, _) : mpexp) = pp_pexp e
 
   let pp_if_cond = function
     | LCond { cmp; p1; p2 } ->
@@ -219,6 +226,11 @@ module Print = struct
       sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "small" (pp_mpexp p2)
   ;;
 
+  let pp_opt (op: ibop option ) = 
+    match op with 
+    | Some o -> pp_ibop o
+    | None -> ""
+  ;;
   let pp_stm (stm : stm) =
     match stm with
     | If { cond; lt; lf } ->
@@ -236,11 +248,22 @@ module Print = struct
       (match dest with
        | None -> Printf.sprintf "%s(%s)" fstr argstr
        | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
-    | MovToMem { mem; src } -> sprintf "(%s) <-- %s" (Temp.name mem) (pp_mpexp src)
+    | MovToMem { addr = Null; src; opopt } -> sprintf "(null) %s<-- %s" (pp_opt opopt) (pp_mpexp src)
+    | MovToMem { addr = Ptr { start; off }; src; opopt } ->
+      sprintf "(%s, %s) %s<-- %s" (pp_mpexp start) (Int.to_string off) (pp_opt opopt) (pp_mpexp src)
+    | MovToMem { addr = Arr { head; idx; typ_size; extra }; src; opopt } ->
+      sprintf
+        "(%s, %s, %s, %s) %s<-- %s"
+        (pp_mpexp head)
+        (pp_mpexp idx)
+        (Int.to_string typ_size)
+        (Int.to_string extra)
+        (pp_opt opopt)
+        (pp_mpexp src)
     | Return eopt ->
       (match eopt with
-      | None -> "return"
-      | Some e -> "return " ^ pp_mpexp e)
+       | None -> "return"
+       | Some e -> "return " ^ pp_mpexp e)
     | AssertFail -> "assertfail"
     | Alloc { dest; size } ->
       sprintf "%s <-- alloc (%s)" (Temp.name dest) (Int.to_string size)

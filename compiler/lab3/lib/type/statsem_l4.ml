@@ -581,28 +581,12 @@ let rec static_semantic_stm
     let stm_ctx = { fdec; tdef; vdef; vdec; sdec; sdef; suse } in
     let { res = rd, _; typ = td; used = ud } = static_semantic_exp dest stm_ctx in
     let { res = re; typ = te; used = ue } = static_semantic_exp exp stm_ctx in
-    let dest = Symbol.create_fresh () in
     (*_ depends on the shape of rd, do differently *)
     let res =
       match rd with
-      | A'.Deref ptraddr ->
-        A'.Declare
-          { var = dest
-          ; assign = Some (A'.PtrAddr ptraddr, 8)
-          ; body = A'.AssignToPtrMem { dest; op = Some (A'.intop o); exp = re }
-          }
-      | A'.ArrayAccess arraddr ->
-        A'.Declare
-          { var = dest
-          ; assign = Some (A'.ArrAddr arraddr, 8)
-          ; body = A'.AssignToArrMem { dest; op = Some (A'.intop o); exp = re }
-          }
-      | A'.StructAccess ptraddr ->
-        A'.Declare
-          { var = dest
-          ; assign = Some (A'.PtrAddr ptraddr, 8)
-          ; body = A'.AssignToPtrMem { dest; op = Some (A'.intop o); exp = re }
-          }
+      | A'.Deref addr -> A'.A2PA { addr; op = Some (A'.intop o); exp = re }
+      | A'.ArrayAccess addr -> A'.A2AA { addr; op = Some (A'.intop o); exp = re }
+      | A'.StructAccess addr -> A'.A2PA { addr; op = Some (A'.intop o); exp = re }
       | _ -> failwith "incorrect lvalue shape for in statsem"
     in
     type_unify_exn td T.Int;
@@ -612,28 +596,12 @@ let rec static_semantic_stm
     let stm_ctx = { fdec; tdef; vdef; vdec; sdec; sdef; suse } in
     let { res = rd, _; typ = td; used = ud } = static_semantic_exp dest stm_ctx in
     let { res = re; typ = te; used = ue } = static_semantic_exp exp stm_ctx in
-    let dest = Symbol.create_fresh () in
     (* let () = printf ">>> rd=%s" (A'.Print.pp_exp rd) in *)
     let res =
       match rd with
-      | A'.Deref ptraddr ->
-        A'.Declare
-          { var = dest
-          ; assign = Some (A'.PtrAddr ptraddr, 8)
-          ; body = A'.AssignToPtrMem { dest; op = None; exp = re }
-          }
-      | A'.ArrayAccess arraddr ->
-        A'.Declare
-          { var = dest
-          ; assign = Some (A'.ArrAddr arraddr, 8)
-          ; body = A'.AssignToArrMem { dest; op = None; exp = re }
-          }
-      | A'.StructAccess ptraddr ->
-        A'.Declare
-          { var = dest
-          ; assign = Some (A'.PtrAddr ptraddr, 8)
-          ; body = A'.AssignToPtrMem { dest; op = None; exp = re }
-          }
+      | A'.Deref ptraddr -> A'.A2PA { addr = ptraddr; op = None; exp = re }
+      | A'.ArrayAccess arraddr -> A'.A2AA { addr = arraddr; op = None; exp = re }
+      | A'.StructAccess ptraddr -> A'.A2PA { addr = ptraddr; op = None; exp = re }
       | _ -> failwith "incorrect lvalue shape for in statsem"
     in
     type_unify_exn td te;

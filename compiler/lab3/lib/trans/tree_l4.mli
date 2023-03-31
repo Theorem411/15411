@@ -114,8 +114,9 @@ type stm =
       ; typ : int
       }
   | MovToMem of
-      { (*_ move src to deref mem *)
-        mem : Temp.t
+      { (*_ this means deref the lhs *)
+        addr : addr
+      ; opopt : ibop option
       ; src : mpexp
       }
   | Return of mpexp option
