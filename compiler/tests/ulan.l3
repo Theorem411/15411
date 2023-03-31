@@ -16,5 +16,5 @@ int main () {
   *p = 3;
   *q = 7;
   swap(p,q);
-  return 10;
+  return *p*10+*q;
 }
