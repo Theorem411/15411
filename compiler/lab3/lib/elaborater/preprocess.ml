@@ -60,8 +60,8 @@ and rename_stm (ctx : Symbol.Set.t) (stm : Asts.stm) : Asts.stm =
     else (
       let newname = Symbol.symbol ("_c0_" ^ Symbol.name name) in
       Asts.NakedCall { name = newname; args = List.map ~f args })
-  | A2PA { addr; op; exp } -> A2PA { addr; op; exp = f exp }
-  | A2AA { addr; op; exp } -> A2AA { addr; op; exp = f exp }
+  | A2PA { addr; op; exp } -> A2PA { addr = rename_ptraddr ctx addr; op; exp = f exp }
+  | A2AA { addr; op; exp } -> A2AA { addr = rename_arraddr ctx addr; op; exp = f exp }
   | _ -> stm
 ;;
 
