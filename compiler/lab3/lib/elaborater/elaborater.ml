@@ -240,6 +240,7 @@ let elab_assign m_s =
       | None -> AstElab.Assign { var = v; exp = elab_mexp m_r }
       | Some op -> elab_assign_with_op_to_var m_l v op m_r m_s)
     | Ast.StructDot _ | Ast.StructArr _ | Ast.ArrAccess _ | Ast.Deref _ ->
+      vldt_lval m_l;
       AstElab.Asop { dest = elab_mexp m_l; exp = elab_mexp m_r; op = to_binop asgnop }
     | _ -> failwith "LHS is not a lvalue")
   | _ -> failwith "elab_assign recieved not assign"
