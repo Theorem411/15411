@@ -256,7 +256,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     ]
     |> List.concat
   | T.MovToMem { addr = T.Null; _ } -> [ A.Jmp mfl ]
-  | T.MovToMem { addr = T.Ptr { start; off }; src; opopt } ->
+  | T.MovToMem { addr = T.Ptr { start; off }; src } ->
     let ts = A.Temp (Temp.create ()) in
     let codegen_start = munch_exp ts start ~mfl in
     let t = A.Temp (Temp.create ()) in
@@ -274,7 +274,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     in
     let tr = A.Temp (Temp.create ()) in
     let codegen_src = munch_exp tr src ~mfl in
-    let mov =
+    (* let mov =
       match opopt with
       | Some (T.Pure o) ->
         let t' = A.Temp (Temp.create ()) in
@@ -295,9 +295,10 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
         ; A.MovTo { dest = t; size = sz; src = t'' }
         ]
       | None -> [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ]
-    in
+    in *)
+    let mov = [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ] in
     [ codegen_start; nullchk; codegen_src; mov ] |> List.concat
-  | T.MovToMem { addr = T.Arr { head; idx; typ_size; extra }; src; opopt } ->
+  | T.MovToMem { addr = T.Arr { head; idx; typ_size; extra }; src } ->
     let th = A.Temp (Temp.create ()) in
     let ti = A.Temp (Temp.create ()) in
     let ti' = A.Temp (Temp.create ()) in
@@ -324,7 +325,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     ; ] in
     let tr = A.Temp (Temp.create ()) in
     let codegen_src = munch_exp tr src ~mfl in
-    let mov =
+    (* let mov =
       match opopt with
       | Some (T.Pure o) ->
         let t' = A.Temp (Temp.create ()) in
@@ -345,7 +346,8 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
         ; A.MovTo { dest = t; size = sz; src = t'' }
         ]
       | None -> [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ]
-    in
+    in *)
+    let mov = [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ] in
     [codegen_head; codegen_idx; bound_chk; codegen_src; mov] |> List.concat
   | T.MovFuncApp { dest; fname; args } ->
     let cogen_arg e =

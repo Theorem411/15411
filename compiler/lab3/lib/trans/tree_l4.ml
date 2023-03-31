@@ -117,7 +117,6 @@ type stm =
   | MovToMem of
       { (*_ this means deref the lhs *)
         addr : addr
-      ; opopt : ibop option
       ; src : mpexp
       }
   | Return of mpexp option
@@ -173,10 +172,10 @@ module Print = struct
     | ShftR -> ">>"
   ;;
 
-  let pp_ibop = function 
+  (* let pp_ibop = function 
   | Pure o -> pp_pbop o
   | Efkt o -> pp_ebop o
-;;
+;; *)
   let pp_unop = function
     | BitNot -> "~"
   ;;
@@ -225,12 +224,12 @@ module Print = struct
     | SCond { cmp; p1; p2 } ->
       sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "small" (pp_mpexp p2)
   ;;
-
+(* 
   let pp_opt (op: ibop option ) = 
     match op with 
     | Some o -> pp_ibop o
     | None -> ""
-  ;;
+  ;; *)
   let pp_stm (stm : stm) =
     match stm with
     | If { cond; lt; lf } ->
@@ -248,17 +247,16 @@ module Print = struct
       (match dest with
        | None -> Printf.sprintf "void <-- %s(%s)" fstr argstr
        | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
-    | MovToMem { addr = Null; src; opopt } -> sprintf "(null) %s<-- %s" (pp_opt opopt) (pp_mpexp src)
-    | MovToMem { addr = Ptr { start; off }; src; opopt } ->
-      sprintf "(%s, %s) %s<-- %s" (pp_mpexp start) (Int.to_string off) (pp_opt opopt) (pp_mpexp src)
-    | MovToMem { addr = Arr { head; idx; typ_size; extra }; src; opopt } ->
+    | MovToMem { addr = Null; src } -> sprintf "(null) <-- %s" (pp_mpexp src)
+    | MovToMem { addr = Ptr { start; off }; src } ->
+      sprintf "(%s, %s) <-- %s" (pp_mpexp start) (Int.to_string off) (pp_mpexp src)
+    | MovToMem { addr = Arr { head; idx; typ_size; extra }; src } ->
       sprintf
-        "(%s, %s, %s, %s) %s<-- %s"
+        "(%s, %s, %s, %s) <-- %s"
         (pp_mpexp head)
         (pp_mpexp idx)
         (Int.to_string typ_size)
         (Int.to_string extra)
-        (pp_opt opopt)
         (pp_mpexp src)
     | Return eopt ->
       (match eopt with
@@ -268,7 +266,7 @@ module Print = struct
     | Alloc { dest; size } ->
       sprintf "%s <-- alloc (%s)" (Temp.name dest) (Int.to_string size)
     | Calloc { dest; len; typ } ->
-      sprintf "%s <-- calloc (%s, %s)" (Temp.name dest) (pp_mpexp len) (Int.to_string typ)
+      sprintf "%s <-- calloc (typ:%s, len:%s)" (Temp.name dest) (Int.to_string typ) (pp_mpexp len)
   ;;
 
   let pp_jump = function
