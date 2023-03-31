@@ -116,7 +116,6 @@ type stm =
   | MovToMem of
       { (*_ this means deref the lhs *)
         addr : addr
-      ; opopt : ibop option
       ; src : mpexp
       }
   | Return of mpexp option
