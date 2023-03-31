@@ -157,6 +157,12 @@ let get_arrayalloc_function memErrLabel =
             }
       ; size = X86.Q
       }
+  ; X86.BinCommand
+      { op = X86.Mov
+      ; dest = X86.Reg { reg = R.EDI; size = 4 }
+      ; src = Imm Int64.one
+      ; size = X86.L
+      }
   ; X86.Call "calloc@plt"
   ; X86.MovTo
       { dest = X86.Reg { reg = R.EAX; size = 8 }
