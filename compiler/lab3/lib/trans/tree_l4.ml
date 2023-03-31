@@ -198,7 +198,7 @@ module Print = struct
     | Unop { op; p } -> sprintf "%s%s" (pp_unop op) (pp_mpexp p)
     | Mem Null -> "(null)"
     | Mem (Ptr { start; off }) ->
-      sprintf "deref (%s, %s)" (pp_mpexp start) (Int.to_string off)
+      sprintf "(%s, %s)" (pp_mpexp start) (Int.to_string off)
     | Mem (Arr { head; idx; typ_size; extra }) ->
       sprintf
         "(%s, %s, %s, %s)"
