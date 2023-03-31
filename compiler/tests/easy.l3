@@ -1,20 +1,17 @@
 //test error
-// non-lvalue
 
-int[] makeArray(int n, int* ref){
-    (*ref)++;
-    int[] A = alloc_array(int, n);
-    return A;
-}
+struct Wrapper {
+  int val;
+  int val2;
+  int val3;
+};
 
-int main(){
-    int * ref = alloc(int);
-    *ref = 0;
-    (makeArray(5, ref)[2])++;
-    if (*ref == 1){
-        return 42;
-    }
-    else{
-        return 0;
-    }
+int main() {
+  struct Wrapper* a = alloc(struct Wrapper);
+  struct Wrapper* b = alloc(struct Wrapper);
+  b->val = 123;
+
+  *a = *b;
+
+  return a->val;
 }

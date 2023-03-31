@@ -614,6 +614,7 @@ let rec static_semantic_stm
       | A'.StructAccess ptraddr -> A'.A2PA { addr = ptraddr; op = None; exp = re }
       | _ -> failwith "incorrect lvalue shape for in statsem"
     in
+    let _ : int = small_type_size td in
     type_unify_exn td te;
     { vdef; res; used = SS.union ud ue }
   | A.Assign { var; exp } ->
