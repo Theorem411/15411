@@ -117,17 +117,18 @@ let struct_info (sdef : struct_t SH.t) (ssig : T.ssig_real) =
       align
     | t -> small_type_size t
   in
-  let fold_f ((sm, accum, offset) : int SM.t * int * int) ((f, t) : Symbol.t * T.t) =
-    (* let () = prerr_endline (sprintf "{%s}, accum=%s, offset=%s\n" (SM.to_alist sm |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string accum) (Int.to_string offset)) in *)
-    let sub = accum % align t in
-    let accum' = accum + sub + size t in
-    let offset' = accum' + sub in
-    let sm' = SM.add_exn sm ~key:f ~data:offset in
-    (* let () = prerr_endline (sprintf "{%s}, align=%s, accum'=%s, offset'=%s\n------\n" (SM.to_alist sm' |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string (align t)) (Int.to_string accum') (Int.to_string offset')) in *)
-    sm', accum', offset'
+  let fold_f ((sm, accum) : int SM.t * int) ((f, t) : Symbol.t * T.t) =
+    let align = align t in
+    let pad = accum % align in
+    let cur_off = accum + pad in
+    (* let () = prerr_endline (sprintf "{%s}, accum=%s, pad=%s, offset=%s\n" (SM.to_alist sm |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string accum) (Int.to_string pad) (Int.to_string cur_off)) in *)
+    let accum' = accum + pad + size t in
+    let sm' = SM.add_exn sm ~key:f ~data:cur_off in
+    (* let () = prerr_endline (sprintf "{%s}, accum'=%s\n------\n" (SM.to_alist sm' |> List.map ~f:(fun (s, i) -> sprintf "%s:%s" (Symbol.name s) (Int.to_string i)) |> String.concat ~sep:", ") (Int.to_string accum')) in *)
+    sm', accum'
   in
   let max_align = List.fold ssig ~init:1 ~f:(fun acc (_, t) -> Int.max acc (align t)) in
-  let f_offset, accum, _ = List.fold ssig ~init:(SM.empty, 0, 0) ~f:fold_f in
+  let f_offset, accum = List.fold ssig ~init:(SM.empty, 0) ~f:fold_f in
   let tot_size = accum + (accum % max_align) in
   { f_offset; tot_size; align = max_align }
 ;;

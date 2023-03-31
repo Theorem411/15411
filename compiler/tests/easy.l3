@@ -1,16 +1,23 @@
-//test return 89
+//test return 2143289341
 
-int fib(int n) {
-  int i;
-  int[] f;
-  f = alloc_array(int, n+1);
-  f[0] = 1;
-  f[1] = 1;
-  for (i = 2; i <= n; i += 1)
-    f[i] = f[i-1]+f[i-2];
-  return f[n];
-}
+struct padded
+{
+  int short;
+  int *long;
+  fpt short2;
+  fpt *long2;
+};
 
-int main () {
-  return fib(10);
+int main()
+{
+  struct padded *ptr = alloc(struct padded);
+  ptr->long = alloc(int);
+  ptr->short = -1;
+  *ptr->long = -2;
+  ptr->short2 = itof(1);
+  ptr->long2 = alloc(fpt);
+  *ptr->long2 = itof(2);
+
+  *ptr->long2 = fadd(*ptr->long2, ptr->short2);
+  return *ptr->long + *ptr->long2 + ptr->short + ptr->short2;
 }
