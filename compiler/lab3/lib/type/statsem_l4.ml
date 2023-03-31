@@ -201,8 +201,8 @@ let resolve_fsig (tdef : T.t SM.t) (fsig : T.fsig) : T.fsig_real * SS.t =
   in
   let argstyp', sname =
     List.map argstyp ~f:(fun tau ->
-      let t, snames = resolve tdef tau in
-      t, snames)
+        let t, snames = resolve tdef tau in
+        t, snames)
     |> List.unzip
   in
   (argstyp', rettyp'), SS.union_list sname |> SS.union sname_ret
@@ -220,9 +220,9 @@ let resolve_ssig (tdef : T.t SM.t) (ssig : T.ssig) : T.ssig_real * SS.t =
 let struct_in_field (ssig : T.ssig_real) : SS.t =
   let structs =
     List.filter_map ssig ~f:(fun (_, t) ->
-      match t with
-      | T.Struct s -> Some s
-      | _ -> None)
+        match t with
+        | T.Struct s -> Some s
+        | _ -> None)
   in
   SS.of_list structs
 ;;
@@ -329,7 +329,10 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     type_unify_exn lt rt;
     type_unify_exn condt T.Bool;
     { res = A'.Ternary { cond = cond'; lb = lb'; rb = rb' }, small_type_size lt
-    ; typ = lt
+    ; typ =
+        (match lt with
+        | T.Any -> rt
+        | _ -> lt)
     ; used = SS.union_list [ lu; ru; condu ]
     }
   | A.PureBinop { lhs; rhs; op } ->
@@ -355,41 +358,41 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     let { res = rhs'; typ = tr; used = ru } = static_semantic_exp rhs exp_ctx in
     let used = SS.union lu ru in
     (match small_type_size tl, small_type_size tr with
-     | 4, 4 ->
-       let () =
-         match op with
-         | A.Leq | A.Less | A.Geq | A.Greater ->
-           type_unify_exn tl T.Int;
-           type_unify_exn tr T.Int
-         | _ -> ()
-       in
-       type_unify_exn tl tr;
-       { res = A'.CmpBinop { op = A'.intop_cmp op; lhs = lhs'; rhs = rhs'; size = 4 }, 4
-       ; typ = T.Bool
-       ; used
-       }
-     | 8, 8 ->
-       type_unify_exn tl tr;
-       is_ptraddr_exn tl;
-       is_ptraddr_exn tr;
-       (match tl, tr with
-        | T.Array _, T.Array _ -> ()
-        | T.Array _, _ | _, T.Array _ -> failwith "one side is array other is sth else"
-        | _ -> ());
-       { res = A'.CmpBinop { op = A'.ptrop_cmp op; lhs = lhs'; rhs = rhs'; size = 8 }, 4
-       ; typ = T.Bool
-       ; used
-       }
-     | _ -> raise TypeError)
+    | 4, 4 ->
+      let () =
+        match op with
+        | A.Leq | A.Less | A.Geq | A.Greater ->
+          type_unify_exn tl T.Int;
+          type_unify_exn tr T.Int
+        | _ -> ()
+      in
+      type_unify_exn tl tr;
+      { res = A'.CmpBinop { op = A'.intop_cmp op; lhs = lhs'; rhs = rhs'; size = 4 }, 4
+      ; typ = T.Bool
+      ; used
+      }
+    | 8, 8 ->
+      type_unify_exn tl tr;
+      is_ptraddr_exn tl;
+      is_ptraddr_exn tr;
+      (match tl, tr with
+      | T.Array _, T.Array _ -> ()
+      | T.Array _, _ | _, T.Array _ -> failwith "one side is array other is sth else"
+      | _ -> ());
+      { res = A'.CmpBinop { op = A'.ptrop_cmp op; lhs = lhs'; rhs = rhs'; size = 8 }, 4
+      ; typ = T.Bool
+      ; used
+      }
+    | _ -> raise TypeError)
   | A.Unop { op; operand } ->
     let { res; typ; used } = static_semantic_exp operand exp_ctx in
     (match op with
-     | A.LogNot ->
-       type_unify_exn typ T.Bool;
-       { res = A'.Unop { op = A'.unop op; operand = res }, 4; typ = T.Bool; used }
-     | A.BitNot ->
-       type_unify_exn typ T.Int;
-       { res = A'.Unop { op = A'.unop op; operand = res }, 4; typ = T.Int; used })
+    | A.LogNot ->
+      type_unify_exn typ T.Bool;
+      { res = A'.Unop { op = A'.unop op; operand = res }, 4; typ = T.Bool; used }
+    | A.BitNot ->
+      type_unify_exn typ T.Int;
+      { res = A'.Unop { op = A'.unop op; operand = res }, 4; typ = T.Int; used })
   | A.Call { name; args } ->
     (*_ check function name: not variable names *)
     let () = if SM.mem exp_ctx.vdec name then raise TypeError else () in
@@ -416,9 +419,11 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
   | A.Deref e ->
     let { res; typ; used } = static_semantic_exp e exp_ctx in
     let paddr = A'.Ptr { start = res; off = 0 } in
+    prerr_endline ("414: " ^ T._t_tostring typ);
     (match typ with
-     | T.Star t -> { res = A'.Deref paddr, type_size exp_ctx.suse t; typ = t; used }
-     | _ -> raise TypeError)
+    | T.Star t -> { res = A'.Deref paddr, type_size exp_ctx.suse t; typ = t; used }
+    (* | T.Any -> { res = A'.Deref A'.Null, 8; typ = t; used } *)
+    | _ -> raise TypeError)
   | A.ArrAccess { arr; idx } ->
     let { res = rarr; typ = tarr; used = uarr } = static_semantic_exp arr exp_ctx in
     let { res = ridx; typ = ti; used = ui } = static_semantic_exp idx exp_ctx in
@@ -479,12 +484,12 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
       match t with
       | T.Struct s ->
         (match SH.find exp_ctx.suse s with
-         | None ->
-           let ssig = SM.find_exn exp_ctx.sdef s in
-           let struct_info = struct_info exp_ctx.suse ssig in
-           SH.update exp_ctx.suse s ~f:(fun _ -> struct_info);
-           struct_info.tot_size
-         | Some { tot_size; _ } -> tot_size)
+        | None ->
+          let ssig = SM.find_exn exp_ctx.sdef s in
+          let struct_info = struct_info exp_ctx.suse ssig in
+          SH.update exp_ctx.suse s ~f:(fun _ -> struct_info);
+          struct_info.tot_size
+        | Some { tot_size; _ } -> tot_size)
       | _ -> small_type_size t
     in
     { res = A'.Alloc size, 8; typ = T.Star t; used = SS.empty }
@@ -495,12 +500,12 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
       match t with
       | T.Struct s ->
         (match SH.find exp_ctx.suse s with
-         | None ->
-           let ssig = SM.find_exn exp_ctx.sdef s in
-           let struct_info = struct_info exp_ctx.suse ssig in
-           SH.update exp_ctx.suse s ~f:(fun _ -> struct_info);
-           struct_info.tot_size
-         | Some { tot_size; _ } -> tot_size)
+        | None ->
+          let ssig = SM.find_exn exp_ctx.sdef s in
+          let struct_info = struct_info exp_ctx.suse ssig in
+          SH.update exp_ctx.suse s ~f:(fun _ -> struct_info);
+          struct_info.tot_size
+        | Some { tot_size; _ } -> tot_size)
       | _ -> small_type_size t
     in
     type_unify_exn lt T.Int;
@@ -533,10 +538,10 @@ let not_struct_names (sdec : SS.t) (s : Symbol.t) =
 ;; *)
 
 let rec static_semantic_stm
-  (mstm : A.mstm)
-  ({ fdec; tdef; vdef; vdec; sdec; sdef; suse } : stm_ctx)
-  (topt : T.t option)
-  : stm_res
+    (mstm : A.mstm)
+    ({ fdec; tdef; vdef; vdec; sdec; sdef; suse } : stm_ctx)
+    (topt : T.t option)
+    : stm_res
   =
   match Mark.data mstm with
   | A.Declare { var; typ; assign; body } ->
@@ -548,40 +553,40 @@ let rec static_semantic_stm
     let size = small_type_size t in
     let vdec' = SM.add_exn vdec ~key:var ~data:(t, size) in
     (match assign with
-     | None ->
-       let { vdef = vdef'; res = body; used = us } =
-         static_semantic_stm
-           body
-           { fdec; tdef; vdef; vdec = vdec'; sdec = SS.union sdec snames; sdef; suse }
-           topt
-       in
-       { vdef = SS.remove vdef' var
-       ; res = A'.Declare { var; assign = None; body }
-       ; used = us
-       }
-     | Some ae ->
-       let { res = eres; typ; used = ue } =
-         static_semantic_exp ae { fdec; tdef; vdef; vdec; sdec; sdef; suse }
-       in
+    | None ->
+      let { vdef = vdef'; res = body; used = us } =
+        static_semantic_stm
+          body
+          { fdec; tdef; vdef; vdec = vdec'; sdec = SS.union sdec snames; sdef; suse }
+          topt
+      in
+      { vdef = SS.remove vdef' var
+      ; res = A'.Declare { var; assign = None; body }
+      ; used = us
+      }
+    | Some ae ->
+      let { res = eres; typ; used = ue } =
+        static_semantic_exp ae { fdec; tdef; vdef; vdec; sdec; sdef; suse }
+      in
        (* let () = printf "what is t? %s\n" (T._t_tostring t) in *)
-       let { vdef = vdef'; res = body; used = us } =
-         static_semantic_stm
-           body
-           { fdec
-           ; tdef
-           ; vdef = SS.add vdef var
-           ; vdec = vdec'
-           ; sdec = SS.union sdec snames
-           ; sdef
-           ; suse
-           }
-           topt
-       in
-       type_unify_exn t typ;
-       { vdef = SS.remove vdef' var
-       ; res = A'.Declare { var; assign = Some eres; body }
-       ; used = SS.union us ue
-       })
+      let { vdef = vdef'; res = body; used = us } =
+        static_semantic_stm
+          body
+          { fdec
+          ; tdef
+          ; vdef = SS.add vdef var
+          ; vdec = vdec'
+          ; sdec = SS.union sdec snames
+          ; sdef
+          ; suse
+          }
+          topt
+      in
+      type_unify_exn t typ;
+      { vdef = SS.remove vdef' var
+      ; res = A'.Declare { var; assign = Some eres; body }
+      ; used = SS.union us ue
+      })
   | A.Asop { dest; op = Some o; exp } ->
     let stm_ctx = { fdec; tdef; vdef; vdec; sdec; sdef; suse } in
     let { res = rd, _; typ = td; used = ud } = static_semantic_exp dest stm_ctx in
@@ -646,14 +651,14 @@ let rec static_semantic_stm
   | A.Return eopt ->
     let vdef' = SM.key_set vdec in
     (match topt, eopt with
-     | Some t, Some e ->
-       let { res; typ; used } =
-         static_semantic_exp e { fdec; tdef; vdec; vdef; sdec; sdef; suse }
-       in
-       type_unify_exn typ t;
-       { vdef = vdef'; res = A'.Return (Some res); used }
-     | None, None -> { vdef = vdef'; res = A'.Return None; used = SS.empty }
-     | _ -> raise TypeError)
+    | Some t, Some e ->
+      let { res; typ; used } =
+        static_semantic_exp e { fdec; tdef; vdec; vdef; sdec; sdef; suse }
+      in
+      type_unify_exn typ t;
+      { vdef = vdef'; res = A'.Return (Some res); used }
+    | None, None -> { vdef = vdef'; res = A'.Return None; used = SS.empty }
+    | _ -> raise TypeError)
   | A.Nop -> { vdef; res = A'.Nop; used = SS.empty }
   | A.Seq (s1, s2) ->
     let { vdef = vdef1; res = res1; used = used1 } =
@@ -692,9 +697,9 @@ let rec static_semantic_stm
    this is essentially a fold function, 
    return new global_ctx and used function names *)
 let static_semantic_gdecl
-  (gdecl : A.mglob)
-  ({ fdef; fdec; tdef; sdec; sdef; suse } : global_ctx)
-  : global_ctx * SS.t * A'.glob option
+    (gdecl : A.mglob)
+    ({ fdef; fdec; tdef; sdec; sdef; suse } : global_ctx)
+    : global_ctx * SS.t * A'.glob option
   =
   match Mark.data gdecl with
   | A.Typedef { told; tnew } ->
@@ -719,22 +724,22 @@ let static_semantic_gdecl
     let fsig_real, snames = resolve_fsig tdef fsig in
     let () = validate_args tdef args fsig_real in
     (match f_declared fdec f with
-     | None ->
-       (*_ if f hasn't been declared yet, check: f not type name *)
-       let () =
-         match t_defined tdef f with
-         | None -> ()
-         | Some _ -> raise TypeError
-       in
-       let fdec' = SM.add_exn fdec ~key:f ~data:fsig_real in
-       ( { fdef; fdec = fdec'; tdef; sdec = SS.union sdec snames; sdef; suse }
-       , SS.empty
-       , None )
-     | Some fsig_real' ->
-       (*_ if f is redeclared: check fsig is the same *)
-       if T.equal_fsig_real fsig_real fsig_real'
-       then { fdef; fdec; tdef; sdec = SS.union sdec snames; sdef; suse }, SS.empty, None
-       else raise TypeError)
+    | None ->
+      (*_ if f hasn't been declared yet, check: f not type name *)
+      let () =
+        match t_defined tdef f with
+        | None -> ()
+        | Some _ -> raise TypeError
+      in
+      let fdec' = SM.add_exn fdec ~key:f ~data:fsig_real in
+      ( { fdef; fdec = fdec'; tdef; sdec = SS.union sdec snames; sdef; suse }
+      , SS.empty
+      , None )
+    | Some fsig_real' ->
+      (*_ if f is redeclared: check fsig is the same *)
+      if T.equal_fsig_real fsig_real fsig_real'
+      then { fdef; fdec; tdef; sdec = SS.union sdec snames; sdef; suse }, SS.empty, None
+      else raise TypeError)
   | A.Fundef { f; args; fsig; fdef = mstm } ->
     let fsig_real, snames = resolve_fsig tdef fsig in
     let () =
