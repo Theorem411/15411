@@ -301,7 +301,7 @@ let do_arg_moves
           [ X86.BinCommand
               { op = Mov
               ; dest = d
-              ; src = X86.Stack (total_size + 16 + (8 * i))
+              ; src = X86.Stack (total_size + 8 + (8 * i))
               ; size = sz
               }
           ]
@@ -310,7 +310,7 @@ let do_arg_moves
           [ X86.BinCommand
               { op = Mov
               ; dest = X86.get_free sz
-              ; src = X86.Stack (total_size + 16 + (8 * i))
+              ; src = X86.Stack (total_size + 8 + (8 * i))
               ; size = sz
               }
           ; X86.BinCommand { op = Mov; dest = d; src = X86.get_free sz; size = sz }
