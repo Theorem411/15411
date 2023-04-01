@@ -1,97 +1,11 @@
-//test return ~2147483648
+//test return 4
 
-/**
- * @brief This program ensures that rsp is 16-byte aligned before callq.
- *
- * It does so by testing a series of functions, each with one more temp
- * than the previous. The intent is to cover a sequence of a number of
- * spills, so that both an even and odd number of spills will be tested.
- *
- * Some of the basic tests should already check this. However, doing this
- * in a systematic way makes it less likely compilers will get "lucky".
- *
- * Note: the print_fpt() function is the one that actually causes a
- * segmentation fault, because it uses fprintf(), which uses floating-point
- * instructions to read floating-point values from stack memory.
- *
- * Kevin Geng, Team Barsoomian
- * 15-411 Fall 2019
- */
-
-fpt recurse0(fpt x, int _2, int _3, int _4, int _5, int _6, int _7) {
-  print_fpt(x);
-  return fadd(fmul(x, x),
-    fadd(itof(_2),
-      fadd(itof(_3),
-        fadd(itof(_4),
-          fadd(itof(_5),
-            fadd(itof(_6), itof(_7)))))));
+int big_guy(int a, int b, int c, int d,
+            int h, int i, int j, int x) {
+  return h + i + j + x;
 }
 
-fpt recurse1(fpt x, int _2, int _3, int _4, int _5, int _6, int _7) {
-  fpt x2 = fdiv(x, itof(2));
-  fpt x3 = fdiv(x, itof(3));
-  fpt x4 = fdiv(x, itof(4));
-  fpt x5 = fdiv(x, itof(5));
-  fpt x6 = fdiv(x, itof(6));
-  fpt x7 = fdiv(x, itof(7));
-  fpt x8 = fdiv(x, itof(8));
-  fpt x9 = fdiv(x, itof(9));
-  print_fpt(x);
-  return x + recurse0(x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9, _2, _3, _4, _5, _6, _7);
-}
-
-fpt recurse2(fpt x, int _2, int _3, int _4, int _5, int _6, int _7) {
-  fpt x2 = fdiv(x, itof(2));
-  fpt x3 = fdiv(x, itof(3));
-  fpt x4 = fdiv(x, itof(4));
-  fpt x5 = fdiv(x, itof(5));
-  fpt x6 = fdiv(x, itof(6));
-  fpt x7 = fdiv(x, itof(7));
-  fpt x8 = fdiv(x, itof(8));
-  print_fpt(x);
-  return x + recurse1(x2 + x3 + x4 + x5 + x6 + x7 + x8 + x, _2, _3, _4, _5, _6, _7);
-}
-
-fpt recurse3(fpt x, int _2, int _3, int _4, int _5, int _6, int _7) {
-  fpt x2 = fdiv(x, itof(2));
-  fpt x3 = fdiv(x, itof(3));
-  fpt x4 = fdiv(x, itof(4));
-  fpt x5 = fdiv(x, itof(5));
-  fpt x6 = fdiv(x, itof(6));
-  fpt x7 = fdiv(x, itof(7));
-  print_fpt(x);
-  return x + recurse2(x2 + x3 + x4 + x5 + x6 + x7 + x + x, _2, _3, _4, _5, _6, _7);
-}
-
-fpt recurse4(fpt x, int _2, int _3, int _4, int _5, int _6, int _7) {
-  fpt x2 = fdiv(x, itof(2));
-  fpt x3 = fdiv(x, itof(3));
-  fpt x4 = fdiv(x, itof(4));
-  fpt x5 = fdiv(x, itof(5));
-  fpt x6 = fdiv(x, itof(6));
-  print_fpt(x);
-  return x + recurse3(x2 + x3 + x4 + x5 + x6 + x + x + x, _2, _3, _4, _5, _6, _7);
-}
-
-fpt recurse5(fpt x, int _2, int _3, int _4, int _5, int _6, int _7) {
-  fpt x2 = fdiv(x, itof(2));
-  fpt x3 = fdiv(x, itof(3));
-  fpt x4 = fdiv(x, itof(4));
-  fpt x5 = fdiv(x, itof(5));
-  print_fpt(x);
-  return x + recurse4(x2 + x3 + x4 + x5 + x + x + x + x, _2, _3, _4, _5, _6, _7);
-}
-
-fpt recurse6(fpt x, int _2, int _3, int _4, int _5, int _6, int _7) {
-  fpt x2 = fdiv(x, itof(2));
-  fpt x3 = fdiv(x, itof(3));
-  fpt x4 = fdiv(x, itof(4));
-  print_fpt(x);
-  return x + recurse5(x2 + x3 + x4 + x + x + x + x, _2, _3, _4, _5, _6, _7);
-}
-
-int main() {
-  fpt x = itof(16);
-  return ftoi(recurse6(x, 2, 3, 4, 5, 6, 7));
+int main () {
+  return big_guy(-1,-1,-1,-1,
+                  1, 1, 500, 300);
 }
