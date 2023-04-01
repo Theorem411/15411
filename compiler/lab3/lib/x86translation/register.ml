@@ -17,11 +17,6 @@ type reg_enum =
   | R15D
   | RBP
   | RSP
-  | RCX
-  | RDX
-  | RSI
-  | RDI
-  | RBX
 [@@deriving equal, sexp, compare, enum, hash]
 
 type reg =
@@ -51,15 +46,10 @@ let equal_reg a b =
 let format_reg_32 = function
   | EAX -> "%eax"
   | EBX -> "%ebx"
-  | RBX -> "%ebx"
   | ECX -> "%ecx"
-  | RCX -> "%ecx"
   | EDX -> "%edx"
-  | RDX -> "%edx"
   | ESI -> "%esi"
-  | RSI -> "%esi"
   | EDI -> "%edi"
-  | RDI -> "%edi"
   | R8D -> "%r8d"
   | R9D -> "%r9d"
   | R10D -> "%r10d"
@@ -74,16 +64,11 @@ let format_reg_32 = function
 
 let format_reg_64 = function
   | EAX -> "%rax"
-  | RBX -> "%rbx"
   | EBX -> "%rbx"
   | ECX -> "%rcx"
-  | RCX -> "%rcx"
   | EDX -> "%rdx"
-  | RDX -> "%rdx"
   | ESI -> "%rsi"
-  | RSI -> "%rsi"
   | EDI -> "%rdi"
-  | RDI -> "%rdi"
   | R8D -> "%r8"
   | R9D -> "%r9"
   | R10D -> "%r10"

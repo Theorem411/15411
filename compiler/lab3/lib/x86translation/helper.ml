@@ -4,7 +4,7 @@ module V = Graph.Vertex
 module R = Register
 
 let no_reg_alloc = false
-let should_print_reg_map = false
+let should_print_reg_map = true
 
 type color = int [@@deriving compare, equal, sexp]
 
@@ -147,11 +147,6 @@ let asreg_to_reg = function
   | R15D -> R.R15D
   | RBP -> R.RBP
   | RSP -> R.RSP
-  | RCX -> R.RCX
-  | RDX -> R.RDX
-  | RSI -> R.RSI
-  | RDI -> R.RDI
-  | RBX -> R.RBX
 ;;
 
 let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
@@ -178,9 +173,6 @@ let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
 
 let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) list * int =
   let groups = group_by_colors op2col in
-  (*_ let () = print_source (sexp_of_string "\n groups len " :: ([sexp_of_int (List.length groups)])) in  *)
-  (*_ let () = print_source (sexp_of_string "\n groups" :: (List.map groups ~f:sexp_of_another_random_pair_debug)) in  *)
-  (*_ get (Reg, i) list *)
   let used_regs_with_color =
     List.filter op2col ~f:(fun l ->
         match l with
@@ -207,9 +199,10 @@ let assign_colors (op2col : (AS.operand * color) list) : (color * X86.operand) l
 ;;
 
 let get_callee_regs (reg_map : X86.operand AS.Map.t) =
-  let used_map = AS.Map.filter ~f:(fun o -> X86.is_reg o && X86.callee_saved o) reg_map in
+  let used_map =  AS.Map.filter ~f:(fun o -> X86.is_reg o && X86.callee_saved o) reg_map in
   (* TODO add check if rbp is already inside. *)
-  rbp :: AS.Map.data used_map
+  let res = rbp :: AS.Map.data used_map in 
+  List.dedup_and_sort res ~compare:X86.compare_operand
 ;;
 
 let override_to_q (r : X86.operand) =

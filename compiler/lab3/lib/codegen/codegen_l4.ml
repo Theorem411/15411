@@ -211,12 +211,12 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
   | T.AssertFail -> [ A.AssertFail ]
   | T.Alloc { dest; size } ->
     [ (* edi <-4 size *)
-      A.Mov { dest = A.Reg A.RDI; size = A.S; src = A.Imm (Int64.of_int_exn size) }
+      A.Mov { dest = A.Reg A.EDI; size = A.S; src = A.Imm (Int64.of_int_exn size) }
       (* call allocjavaway *)
     ; A.Call
         { fname = Symbol.symbol CustomAssembly.alloc_fname
         ; args_overflow = []
-        ; args_in_regs = [ A.RDI, A.S ]
+        ; args_in_regs = [ A.EDI, A.S ]
         }
       (* dest <-8 rax *)
     ; A.Mov { dest = A.Temp dest; size = A.L; src = A.Reg A.EAX }
@@ -225,13 +225,13 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     let t1 = A.Temp (Temp.create ()) in
     [ munch_exp t1 len ~mfl
     ; [ (* edi <-4 typ *)
-        A.Mov { dest = A.Reg A.RDI; size = A.S; src = A.Imm (Int64.of_int_exn typ) }
+        A.Mov { dest = A.Reg A.EDI; size = A.S; src = A.Imm (Int64.of_int_exn typ) }
         (* edi <-4 len *)
-      ; A.Mov { dest = A.Reg A.RSI; size = A.S; src = t1 } (* call allocjavaway *)
+      ; A.Mov { dest = A.Reg A.ESI; size = A.S; src = t1 } (* call allocjavaway *)
       ; A.Call
           { fname = Symbol.symbol CustomAssembly.alloc_array_fname
           ; args_overflow = []
-          ; args_in_regs = [ A.RDI, A.S; A.RSI, A.S ]
+          ; args_in_regs = [ A.EDI, A.S; A.ESI, A.S ]
           }
         (* dest <-8 rax *)
       ; A.Mov { dest = A.Temp dest; size = A.L; src = A.Reg A.EAX }
