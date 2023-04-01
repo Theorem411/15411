@@ -480,7 +480,7 @@ let tr_stm (env : Temp.t S.t) (stm : A.stm) (binit : block_tobe) : T.block list 
   let rem_intrs =
     match bleft.code with
     | [] -> [ T.Return None ]
-    | _ -> List.rev bleft.code
+    | _ -> List.rev (T.Return None :: bleft.code)
   in
   let acc_rev =
     ({ label = bleft.l; block = rem_intrs; jump = T.JRet } : T.block) :: acc_rev
