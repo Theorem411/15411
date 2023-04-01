@@ -19,11 +19,6 @@ let as_to_reg_enum : AS.reg -> R.reg_enum = function
   | AS.R15D -> R.R15D
   | AS.RBP -> R.RBP
   | AS.RSP -> R.RSP
-  | AS.RCX -> R.RCX
-  | AS.RDX -> R.RDX
-  | AS.RSI -> R.RSI
-  | AS.RDI -> R.RDI
-  | AS.RBX -> R.RBX
 ;;
 
 type operand =

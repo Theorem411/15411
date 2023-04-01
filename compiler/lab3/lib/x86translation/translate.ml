@@ -360,7 +360,7 @@ let get_memErrLabel_block memErrLabel =
   ; X86.Comment "Memory Error Label"
   ; X86.BinCommand
       { op = X86.Mov
-      ; dest = X86.Reg { reg = R.RDI; size = 4 }
+      ; dest = X86.Reg { reg = R.EDI; size = 4 }
       ; src = X86.Imm (Int64.of_int_exn 12)
       ; size = X86.L
       }

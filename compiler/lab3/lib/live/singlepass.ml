@@ -14,8 +14,8 @@ let dump_liveness : bool ref = ref false
     prerr_endline)
 ;; *)
 
-(* let print_info = prerr_endline *)
-let print_info _ = ()
+let print_info = prerr_endline
+(* let print_info _ = () *)
 
 type ht_entry =
   { d : V.Set.t
@@ -79,7 +79,8 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     V.Set.union_list (List.map ~f:op_to_vset [ src; AS.Reg AS.EAX ]), V.Set.empty
   (* defines a lot of registers *)
   | AS.Call { args_in_regs; _ } ->
-    ( V.Set.of_list (List.map ~f:(fun r -> V.R r) [ AS.EAX ])
+    (* %rdi, %rsi, %rdx, %rcx, %r8, %r9, %rax - caller saved registers *)
+    ( V.Set.of_list (List.map ~f:(fun r -> V.R r) [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D  ])
     , V.Set.of_list (List.map ~f:(fun (r, _) -> V.R r) args_in_regs) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->

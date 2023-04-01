@@ -17,11 +17,6 @@ type reg =
   | R15D
   | RBP
   | RSP
-  | RCX
-  | RDX
-  | RSI
-  | RDI
-  | RBX
 [@@deriving equal, sexp, compare, enum, hash]
 
 type operand =
