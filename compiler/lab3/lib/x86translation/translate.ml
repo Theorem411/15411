@@ -14,15 +14,29 @@ let translate_pure get_final = function
     let d_final = get_final (d, size) in
     let lhs_final = get_final (lhs, size) in
     let rhs_final = get_final (rhs, size) in
-    (match d_final with
-    | X86.Reg _ ->
+    let is_too_big_imm inp =
+      match inp with
+      | X86.Imm x ->
+        (match Int32.of_int64 x with
+        | Some _ -> false
+        | None -> true)
+        | _ -> false
+    in
+    (match d_final, is_too_big_imm rhs_final with
+    | X86.Reg _, _ ->
       [ X86.BinCommand { op = Mov; dest = d_final; src = lhs_final; size }
       ; X86.BinCommand { op = X86.pure_to_opr op; dest = d_final; src = rhs_final; size }
       ]
-    | Stack _ ->
+    | Stack _, false ->
       [ X86.BinCommand { op = Mov; dest = X86.get_free size; src = lhs_final; size }
       ; X86.BinCommand
           { op = X86.pure_to_opr op; dest = X86.get_free size; src = rhs_final; size }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
+      ]
+    | Stack _, true ->
+      [ X86.BinCommand { op = Mov; dest = X86.get_free size; src = rhs_final; size }
+      ; X86.BinCommand
+          { op = X86.pure_to_opr op; dest = X86.get_free size; src = lhs_final; size }
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
       ]
     | _ -> failwith "X86.Imm can not be a dest")
