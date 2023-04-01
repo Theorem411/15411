@@ -1,13 +1,46 @@
-//test return 10000
+//test return 151
+// code for representing, creating, and reversing a Linked List
 
-int main()
-{
-	int count = 0;
-	for (int i = 0; i < 10000; i++) {
-		int*[] a = alloc_array(int*, 134217727);
-		a[0] = alloc(int);
-		*a[0] = 1;
-		count += *a[0];
-	}
-	return count;
-}
+struct Node { 
+    int data; 
+    struct Node* next; 
+}; 
+
+void reverse(struct Node** head_ref) 
+{ 
+    struct Node* prev = NULL; 
+    struct Node* current = *head_ref; 
+    struct Node* next = NULL; 
+    while (current != NULL) { 
+        next = current->next; 
+        current->next = prev; 
+        prev = current; 
+        current = next; 
+    } 
+    *head_ref = prev; 
+} 
+
+void add_node(struct Node** head_ref, int new_data) 
+{ 
+    struct Node* new_node = alloc(struct Node); 
+    new_node->data = new_data; 
+    new_node->next = (*head_ref); 
+    (*head_ref) = new_node; 
+} 
+
+int main() 
+{ 
+    struct Node** p = alloc(struct Node *);
+    *p = NULL; 
+  
+    add_node(p, 151); 
+    add_node(p, 251); 
+    add_node(p, 122);
+    add_node(p, 411);
+    // 411 -> 122 -> 251 -> 151 
+
+    reverse(p);
+    // 151 -> 251 -> 122 -> 411
+
+    return (*p)->data;
+} 
