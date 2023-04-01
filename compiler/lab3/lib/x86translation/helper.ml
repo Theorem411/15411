@@ -4,7 +4,7 @@ module V = Graph.Vertex
 module R = Register
 
 let no_reg_alloc = true
-let should_print_reg_map = false
+let should_print_reg_map = true
 
 type color = int [@@deriving compare, equal, sexp]
 
