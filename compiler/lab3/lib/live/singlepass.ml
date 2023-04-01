@@ -309,7 +309,7 @@ let uses_defs_block (b : B.block) =
   let ufinal, dfinal =
     List.fold b.block ~init:(ub, db) ~f:(fun (ub, db) (_, instr) ->
         let dl, ul = local_def_n_use instr in
-        V.Set.diff (V.Set.union ub ul) db, V.Set.union db dl)
+        V.Set.union ub (V.Set.diff ul db), V.Set.union db dl)
   in
   ufinal, dfinal
 ;;

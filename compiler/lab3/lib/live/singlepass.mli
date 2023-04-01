@@ -15,4 +15,5 @@ val dump_liveness : bool ref
 (* returns the vertex set and edge list of the given block *)
 val get_edges_vertices : t -> B.fspace -> V.Set.t * (V.t * V.t) list
 
+(* gives back (block uses set, block defs set) *)
 val uses_defs_block: B.block -> V.Set.t * V.Set.t
