@@ -321,7 +321,6 @@ let do_arg_moves
 
 (* arg[7 + i] <- rsp has some size so recalculate *)
 
-
 let get_function_be
     ((fname, __args) : Symbol.t * (Temp.t * AS.size) list)
     reg_map
@@ -335,9 +334,9 @@ let get_function_be
   (*active size of frame (local and arg pushes)*)
   let m = n + List.length cee_regs in
   (* total size of frame (added regs)*)
-  let __sub_count : int = if m % 2 = 0 then n * 8 else (n * 8) + 8 in
+  let __sub_count : int = if m % 2 = 0 then n * 8 + 8 else (n * 8) in
   let sub_count = Int64.of_int_exn __sub_count in
-  let total_size = __sub_count + (List.length cee_regs * 8) in
+  let total_size = __sub_count + ((List.length cee_regs * 8)) in
   let locals = do_arg_moves reg_map args total_size in
   let ret_label = Label.create () in
   (* function labels *)
@@ -345,9 +344,9 @@ let get_function_be
     [ X86.Directive (sprintf ".globl %s" (Symbol.name fname))
     ; X86.Directive (sprintf ".type\t%s, @function" (Symbol.name fname))
     ; X86.FunName (Symbol.name fname) (* ; X86.UnCommand { op = X86.Pushq; src = rbp } *)
-    ; X86.BinCommand { op = Mov; dest = rbp; src = rsp; size = X86.Q }
     ]
     @ cee_start
+    @ [ X86.BinCommand { op = Mov; dest = rbp; src = rsp; size = X86.Q } ]
     @ (if __sub_count = 0
       then []
       else

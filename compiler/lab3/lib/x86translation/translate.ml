@@ -139,7 +139,10 @@ let translate_call
   if List.length stack_args = 0
   then call
   else (
-    let jump_int = List.length stack_args * 8 in
+    let jump_int =
+      let n = List.length stack_args in
+      if n % 2 = 0 then n * 8 else (n * 8) + 8
+    in
     let jump_size = Int64.of_int_exn jump_int in
     let arg_moves =
       List.concat_mapi
@@ -247,8 +250,7 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       ; X86.MovFrom { dest = d_final; src = X86.get_free X86.Q; size }
       ]
     | Imm _, _ -> failwith "deref of an imm"
-    | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ]
-    )
+    | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;
 
@@ -261,20 +263,18 @@ let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = functi
     | _ ->
       (* mov mem, mem *)
       [ (* X86.BinCommand { op = Mov; dest = X86.get_free size; src = src_final; size } *)
-        X86.BinCommand
-          { op = Mov; dest = X86.get_free size; src = src_final; size = size }
+        X86.BinCommand { op = Mov; dest = X86.get_free size; src = src_final; size }
       ; X86.BinCommand
           { op = Mov; dest = X86.get_memfree X86.Q; src = d_final; size = X86.Q }
       ; X86.MovTo { src = X86.get_free size; dest = X86.get_memfree X86.Q; size }
       ]
-    (* | Stack _, _ ->
+      (* | Stack _, _ ->
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
       ; X86.MovTo { src = src_final; dest = X86.get_free X86.Q; size }
       ]
     | Imm _, _ -> failwith "deref of an imm"
-    | _ -> [ X86.MovTo { dest = d_final; src = src_final; size } ] *)
-    )
+    | _ -> [ X86.MovTo { dest = d_final; src = src_final; size } ] *))
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;
 
