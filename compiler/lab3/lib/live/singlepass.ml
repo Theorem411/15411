@@ -15,6 +15,7 @@ let dump_liveness : bool ref = ref false
 ;; *)
 
 let print_info = prerr_endline
+(* let print_info = prerr_endline *)
 
 type ht_entry =
   { d : V.Set.t
@@ -51,8 +52,8 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   in
   let op_to_vset_mem_mov (op : AS.operand) : V.Set.t =
     match V.op_to_vertex_opt op with
-    | Some v -> V.Set.of_list [ v; V.R AS.R10D ]
-    | None -> V.Set.singleton (V.R AS.R10D)
+    | Some v -> V.Set.of_list [ v ]
+    | None -> V.Set.of_list []
   in
   match instr with
   | AS.Mov { dest; src; _ } -> op_to_vset dest, op_to_vset src
@@ -78,10 +79,7 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     V.Set.union_list (List.map ~f:op_to_vset [ src; AS.Reg AS.EAX ]), V.Set.empty
   (* defines a lot of registers *)
   | AS.Call { args_in_regs; _ } ->
-    ( V.Set.of_list
-        (List.map
-           ~f:(fun r -> V.R r)
-           [ AS.EAX ])
+    ( V.Set.of_list (List.map ~f:(fun r -> V.R r) [ AS.EAX ])
     , V.Set.of_list (List.map ~f:(fun (r, _) -> V.R r) args_in_regs) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->

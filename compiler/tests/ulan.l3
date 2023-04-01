@@ -8,6 +8,6 @@ int* foo(int* a) {
 int main() {
   int* a;
   a = alloc(int);
-  *a = *a + *foo(a);
+  foo(a);
   return *a;
 }
