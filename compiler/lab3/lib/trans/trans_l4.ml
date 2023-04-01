@@ -225,41 +225,38 @@ let rec tr_stm_rev
   | A2PA { addr = A.Ptr { start; off }; op; exp } ->
     (*_ first address *)
     let start, acc, b = tr_exp_rev env start acc_rev block_rev in
+    (*_ then translate e *)
+    let e, acc, b = tr_exp_rev env exp acc b in
     (* let opopt = Option.map op ~f:(intop_to_ibop) in *)
     let addr = T.Ptr { start; off } in
-    let acc, b =
+    let code =
       match op with
       | Some (A.Pure op) ->
-        let e, acc, b = tr_exp_rev env exp acc b in
         let op = intop_to_pbop op in
         let t = Temp.create () in
-        let b = {
-          b with code=
         T.MovToMem { addr; src = T.Binop { op; lhs = T.Temp t, 4; rhs = e }, 4 }
         :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp }
-        :: b.code} in
-        acc, b
+        :: b.code
       | Some (A.Efkt op) ->
-        let e, acc, b = tr_exp_rev env exp acc b in
         let ebop = intop_to_ebop op in
         let t = Temp.create () in
         let t' = Temp.create () in
-        let b = { b with code = 
-          T.MovToMem { addr; src = T.Temp t', 4 }
+        T.MovToMem { addr; src = T.Temp t', 4 }
         :: T.MovEfktExp { dest = t'; ebop; lhs = T.Temp t, 4; rhs = e }
         :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp; }
-        :: b.code } in
-        acc, b
-      | None -> 
-        let t' = Temp.create () in
-        let b = { b with code= T.MovPureExp { dest=t'; src = T.Mem addr, A.size exp } :: b.code} in
-        let e, acc, b = tr_exp_rev env exp acc b in
-        let b = { b with code= T.MovToMem { addr; src = e} :: b.code} in
-        acc, b
+        :: b.code
+      | None -> T.MovToMem { addr; src = e } :: b.code
     in
-    (* let b = { b with code } in *)
+    let b = { b with code } in
     acc, b
   | A2PA { addr = A.Null; op; exp } ->
+    (* let opopt = Option.map op ~f:(intop_to_ibop) in *)
+    (* let t = Temp.create () in
+    let b =
+      { block_rev with
+        code = T.MovPureExp { dest = t; src = T.Mem T.Null, A.size exp } :: block_rev.code
+      }
+    in *)
     let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
     let code =
       match op with
