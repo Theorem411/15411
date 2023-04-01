@@ -20,7 +20,7 @@ let translate_pure get_final = function
         (match Int32.of_int64 x with
         | Some _ -> false
         | None -> true)
-        | _ -> false
+      | _ -> false
     in
     (match d_final, is_too_big_imm rhs_final with
     | X86.Reg _, _ ->
@@ -258,10 +258,17 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
       ]
     | Stack _, _ ->
-      (* mov mem, mem *)
+      (* mov (mem) -> sth *)
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
       ; X86.MovFrom { dest = d_final; src = X86.get_free X86.Q; size }
+      ]
+    | _, Stack _ ->
+      (* mov (reg) -> mem *)
+      [ X86.BinCommand
+          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
+      ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free X86.Q; size }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
       ]
     | Imm _, _ -> failwith "deref of an imm"
     | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
