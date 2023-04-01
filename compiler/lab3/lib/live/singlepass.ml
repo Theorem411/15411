@@ -81,7 +81,7 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     ( V.Set.of_list
         (List.map
            ~f:(fun r -> V.R r)
-           [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D; AS.R10D; AS.R11D ])
+           [ AS.EAX ])
     , V.Set.of_list (List.map ~f:(fun (r, _) -> V.R r) args_in_regs) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->

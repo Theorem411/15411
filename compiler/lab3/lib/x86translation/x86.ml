@@ -323,19 +323,7 @@ let caller_saved oper =
 ;;
 
 let all_available_regs =
-  [
-  (* AS.EAX *)
-    (* AS.EDX *)
-    (* AS.EDI
-  ; AS.ESI (* ; AS.ECX removed for now because of shift operators *)
-  *)
-    (* AS.R8D
-  ; AS.R9D
-  ; AS.R12D
-  ; AS.R13D
-  ; AS.R14D
-  ; AS.R15D *)
-  ]
+  [ AS.EAX; AS.EDX; AS.EDI; AS.ESI; AS.R8D; AS.R9D; AS.R12D; AS.R13D; AS.R14D; AS.R15D ]
 ;;
 
 let is_reg = function
