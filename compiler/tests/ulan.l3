@@ -1,13 +1,11 @@
-//test return 1
+//test return 75
+/* Testing external function calls to
+ * floating point operations
+ */
 
-int* foo(int* a) {
-  *a += 1;
-  return a;
-}
-
-int main() {
-  int* a;
-  a = alloc(int);
-  foo(a);
-  return *a;
+int main () {
+  fpt x = itof(10);
+  x = fmul(x,fdiv(fadd(x,itof(5)),itof(2)));
+  print_fpt(x);
+  return ftoi(x);
 }
