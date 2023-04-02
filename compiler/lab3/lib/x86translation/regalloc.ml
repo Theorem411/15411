@@ -38,10 +38,6 @@ let asr2renum : AS.reg -> R.reg_enum = function
 (* let should_print_reg_map = false *)
 
 type color = int
-
-let rbp = X86.Reg { reg = R.RBP; size = 8 }
-let rsp = X86.Reg { reg = R.RSP; size = 8 }
-
 (*_ helper functions *)
 let __v2op (v : V.t) : AS.operand =
   match v with
