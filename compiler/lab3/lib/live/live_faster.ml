@@ -117,16 +117,18 @@ let mk_liveness_fspace (fspace : B.fspace) =
   in
   let () = loop () in
   (*_ do one final single passing using biot *)
-  let l2io' = LT.to_alist l2io |> List.map ~f:(fun (l, lio) -> LM.find_exn l2b l, lio.liveout) in
-  let mapf (b, liveout : B.block * V.Set.t) = SP.singlepass sptbl b liveout in
-  let _ : V.Set.t list = List.map l2io' ~f:mapf in
+  let l2io' =
+    LT.to_alist l2io |> List.map ~f:(fun (l, lio) -> LM.find_exn l2b l, lio.liveout)
+  in
+  let mapf ((b, liveout) : B.block * V.Set.t) = SP.singlepass sptbl b liveout in
+  let (_ : V.Set.t list) = List.map l2io' ~f:mapf in
   sptbl
 ;;
 
 (*_ the final mk_graph_fspace function *)
 module VertexTable = Hashtbl.Make (V)
 
-let mk_graph_fspace (fspace : B.fspace) = 
+let mk_graph_fspace (fspace : B.fspace) =
   let spt = mk_liveness_fspace fspace in
   let vertices, edges = SP.get_edges_vertices spt fspace in
   (*_ create a hashtable graph *)
@@ -136,14 +138,14 @@ let mk_graph_fspace (fspace : B.fspace) =
   in
   let () =
     List.iter edges ~f:(fun (a, b) ->
-        let a_set = VertexTable.find_exn graph' a in
-        let b_set = VertexTable.find_exn graph' b in
-        if not (V.equal a b)
-        then (
-          let () = VertexTable.set graph' ~key:b ~data:(V.Set.add b_set a) in
-          let () = VertexTable.set graph' ~key:a ~data:(V.Set.add a_set b) in
-          ())
-        else ())
+      let a_set = VertexTable.find_exn graph' a in
+      let b_set = VertexTable.find_exn graph' b in
+      if not (V.equal a b)
+      then (
+        let () = VertexTable.set graph' ~key:b ~data:(V.Set.add b_set a) in
+        let () = VertexTable.set graph' ~key:a ~data:(V.Set.add a_set b) in
+        ())
+      else ())
   in
   V.Map.of_hashtbl_exn graph'
 ;;

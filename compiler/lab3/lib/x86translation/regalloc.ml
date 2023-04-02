@@ -117,7 +117,7 @@ let __free_regs (c2v : reg_n_temps CM.t) : reg_or_spill list =
   free_regs
 ;;
 
-let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * int =
+let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
   (*_ think of three layers: 1. the temps 2. the colors 3. the registers *)
   (*_ do the coloring magic: produce (T/R) to c mapping *)
   let graph = Live.mk_graph_fspace (Block.of_fspace fspace) in
@@ -150,12 +150,29 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * int =
   (* combine precolor with postcolor*)
   (*_ compose t2c tith c2r to get t2r_or_spl *)
   let t2r = TM.mapi t2c ~f:(fun ~key:_ ~data:c -> CM.find_exn c2r c) in
-  let mem_count =
-    TM.filter t2r ~f:(fun r_or_spl ->
-      match r_or_spl with
-      | Reg _ -> false
-      | Spl _ -> true)
-    |> TM.length
-  in
-  t2r, mem_count
+  t2r
 ;;
+
+let mem_count (t2r : reg_or_spill TM.t) : int =
+  TM.filter t2r ~f:(fun r_or_spl ->
+    match r_or_spl with
+    | Reg _ -> false
+    | Spl _ -> true)
+  |> TM.length
+;;
+
+let caller_save (t2r : reg_or_spill TM.t) : R.reg_enum list = 
+  TM.filter_map t2r ~f:(fun r_or_spl -> 
+    match r_or_spl with 
+    | Reg r -> Some r
+    | _ -> None
+  ) |> TM.data |> List.filter ~f:R.caller_saved
+;; 
+
+let callee_save (t2r : reg_or_spill TM.t) : R.reg_enum list = 
+  TM.filter_map t2r ~f:(fun r_or_spl -> 
+    match r_or_spl with 
+    | Reg r -> Some r
+    | _ -> None
+  ) |> TM.data |> List.filter ~f:R.callee_saved
+;; 
