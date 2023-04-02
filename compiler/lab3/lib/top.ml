@@ -178,7 +178,7 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
 
 let say_if (v : bool) (f : unit -> string) = if v then prerr_endline (f ())
 
-let regalloc (cmd : cmd_line_args) =
+(* let regalloc (cmd : cmd_line_args) =
   match String.chop_suffix cmd.filename ~suffix:".in" with
   | None ->
     prerr_endline "Invalid input filename";
@@ -192,7 +192,7 @@ let regalloc (cmd : cmd_line_args) =
         Out_channel.output_string
           out
           (output |> Lab1_checkpoint.json_of_allocations |> Yojson.Basic.to_string))
-;;
+;; *)
 
 let elaboration_step (ast, ast_h) cmd =
   say_if cmd.verbose (fun () -> "doing elaborating...");
@@ -275,7 +275,7 @@ let compile (cmd : cmd_line_args) : unit =
 ;;
 
 let run (cmd : cmd_line_args) : unit =
-  try if cmd.regalloc_only then regalloc cmd else compile cmd with
+  try if cmd.regalloc_only then compile cmd else compile cmd with (*_ regalloc cmd*)
   | Error_msg.Error ->
     prerr_endline "Compilation failed.";
     exit 1

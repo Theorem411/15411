@@ -19,13 +19,18 @@ type reg_enum =
   | RSP
 [@@deriving equal, sexp, compare, enum, hash]
 
+let allregs : reg_enum list =
+  [ EAX; EDX; ECX; ESI; EDI; EBX; R8D; R9D; R10D; R11D; R12D; R13D; R14D; R15D; RBP; RSP ]
+;;
+
+
 type reg =
   { reg : reg_enum
   ; size : int
   }
 [@@deriving equal, sexp, compare, hash]
 
-let eax = {reg = EAX; size = 4}
+let eax = { reg = EAX; size = 4 }
 
 let arg_i_to_reg sz = function
   | 0 -> { reg = EDI; size = sz }
@@ -90,22 +95,22 @@ let format_reg_16 = function
 let format_reg = function
   | { reg; size } ->
     (match size with
-    | 2 -> format_reg_16 reg
-    | 4 -> format_reg_32 reg
-    | 8 -> format_reg_64 reg
-    | _ -> failwith (sprintf "reg[%s] can not have size %d" (format_reg_32 reg) size))
+     | 2 -> format_reg_16 reg
+     | 4 -> format_reg_32 reg
+     | 8 -> format_reg_64 reg
+     | _ -> failwith (sprintf "reg[%s] can not have size %d" (format_reg_32 reg) size))
 ;;
 
 let callee_saved = function
   | { reg; _ } ->
     (match reg with
-    | EBX | RSP | RBP | R12D | R13D | R14D | R15D -> true
-    | _ -> false)
+     | EBX | RSP | RBP | R12D | R13D | R14D | R15D -> true
+     | _ -> false)
 ;;
 
 let caller_saved = function
   | { reg; _ } ->
     (match reg with
-    | EAX | EDI | ESI | EDX | ECX | R8D | R9D | R10D | R11D -> true
-    | _ -> false)
+     | EAX | EDI | ESI | EDX | ECX | R8D | R9D | R10D | R11D -> true
+     | _ -> false)
 ;;

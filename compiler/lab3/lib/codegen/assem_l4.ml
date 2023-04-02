@@ -20,6 +20,13 @@ type reg =
   | RSP
 [@@deriving equal, sexp, compare, enum, hash]
 
+let all_regs =
+  [ [ EAX; EDI; ESI; EDX; ECX; R8D; R9D ]; [ RBP; EBX; R12D; R13D; R14D; R15D ] ]
+  |> List.concat
+;;
+
+let num_regs = List.length all_regs
+
 type operand =
   | Imm of Int64.t
   | Reg of reg
@@ -233,7 +240,8 @@ let format_instr' = function
       (format_operand unop.dest)
       (format_unop unop.op)
       (format_operand unop.dest)
-  | Mov { dest; src; size } -> sprintf "%s <-%s- %s" (format_operand dest) (format_size size) (format_operand src)
+  | Mov { dest; src; size } ->
+    sprintf "%s <-%s- %s" (format_operand dest) (format_size size) (format_operand src)
   | MovSxd { dest; src } ->
     sprintf "movsxd %s <-- %s" (format_operand dest) (format_operand src)
   | Directive dir -> sprintf "%s" dir

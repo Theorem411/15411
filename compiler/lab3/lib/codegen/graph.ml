@@ -172,8 +172,9 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
       (v, c_new) :: coloring_aux graph color_palette' vs)
 ;;
 
-let coloring (graph : t) : (Vertex.t * int) list =
+let coloring (graph : t) =
   let vertex_order = ordering graph in
   let color_palette = precolor graph in
-  coloring_aux graph color_palette vertex_order
+  let v2c = coloring_aux graph color_palette vertex_order in
+  Vertex.Map.of_alist_exn v2c
 ;;
