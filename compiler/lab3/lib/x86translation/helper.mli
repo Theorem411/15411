@@ -1,4 +1,4 @@
-module AS = Assem_l4
+(* module AS = Assem_l4
 module V = Graph.Vertex
 
 type color = (int[@deriving sexp, equal, compare])
@@ -12,4 +12,4 @@ val get_function_be
   :  Symbol.t * (Temp.t * AS.size) list
   -> X86.operand AS.Map.t
   -> color
-  -> X86.instr list * X86.instr list * Label.t
+  -> X86.instr list * X86.instr list * Label.t *)
