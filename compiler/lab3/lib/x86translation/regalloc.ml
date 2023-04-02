@@ -15,13 +15,13 @@ end
 module RM = Map.Make (REnum)
 module RS = Set.Make (REnum)
 
-let asr2renum : AS.reg -> R.reg_enum = function 
+let asr2renum : AS.reg -> R.reg_enum = function
   | AS.EAX -> R.EAX
   | AS.EBX -> R.EBX
-  | AS.ECX  -> R.ECX
+  | AS.ECX -> R.ECX
   | AS.EDI -> R.EDI
-  | AS.EDX  -> R.EDX
-  | AS.ESI  -> R.ESI
+  | AS.EDX -> R.EDX
+  | AS.ESI -> R.ESI
   | AS.RSP -> R.RSP
   | AS.RBP -> R.RBP
   | AS.R8D -> R.R8D
@@ -38,6 +38,7 @@ let asr2renum : AS.reg -> R.reg_enum = function
 (* let should_print_reg_map = false *)
 
 type color = int
+
 (*_ helper functions *)
 let __v2op (v : V.t) : AS.operand =
   match v with
@@ -54,7 +55,7 @@ type reg_or_spill =
   | Reg of R.reg_enum
   | Spl of int
 
-let reg (r : AS.reg) = Reg (asr2renum r);;
+let reg (r : AS.reg) = Reg (asr2renum r)
 
 let __c2v (v2c : color VM.t) : reg_n_temps CM.t =
   let c2v_lst = VM.to_alist v2c |> List.map ~f:(fun (x, y) -> y, x) in
@@ -116,7 +117,7 @@ let __free_regs (c2v : reg_n_temps CM.t) : reg_or_spill list =
   free_regs
 ;;
 
-let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
+let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * int =
   (*_ think of three layers: 1. the temps 2. the colors 3. the registers *)
   (*_ do the coloring magic: produce (T/R) to c mapping *)
   let graph = Live.mk_graph_fspace (Block.of_fspace fspace) in
@@ -145,7 +146,16 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
           time"
          (Int.to_string c))
   in
-  let c2r = CM.merge_skewed c2r pc2pr ~combine in (* combine precolor with postcolor*)
+  let c2r = CM.merge_skewed c2r pc2pr ~combine in
+  (* combine precolor with postcolor*)
   (*_ compose t2c tith c2r to get t2r_or_spl *)
-  TM.mapi t2c ~f:(fun ~key:_ ~data:c -> CM.find_exn c2r c)
+  let t2r = TM.mapi t2c ~f:(fun ~key:_ ~data:c -> CM.find_exn c2r c) in
+  let mem_count =
+    TM.filter t2r ~f:(fun r_or_spl ->
+      match r_or_spl with
+      | Reg _ -> false
+      | Spl _ -> true)
+    |> TM.length
+  in
+  t2r, mem_count
 ;;
