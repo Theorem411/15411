@@ -170,7 +170,7 @@ let translate_call
         ~f:(fun i (t, sz) ->
           let sz = X86.to_size sz in
           let src = get_final (AS.Temp t, sz) in
-          let d = X86.Stack (i * 8) in
+          let d = X86.Stack i in
           match src with
           | Stack mem_i ->
             [ X86.BinCommand
@@ -337,7 +337,7 @@ let translate_line
   | AS.AssertFail -> [ X86.Call "abort@plt" ] @ prev_lines
   | AS.Call { fname; args_overflow = stack_args; _ } ->
     translate_call get_final (Symbol.name fname) stack_args @ prev_lines
-  | AS.LoadFromStack _ -> [X86.Comment "\tloading from stack..."] @ stack_moves @ prev_lines
+  | AS.LoadFromStack _ -> List.rev_append ([X86.Comment "\tloading from stack..."] @ stack_moves) prev_lines
   | AS.MovFrom _ -> List.rev_append (translate_mov_from get_final line) prev_lines
   | AS.MovTo _ -> List.rev_append (translate_mov_to get_final line) prev_lines
   | MovSxd _ -> List.rev_append (translate_movsxd get_final line) prev_lines

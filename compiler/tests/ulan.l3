@@ -1,10 +1,10 @@
-//test return 7
+//test return 42
+//A test of many arguments
 
-int mean (int a, int b, int c, int d, int e, int f, int g){
-  return g;
+int retZ(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j){
+    return j;
 }
 
-int main() {
-    int m = mean(1,2,3,4,5,6,7);
-    return m;
+int main(){
+    return retZ(1,2,3,4,5,6,7,8,9,10);
 }

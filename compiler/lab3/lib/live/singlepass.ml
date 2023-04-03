@@ -14,8 +14,8 @@ let dump_liveness : bool ref = ref false
     prerr_endline)
 ;; *)
 
-(* let print_info = prerr_endline *)
-let print_info _ = ()
+let print_info = prerr_endline
+(* let print_info _ = () *)
 
 type ht_entry =
   { d : V.Set.t
@@ -84,9 +84,11 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     ( V.Set.of_list
         (List.map
            ~f:(fun r -> V.R r)
-           [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D ]
-        @ List.map ~f:(fun (r, _) -> V.T r) args_overflow)
-    , V.Set.of_list (List.map ~f:(fun (r, _) -> V.R r) args_in_regs) )
+           [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D ])
+      (* @ List.map ~f:(fun (r, _) -> V.T r) args_overflow) *)
+    , V.Set.of_list
+        (List.map ~f:(fun (r, _) -> V.R r) args_in_regs
+        @ List.map ~f:(fun (r, _) -> V.T r) args_overflow) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->
     V.Set.of_list (List.map ~f:(fun (t, _) -> V.T t) stack_args), V.Set.empty
@@ -275,7 +277,7 @@ let get_edges (table : t) : (V.t * V.t) list =
             (List.map (out_ed @ in_ed) ~f:(fun (a, b) ->
                  V._to_string a ^ "-" ^ V._to_string b))));
     (* List.concat [ out_ed; in_ed; acc ] *)
-    List.concat [ out_ed; acc ]
+    List.concat [ out_ed; in_ed; acc ]
   in
   let init = ([] : (V.t * V.t) list) in
   IntTable.fold table ~init ~f
@@ -286,6 +288,12 @@ let get_edges_vertices t (b : B.fspace) =
     List.filter_opt (List.map ~f:(fun t -> V.op_to_vertex_opt (AS.Temp t)) b.args)
   in
   let arg_edges = cartesian args args in
+  print_info
+    (sprintf
+       "arg edges: [%s]"
+       (String.concat
+          ~sep:","
+          (List.map arg_edges ~f:(fun (a, b) -> V._to_string a ^ "-" ^ V._to_string b))));
   let e = arg_edges @ get_edges t in
   let v = get_all_vertices b in
   v, e
