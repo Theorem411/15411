@@ -65,8 +65,8 @@ let __c2v (v2c : color VM.t) : reg_n_temps CM.t =
     | V.T t -> { reg; temps = t :: temps }
     | V.R r ->
       (match reg with
-       | None -> { reg = Some r; temps }
-       | Some _ -> failwith "regalloc: impossible situation")
+      | None -> { reg = Some r; temps }
+      | Some _ -> failwith "regalloc: impossible situation")
   in
   let c2v = CM.of_alist_fold ~init ~f:foldf c2v_lst in
   c2v
@@ -99,9 +99,9 @@ let __free_colors (c2v : reg_n_temps CM.t) : color list =
   (*_ return an increasing list of colors that don't have a precolor *)
   let c2v' =
     CM.filter_mapi c2v ~f:(fun ~key:c ~data:{ reg; _ } ->
-      match reg with
-      | None -> Some c
-      | Some _ -> None)
+        match reg with
+        | None -> Some c
+        | Some _ -> None)
   in
   CM.keys c2v' |> List.sort ~compare:Int.compare
 ;;
@@ -112,7 +112,7 @@ let __free_regs (c2v : reg_n_temps CM.t) : reg_or_spill list =
   in
   let free_regs =
     List.filter_map AS.all_regs ~f:(fun r ->
-      if RS.mem pre_regs r then None else Some (reg r))
+        if RS.mem pre_regs r then None else Some (reg r))
   in
   free_regs
 ;;
@@ -139,14 +139,15 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
     | Some (Second _) -> c2r
   in
   let c2r = CM.of_alist_exn c2r in
-  let combine ~key:c _ _ =
+  let combine ~key:c _ =
     failwith
       (sprintf
          "regalloc: impossible! color %s is considered precolors and free at the same \
           time"
          (Int.to_string c))
   in
-  let c2r = CM.merge_skewed c2r pc2pr ~combine in
+  (* let c2r = CM.merge_skewed c2r pc2pr ~combine in *)
+  let c2r = CM.merge c2r pc2pr ~f:combine in
   (* combine precolor with postcolor*)
   (*_ compose t2c tith c2r to get t2r_or_spl *)
   let t2r = TM.mapi t2c ~f:(fun ~key:_ ~data:c -> CM.find_exn c2r c) in
@@ -155,24 +156,26 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
 
 let mem_count (t2r : reg_or_spill TM.t) : int =
   TM.filter t2r ~f:(fun r_or_spl ->
-    match r_or_spl with
-    | Reg _ -> false
-    | Spl _ -> true)
+      match r_or_spl with
+      | Reg _ -> false
+      | Spl _ -> true)
   |> TM.length
 ;;
 
-let caller_save (t2r : reg_or_spill TM.t) : R.reg_enum list = 
-  TM.filter_map t2r ~f:(fun r_or_spl -> 
-    match r_or_spl with 
-    | Reg r -> Some r
-    | _ -> None
-  ) |> TM.data |> List.filter ~f:R.caller_saved
-;; 
+let caller_save (t2r : reg_or_spill TM.t) : R.reg_enum list =
+  TM.filter_map t2r ~f:(fun r_or_spl ->
+      match r_or_spl with
+      | Reg r -> Some r
+      | _ -> None)
+  |> TM.data
+  |> List.filter ~f:R.caller_saved
+;;
 
-let callee_save (t2r : reg_or_spill TM.t) : R.reg_enum list = 
-  TM.filter_map t2r ~f:(fun r_or_spl -> 
-    match r_or_spl with 
-    | Reg r -> Some r
-    | _ -> None
-  ) |> TM.data |> List.filter ~f:R.callee_saved
-;; 
+let callee_save (t2r : reg_or_spill TM.t) : R.reg_enum list =
+  TM.filter_map t2r ~f:(fun r_or_spl ->
+      match r_or_spl with
+      | Reg r -> Some r
+      | _ -> None)
+  |> TM.data
+  |> List.filter ~f:R.callee_saved
+;;
