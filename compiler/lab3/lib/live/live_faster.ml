@@ -91,7 +91,7 @@ let mk_liveness_fspace (fspace : B.fspace) =
   let general_passing (block : B.block) : unit =
     (*_ load info into variables *)
     let ({ label; _ } : B.block) = block in
-    let pred = LM.find_exn cfg label in
+    let pred = match (LM.find cfg label) with Some ps -> ps | None -> LS.empty in
     let { bdef; buse } = LM.find_exn l2du label in
     let { liveout; livein } = LT.find_exn l2io label in
     (*_ update own livein *)

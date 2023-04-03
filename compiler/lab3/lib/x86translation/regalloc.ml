@@ -139,15 +139,27 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
     | Some (Second _) -> c2r
   in
   let c2r = CM.of_alist_exn c2r in
-  let combine ~key:c _ =
+  (* let combine ~key:c _ =
     failwith
       (sprintf
          "regalloc: impossible! color %s is considered precolors and free at the same \
           time"
          (Int.to_string c))
-  in
+  in *)
   (* let c2r = CM.merge_skewed c2r pc2pr ~combine in *)
-  let c2r = CM.merge c2r pc2pr ~f:combine in
+  (*
+  let () =
+    prerr_endline
+      (let l = CM.to_alist c2r in
+       String.concat ~sep:"," (List.map l ~f:(fun (i, _) -> Int.to_string i)))
+  in
+  let () =
+    prerr_endline
+      (let l = CM.to_alist pc2pr in
+       String.concat ~sep:"," (List.map l ~f:(fun (i, _) -> Int.to_string i)))
+  in 
+  *)
+  let c2r = CM.of_alist_exn (CM.to_alist c2r @ CM.to_alist pc2pr) in
   (* combine precolor with postcolor*)
   (*_ compose t2c tith c2r to get t2r_or_spl *)
   let t2r = TM.mapi t2c ~f:(fun ~key:_ ~data:c -> CM.find_exn c2r c) in

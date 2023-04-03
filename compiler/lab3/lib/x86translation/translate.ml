@@ -9,7 +9,7 @@ module TM = Temp.Map
 module Helper = New_helper
 (*_ DEBUGGING STAFF  *)
 
-let debug = true
+let debug = false
 let alloc = if not debug then Regalloc.reg_alloc else Stackalloc.stack_alloc
 
 type fspace = X86.instr list
