@@ -277,7 +277,7 @@ let get_edges (table : t) : (V.t * V.t) list =
             (List.map (out_ed @ in_ed) ~f:(fun (a, b) ->
                  V._to_string a ^ "-" ^ V._to_string b))));
     (* List.concat [ out_ed; in_ed; acc ] *)
-    List.concat [ out_ed; in_ed; acc ]
+    List.concat [ out_ed; acc ]
   in
   let init = ([] : (V.t * V.t) list) in
   IntTable.fold table ~init ~f
