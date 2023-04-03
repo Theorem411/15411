@@ -14,8 +14,8 @@ let dump_liveness : bool ref = ref false
     prerr_endline)
 ;; *)
 
-let print_info = prerr_endline
-(* let print_info _ = () *)
+(* let print_info = prerr_endline *)
+let print_info _ = ()
 
 type ht_entry =
   { d : V.Set.t

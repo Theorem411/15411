@@ -112,7 +112,7 @@ let mk_liveness_fspace (fspace : B.fspace) =
     match Queue.dequeue wq with
     | Some block ->
       general_passing block;
-      prerr_endline "done with 1 loop";
+      (* prerr_endline "done with 1 loop"; *)
       loop ()
     | None -> ()
   in
