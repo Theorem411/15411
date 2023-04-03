@@ -178,5 +178,5 @@ val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program : program -> string
 val format_operand : operand -> string
-
+val arg_i_to_reg : int -> reg
 include Comparable.S with type t := operand

@@ -172,6 +172,16 @@ type block =
   }
 [@@deriving equal, sexp, compare, hash]
 
+let arg_i_to_reg = function
+  | 0 -> EDI
+  | 1 -> ESI
+  | 2 -> EDX
+  | 3 -> ECX
+  | 4 -> R8D
+  | 5 -> R9D
+  | _ -> failwith "args overflow 6"
+;;
+
 type fspace =
   { fname : Symbol.t
   ; args : (Temp.t * size) list

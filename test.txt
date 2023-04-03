@@ -1,0 +1,141 @@
+func _c0_mean(%t1[4], %t2[4], %t3[4], %t4[4], %t5[4]):
+._c0_mean(%t1, %t2, %t3, %t4, %t5)
+%t6  <--  (%t1 + %t2 + %t3 + %t4 + %t5 / 5)
+return %t6
+-------[ret]---------
+.L2
+return
+-------[ret]---------
+
+func _c0_main():
+._c0_main()
+%t8  <--  _c0_mean(1, 2, 3, 4, 5, )
+%t7  <--  %t8
+return %t7
+-------[ret]---------
+.L3
+return
+-------[ret]---------
+_c0_mean(%t1s%t2s%t3s%t4s%t5s): 
+
+._c0_mean(%t1, %t2, %t3, %t4, %t5):
+%t17 <-s- %t1
+%t18 <-s- %t2
+%t15 <-s- %t17 + %t18
+%t16 <-s- %t3
+%t13 <-s- %t15 + %t16
+%t14 <-s- %t4
+%t11 <-s- %t13 + %t14
+%t12 <-s- %t5
+%t9 <-s- %t11 + %t12
+%t10 <-s- $5
+%t6 <-- %t9 / %t10
+EAX <-s- %t6
+ret
+
+ret
+
+.L2:
+ret
+
+ret
+_c0_main(): 
+
+._c0_main():
+%t19 <-s- $1
+%t20 <-s- $2
+%t21 <-s- $3
+%t22 <-s- $4
+%t23 <-s- $5
+EDI <-s- %t19
+ESI <-s- %t20
+EDX <-s- %t21
+ECX <-s- %t22
+R8D <-s- %t23
+call _c0_mean(EDIs, ESIs, EDXs, ECXs, R8Ds|)
+%t8 <-s- EAX
+%t7 <-s- %t8
+EAX <-s- %t7
+ret
+
+ret
+
+.L3:
+ret
+
+ret
+
+---Blocks---
+
+_c0_mean(%t1,%t2,%t3,%t4,%t5){
+[
+FunLbl _c0_mean(%t1,%t2,%t3,%t4,%t5):
+|
+  0:%t17 <-s- %t1
+  1:%t18 <-s- %t2
+  2:%t15 <-s- %t17 + %t18
+  3:%t16 <-s- %t3
+  4:%t13 <-s- %t15 + %t16
+  5:%t14 <-s- %t4
+  6:%t11 <-s- %t13 + %t14
+  7:%t12 <-s- %t5
+  8:%t9 <-s- %t11 + %t12
+  9:%t10 <-s- $5
+  10:%t6 <-- %t9 / %t10
+  11:EAX <-s- %t6
+  12:ret
+|
+ret
+]
+
+[
+BlockLbl(.L2):
+|
+  13:ret
+|
+ret
+]
+
+}
+
+;
+
+
+_c0_main(){
+[
+FunLbl _c0_main():
+|
+  14:%t19 <-s- $1
+  15:%t20 <-s- $2
+  16:%t21 <-s- $3
+  17:%t22 <-s- $4
+  18:%t23 <-s- $5
+  19:EDI <-s- %t19
+  20:ESI <-s- %t20
+  21:EDX <-s- %t21
+  22:ECX <-s- %t22
+  23:R8D <-s- %t23
+  24:call _c0_mean(EDIs, ESIs, EDXs, ECXs, R8Ds|)
+  25:%t8 <-s- EAX
+  26:%t7 <-s- %t8
+  27:EAX <-s- %t7
+  28:ret
+|
+ret
+]
+
+[
+BlockLbl(.L3):
+|
+  29:ret
+|
+ret
+]
+
+}
+
+
+done with 1 loop
+done with 1 loop
+done with 1 loop
+done with 1 loop
