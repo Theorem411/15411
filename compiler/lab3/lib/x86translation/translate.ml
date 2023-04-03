@@ -162,9 +162,9 @@ let translate_call
   else (
     let jump_int =
       let n = List.length stack_args in
-      if n % 2 = 0 then n * 8 else (n * 8) + 8
+      if n % 2 = 0 then n else n + 1
     in
-    let jump_size = Int64.of_int_exn jump_int in
+    let jump_size = Int64.of_int_exn (8 * jump_int) in
     let arg_moves =
       List.concat_mapi
         ~f:(fun i (t, sz) ->
