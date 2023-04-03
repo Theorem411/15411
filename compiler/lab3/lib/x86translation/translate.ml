@@ -407,6 +407,7 @@ let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr lis
   | { fname; fdef_blocks; args = __args } ->
     (* has to be changed to the global one *)
     let reg_map : Regalloc.reg_or_spill TM.t = alloc fspace in
+    (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
     let stack_cells = Regalloc.mem_count reg_map in
     let final = get_final reg_map in
     (* gets prologue and epilogue of the function *)

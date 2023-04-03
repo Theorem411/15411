@@ -34,6 +34,18 @@ let get_init (_ : int) : live_t * live_t =
   empty_1, empty_2
 ;;
 
+let op_to_vset (op : AS.operand) : V.Set.t =
+  match V.op_to_vertex_opt op with
+  | Some v -> V.Set.singleton v
+  | None -> V.Set.empty
+;;
+
+let op_to_vset_mem_mov (op : AS.operand) : V.Set.t =
+  match V.op_to_vertex_opt op with
+  | Some v -> V.Set.of_list [ v ]
+  | None -> V.Set.of_list []
+;;
+
 (* let print_vset (es : V.Set.t) =
   print_string "[";
   V.Set.iter
@@ -45,16 +57,6 @@ let get_init (_ : int) : live_t * live_t =
 ;; *)
 (*_ return def set and uses set  and adds the function params to the stack if*)
 let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
-  let op_to_vset (op : AS.operand) : V.Set.t =
-    match V.op_to_vertex_opt op with
-    | Some v -> V.Set.singleton v
-    | None -> V.Set.empty
-  in
-  let op_to_vset_mem_mov (op : AS.operand) : V.Set.t =
-    match V.op_to_vertex_opt op with
-    | Some v -> V.Set.of_list [ v ]
-    | None -> V.Set.of_list []
-  in
   match instr with
   | AS.Mov { dest; src; _ } -> op_to_vset dest, op_to_vset src
   | AS.MovSxd { dest; src } -> op_to_vset dest, op_to_vset src
@@ -282,6 +284,20 @@ let get_edges (table : t) : (V.t * V.t) list =
           | V.T _ -> false)
     in
     (* remove d lin later *)
+    let instr_specific_edges =
+      match info.instr with
+      | AS.PureBinop { dest; lhs; rhs; _ } ->
+        let d, l, r =
+          V.op_to_vertex_opt dest, V.op_to_vertex_opt lhs, V.op_to_vertex_opt rhs
+        in
+        List.filter_map
+          ~f:(fun (a, b) ->
+            match a, b with
+            | Some(x), Some(y) -> Some(x, y)
+            | _ -> None)
+          [ d, l; d, r ]
+      | _ -> []
+    in
     let out_ed, defined_reg_edges = cartesian d lout, cartesian defined_regs lin in
     (* print_info
       (sprintf
@@ -292,7 +308,7 @@ let get_edges (table : t) : (V.t * V.t) list =
             (List.map (out_ed @ in_ed) ~f:(fun (a, b) ->
                  V._to_string a ^ "-" ^ V._to_string b)))); *)
     (* List.concat [ out_ed; in_ed; acc ] *)
-    List.concat [ out_ed; defined_reg_edges; acc ]
+    List.concat [ out_ed; defined_reg_edges; instr_specific_edges; acc ]
   in
   let init = ([] : (V.t * V.t) list) in
   IntTable.fold table ~init ~f
