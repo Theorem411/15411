@@ -3,7 +3,14 @@ module AS = Assem_l4
 module R = Register
 module V = Graph.Vertex
 module Custom = CustomAssembly
+module Regalloc = Regalloc
+module Stackalloc = Stackalloc
+module TM = Temp.Map
+module Helper = New_helper
 (*_ DEBUGGING STAFF  *)
+
+let debug = true
+let alloc = if not debug then Regalloc.reg_alloc else Stackalloc.stack_alloc
 
 type fspace = X86.instr list
 type program = fspace list
@@ -368,49 +375,45 @@ let get_memErrLabel_block memErrLabel =
   ]
 ;;
 
-let get_final (reg_map : X86.operand AS.Map.t) (o, size) =
+(* maps reg_alloc results to  *)
+let get_final (reg_map : Regalloc.reg_or_spill TM.t) ((o, size) : AS.operand * X86.size)
+    : X86.operand
+  =
   match o with
   | AS.Imm n -> X86.Imm n
-  | _ ->
-    let f = AS.Map.find_exn reg_map o in
-    (match f with
-    | Stack _ -> f
-    | Reg { reg; _ } ->
-      X86.Reg
-        { reg
-        ; size =
-            (match size with
-            | X86.L -> 4
-            | X86.Q -> 8)
-        }
-    | _ -> failwith "reg_map can not be imm")
+  | AS.Reg r -> X86.Reg { reg = Regalloc.asr2renum r; size = X86.of_size size }
+  | AS.Temp t ->
+    (match TM.find_exn reg_map t with
+    | Spl i -> X86.Stack i
+    | Reg reg -> X86.Reg { reg; size = X86.of_size size })
+;;
+
+let block_instrs (fspace : AS.fspace) : AS.instr list list =
+  List.mapi fspace.fdef_blocks ~f:(fun i { block; label = labelbt; _ } ->
+      if i = 0
+      then []
+      else (
+        let label =
+          match labelbt with
+          | Label.BlockLbl b -> b
+          | FunName _ -> failwith "not first block has a functionname"
+        in
+        AS.Lab label :: block))
 ;;
 
 let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr list =
   match fspace with
   | { fname; fdef_blocks; args = __args } ->
     (* has to be changed to the global one *)
-    let (reg_map, mem_cell_count) : X86.operand AS.Map.t * int =
-      Helper.reg_alloc fspace
-    in
+    let reg_map : Regalloc.reg_or_spill TM.t = alloc fspace in
+    let stack_cells = Regalloc.mem_count reg_map in
     let final = get_final reg_map in
-    let b, e, retLabel = Helper.get_function_be (fname, __args) reg_map mem_cell_count in
-    let block_instrs =
-      List.mapi fdef_blocks ~f:(fun i { block; label = labelbt; _ } ->
-          if i = 0
-          then []
-          else (
-            let label =
-              match labelbt with
-              | Label.BlockLbl b -> b
-              | FunName _ -> failwith "not first block has a functionname"
-            in
-            AS.Lab label :: block))
-    in
+    (* gets prologue and epilogue of the function *)
+    let b, e, retLabel = Helper.get_function_be (fname, __args) reg_map stack_cells in
     let translated instructions : X86.instr list =
       List.fold instructions ~init:[] ~f:(translate_line (retLabel, errLabel) final)
     in
-    let res = List.concat_map ~f:translated block_instrs in
+    let res = List.concat_map ~f:translated (block_instrs fspace) in
     let x = (List.nth_exn fdef_blocks 0).block in
     let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
     let full_rev = List.rev_append e res in

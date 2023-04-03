@@ -2,14 +2,14 @@
 module AS = Assem_l4
 module V = Graph.Vertex
 module R = Register
+module Regalloc = Regalloc
+module TM = Temp.Map
 
 let no_reg_alloc = true
 let should_print_reg_map = false
 
 type color = int [@@deriving compare, equal, sexp]
 
-let rbp = X86.Reg { reg = R.RBP; size = 8 }
-let rsp = X86.Reg { reg = R.RSP; size = 8 }
 
 (* let templist_to_opr l = List.map ~f:(fun t -> AS.Temp t) l *)
 let tempsize_list_to_opr l = List.map ~f:(fun (t, _) -> AS.Temp t) l
@@ -130,30 +130,6 @@ let get_unassigned_colors groups used_regs_with_color =
       not (List.exists used_regs_with_color ~f:(fun (_, uc) -> equal_color c uc)))
 ;;
 
-let asreg_to_reg = function
-  | AS.EAX -> R.EAX
-  | EDX -> R.EDX
-  | ECX -> R.ECX
-  | ESI -> R.ESI
-  | EDI -> R.EDI
-  | EBX -> R.EBX
-  | R8D -> R.R8D
-  | R9D -> R.R9D
-  | R10D -> R.R10D
-  | R11D -> R.R11D
-  | R12D -> R.R12D
-  | R13D -> R.R13D
-  | R14D -> R.R14D
-  | R15D -> R.R15D
-  | RBP -> R.RBP
-  | RSP -> R.RSP
-  | RCX -> R.RCX
-  | RDX -> R.RDX
-  | RSI -> R.RSI
-  | RDI -> R.RDI
-  | RBX -> R.RBX
-;;
-
 let assign_frees (free_regs : AS.reg list) (to_be_assigned : color list)
     : (color * X86.operand) list * int
   =
@@ -224,7 +200,7 @@ let override_to_sz_int (sz : int) (r : X86.operand) =
   | _ -> r
 ;;
 
-let callee_handle reg_map =
+let callee_handle (reg_map : Regalloc.reg_or_spill TM.t) =
   let callee_regs = get_callee_regs reg_map in
   (* save them into stack *)
   let callee_start =
@@ -275,7 +251,7 @@ let sz_to_reg_size_int (sz : X86.size) =
 ;;
 
 let do_arg_moves
-    (reg_map : X86.operand AS.Map.t)
+    (reg_map : Regalloc.reg_or_spill TM.t)
     (args : (AS.operand * X86.size) list)
     total_size
   =
@@ -319,11 +295,9 @@ let do_arg_moves
   reg_moves @ stack_refs
 ;;
 
-(* arg[7 + i] <- rsp has some size so recalculate *)
-
 let get_function_be
     ((fname, __args) : Symbol.t * (Temp.t * AS.size) list)
-    reg_map
+    (reg_map : Regalloc.reg_or_spill TM.t)
     mem_cell_count
   =
   let args = templist_to_op_size __args in
@@ -334,9 +308,9 @@ let get_function_be
   (*active size of frame (local and arg pushes)*)
   let m = n + List.length cee_regs in
   (* total size of frame (added regs)*)
-  let __sub_count : int = if m % 2 = 0 then n * 8 + 8 else (n * 8) in
+  let __sub_count : int = if m % 2 = 0 then (n * 8) + 8 else n * 8 in
   let sub_count = Int64.of_int_exn __sub_count in
-  let total_size = __sub_count + ((List.length cee_regs * 8)) in
+  let total_size = __sub_count + (List.length cee_regs * 8) in
   let locals = do_arg_moves reg_map args total_size in
   let ret_label = Label.create () in
   (* function labels *)
@@ -364,7 +338,7 @@ let get_function_be
             { op = X86.Add; dest = rsp; src = X86.Imm sub_count; size = X86.Q }
         ])
     @ cee_finish
-    @ [ (* X86.UnCommand { op = X86.Popq; src = rbp }; *) X86.Ret ]
+    @ [ X86.Ret ]
   in
   enter, exit, ret_label
 ;; *)

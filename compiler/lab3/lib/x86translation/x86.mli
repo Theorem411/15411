@@ -120,8 +120,6 @@ val format_list : instr list -> string
 val format_operand : operand -> string
 val get_free : size -> operand
 val get_memfree : size -> operand
-val all_available_regs : AS.reg list
-val callee_saved : operand -> bool
-val caller_saved : operand -> bool
 val is_reg : operand -> bool
 val as_to_reg_enum : AS.reg -> R.reg_enum
+val of_size: size -> int

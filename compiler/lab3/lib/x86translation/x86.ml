@@ -305,21 +305,7 @@ let unary_to_opr = function
   | AS.BitNot -> Not
 ;;
 
-let callee_saved oper =
-  match oper with
-  | Reg r -> R.callee_saved r
-  | _ -> raise (Failure "callee_saved can be applied only on Reg reg")
-;;
 
-let caller_saved oper =
-  match oper with
-  | Reg r -> R.caller_saved r
-  | _ -> raise (Failure "caller_saved can be applied only on Reg reg")
-;;
-
-let all_available_regs =
-  [ AS.EAX; AS.EDX; AS.EDI; AS.ESI; AS.R8D; AS.R9D; AS.R12D; AS.R13D; AS.R14D; AS.R15D ]
-;;
 
 let is_reg = function
   | Reg _ -> true
@@ -345,3 +331,9 @@ let get_memfree (sz : size) : operand =
         | Q -> 8)
     }
 ;;
+
+
+let of_size (size:size) =
+  match size with
+  | L -> 4
+  | Q -> 8;;
