@@ -10,3 +10,4 @@ type reg_or_spill =
   | Spl of int
 
 val reg_alloc : AS.fspace -> reg_or_spill TM.t * int
+val asr2renum : AS.reg -> R.reg_enum 
