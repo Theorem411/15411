@@ -24,6 +24,7 @@ type reg =
 [@@deriving equal, sexp, compare, hash]
 
 val allregs : reg_enum list
+val format_reg_32 : reg_enum -> string
 val format_reg : reg -> string
 val callee_saved: reg_enum -> bool
 val caller_saved: reg_enum -> bool

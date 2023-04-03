@@ -14,3 +14,4 @@ val mem_count : reg_or_spill TM.t -> int
 val caller_save : reg_or_spill TM.t -> R.reg_enum list
 val callee_save : reg_or_spill TM.t -> R.reg_enum list
 val asr2renum : AS.reg -> R.reg_enum 
+val pp_temp_map : reg_or_spill TM.t
