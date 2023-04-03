@@ -63,6 +63,9 @@ let block_in_out_init ({ fdef_blocks; _ } : B.fspace) : block_in_out =
   let l2i = List.map fdef_blocks ~f:mapf in
   LT.of_alist_exn l2i
 ;;
+(* 
+let rm_dead_blocks (fspace : B.fspace) =  *)
+
 
 (*_ the general passing algorithm *)
 let mk_liveness_fspace (fspace : B.fspace) =
