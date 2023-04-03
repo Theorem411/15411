@@ -181,6 +181,7 @@ let caller_save (t2r : reg_or_spill TM.t) : R.reg_enum list =
       | _ -> None)
   |> TM.data
   |> List.filter ~f:R.caller_saved
+  |> List.dedup_and_sort ~compare:R.compare_reg_enum
 ;;
 
 let callee_save (t2r : reg_or_spill TM.t) : R.reg_enum list =
@@ -190,4 +191,5 @@ let callee_save (t2r : reg_or_spill TM.t) : R.reg_enum list =
       | _ -> None)
   |> TM.data
   |> List.filter ~f:R.callee_saved
+  |> List.dedup_and_sort ~compare:R.compare_reg_enum
 ;;

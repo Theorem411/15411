@@ -62,8 +62,8 @@ let callee_handle (reg_map : Regalloc.reg_or_spill TM.t) =
   let calee_saved = Regalloc.callee_save reg_map in
   let callee_regs =
     if List.mem calee_saved R.RBP ~equal:R.equal_reg_enum
-    then R.RBP :: calee_saved
-    else calee_saved
+    then calee_saved
+    else R.RBP :: calee_saved
   in
   (* save them into stack *)
   let callee_start =
