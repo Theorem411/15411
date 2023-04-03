@@ -44,7 +44,7 @@ let do_arg_moves
               ; size = X86.to_size sz
               }
           ]
-        | Spl i ->
+        | Spl j ->
           let sz = X86.to_size sz in
           [ X86.BinCommand
               { op = Mov
@@ -53,7 +53,7 @@ let do_arg_moves
               ; size = sz
               }
           ; X86.BinCommand
-              { op = Mov; dest = X86.Stack i; src = X86.get_free sz; size = sz }
+              { op = Mov; dest = X86.Stack j; src = X86.get_free sz; size = sz }
           ])
   in
   stack_refs
