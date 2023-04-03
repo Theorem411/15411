@@ -309,6 +309,7 @@ let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = functi
 let translate_line
     (retLabel, errLabel)
     (get_final : AS.operand * X86.size -> X86.operand)
+    (stack_moves : X86.instr list)
     (prev_lines : X86.instr list)
     (line : AS.instr)
     : X86.instr list
@@ -336,7 +337,7 @@ let translate_line
   | AS.AssertFail -> [ X86.Call "abort@plt" ] @ prev_lines
   | AS.Call { fname; args_overflow = stack_args; _ } ->
     translate_call get_final (Symbol.name fname) stack_args @ prev_lines
-  | AS.LoadFromStack _ -> prev_lines
+  | AS.LoadFromStack _ -> [X86.Comment "\tloading from stack..."] @ stack_moves @ prev_lines
   | AS.MovFrom _ -> List.rev_append (translate_mov_from get_final line) prev_lines
   | AS.MovTo _ -> List.rev_append (translate_mov_to get_final line) prev_lines
   | MovSxd _ -> List.rev_append (translate_movsxd get_final line) prev_lines
@@ -409,9 +410,9 @@ let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr lis
     let stack_cells = Regalloc.mem_count reg_map in
     let final = get_final reg_map in
     (* gets prologue and epilogue of the function *)
-    let b, e, retLabel = Helper.get_function_be (fname, __args) reg_map stack_cells in
+    let b, e, stack_moves, retLabel = Helper.get_function_be (fname, __args) reg_map stack_cells in
     let translated instructions : X86.instr list =
-      List.fold instructions ~init:[] ~f:(translate_line (retLabel, errLabel) final)
+      List.fold instructions ~init:[] ~f:(translate_line (retLabel, errLabel) final stack_moves)
     in
     let res = List.concat_map ~f:translated (block_instrs fspace) in
     let x = (List.nth_exn fdef_blocks 0).block in

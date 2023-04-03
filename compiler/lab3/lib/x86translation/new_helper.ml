@@ -40,7 +40,7 @@ let do_arg_moves
           [ X86.BinCommand
               { op = Mov
               ; dest = X86.Reg { reg; size = to_int sz }
-              ; src = X86.Stack (total_size + 8 + (8 * i))
+              ; src = X86.Stack (total_size / 8 + 1 + i)
               ; size = X86.to_size sz
               }
           ]
@@ -49,7 +49,7 @@ let do_arg_moves
           [ X86.BinCommand
               { op = Mov
               ; dest = sz |> X86.get_free
-              ; src = X86.Stack (total_size + 8 + (8 * i))
+              ; src = X86.Stack (total_size / 8 + 1 + i)
               ; size = sz
               }
           ; X86.BinCommand
@@ -107,7 +107,7 @@ let get_function_be
   let cee_regs_cnt = List.length cee_regs in
   let sub_c : int = if (n + cee_regs_cnt) % 2 = 0 then (n * 8) + 8 else n * 8 in
   (* total size of frame (added regs)*)
-  let move_locals = do_arg_moves reg_map args (sub_c + (cee_regs_cnt * 8)) in
+  let stack_moves = do_arg_moves reg_map args (sub_c + (cee_regs_cnt * 8)) in
   let sub_enter, sub_exit = handle_sub sub_c in
   (* function labels *)
   let enter =
@@ -124,7 +124,6 @@ let get_function_be
           }
       ]
     @ sub_enter
-    @ move_locals
   in
   let ret_label = Label.create () in
   let exit =
@@ -133,5 +132,5 @@ let get_function_be
     @ cee_finish
     @ [ X86.Ret ]
   in
-  enter, exit, ret_label
+  enter, exit, stack_moves, ret_label
 ;;

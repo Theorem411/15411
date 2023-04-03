@@ -378,12 +378,19 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
       |> List.concat)
 ;;
 
-let munch_arg_moves (args : (Temp.t * A.size) list) = 
-  let args = List.take args 6 in 
-  List.mapi args ~f:(fun i (t, sz) -> A.Mov {dest = A.Temp t; src = A.Reg (A.arg_i_to_reg i); size = sz })
+let munch_arg_moves (args : (Temp.t * A.size) list) =
+  let args, stacks = List.take args 6, List.drop args 6 in
+  List.mapi args ~f:(fun i (t, sz) ->
+      A.Mov { dest = A.Temp t; src = A.Reg (A.arg_i_to_reg i); size = sz })
+  @ [ A.LoadFromStack stacks ]
+;;
 
-let munch_block ({ label; block; jump } : T.block) ~(mfl : Label.t) ~(args: (Temp.t * A.size) list
-) : A.block =
+let munch_block
+    ({ label; block; jump } : T.block)
+    ~(mfl : Label.t)
+    ~(args : (Temp.t * A.size) list)
+    : A.block
+  =
   let jump =
     match jump with
     | T.JRet -> A.JRet
