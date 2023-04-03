@@ -25,8 +25,8 @@ type reg =
 
 val allregs : reg_enum list
 val format_reg : reg -> string
-val callee_saved: reg -> bool
-val caller_saved: reg -> bool
+val callee_saved: reg_enum -> bool
+val caller_saved: reg_enum -> bool
 val arg_i_to_reg: int -> int -> reg
 
 val eax: reg

@@ -23,7 +23,6 @@ let allregs : reg_enum list =
   [ EAX; EDX; ECX; ESI; EDI; EBX; R8D; R9D; R10D; R11D; R12D; R13D; R14D; R15D; RBP; RSP ]
 ;;
 
-
 type reg =
   { reg : reg_enum
   ; size : int
@@ -102,15 +101,11 @@ let format_reg = function
 ;;
 
 let callee_saved = function
-  | { reg; _ } ->
-    (match reg with
-     | EBX | RSP | RBP | R12D | R13D | R14D | R15D -> true
-     | _ -> false)
+  | EBX | RSP | RBP | R12D | R13D | R14D | R15D -> true
+  | _ -> false
 ;;
 
 let caller_saved = function
-  | { reg; _ } ->
-    (match reg with
-     | EAX | EDI | ESI | EDX | ECX | R8D | R9D | R10D | R11D -> true
-     | _ -> false)
+  | EAX | EDI | ESI | EDX | ECX | R8D | R9D | R10D | R11D -> true
+  | _ -> false
 ;;
