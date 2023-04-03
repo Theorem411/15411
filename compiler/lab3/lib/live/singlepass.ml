@@ -111,8 +111,12 @@ let format_table_entry (k : int) (e : ht_entry) : string =
     (format_v_set e.lout)
 ;;
 
-let print_table (table : t) : string =
-  let keys = IntTable.keys table in
+let print_table (table : t) ~lines : string =
+  let keys =
+    match lines with
+    | None -> IntTable.keys table
+    | Some i -> List.map ~f:(fun (n, _) -> n) i
+  in
   let keys = List.sort ~compare:Int.compare keys in
   String.concat
     ~sep:"\n"
@@ -143,7 +147,7 @@ let init_table (f : B.fspace) =
   let table : t = IntTable.create () in
   let helper = initialize_blocks table f.args in
   List.iter f.fdef_blocks ~f:helper;
-  print_info (print_table table);
+  (* print_info (print_table table); *)
   table
 ;;
 
@@ -209,7 +213,7 @@ let handle_instrs
 let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.t)
     : V.Set.t
   =
-  let () = print_info ("doing now: " ^ B.format_block b) in
+  let () = print_info ("\n\ndoing now: \n" ^ B.format_block b) in
   let () =
     print_info
       ("input:["
@@ -223,15 +227,20 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
     match b.label with
     | Label.BlockLbl _ -> None, V.Set.empty
     | Label.FunName { args; _ } ->
-      Some args, V.Set.of_list (List.map ~f:(fun t -> V.T t) args)
+      ( Some args
+      , V.Set.of_list
+          (List.map ~f:(fun t -> V.T t) args
+          @ List.map
+              ~f:(fun r -> V.R r)
+              [ AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D ]) )
   in
   let out_raw = handle_instrs table (b.block, args) input in
   let out = V.Set.diff out_raw black_list in
   print_info
     ("output:["
     ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
-    ^ "]\n\n\n\n\n");
-  print_info (print_table table);
+    ^ "]\n");
+  print_info (print_table table ~lines:(Some b.block));
   out
 ;;
 
@@ -262,22 +271,28 @@ let cartesian l l' =
 ;;
 
 let get_edges (table : t) : (V.t * V.t) list =
-  let f ~key ~data:info acc =
+  let f ~key:_ ~data:info acc =
     let d, lout, lin =
       V.Set.to_list info.d, V.Set.to_list info.lout, V.Set.to_list info.lin
     in
+    let defined_regs =
+      List.filter d ~f:(fun v ->
+          match v with
+          | V.R _ -> true
+          | V.T _ -> false)
+    in
     (* remove d lin later *)
-    let out_ed, in_ed = cartesian d lout, cartesian d lin in
-    print_info
+    let out_ed, defined_reg_edges = cartesian d lout, cartesian defined_regs lin in
+    (* print_info
       (sprintf
          "[%d] edges: [%s]"
          key
          (String.concat
             ~sep:","
             (List.map (out_ed @ in_ed) ~f:(fun (a, b) ->
-                 V._to_string a ^ "-" ^ V._to_string b))));
+                 V._to_string a ^ "-" ^ V._to_string b)))); *)
     (* List.concat [ out_ed; in_ed; acc ] *)
-    List.concat [ out_ed; acc ]
+    List.concat [ out_ed; defined_reg_edges; acc ]
   in
   let init = ([] : (V.t * V.t) list) in
   IntTable.fold table ~init ~f
@@ -288,12 +303,12 @@ let get_edges_vertices t (b : B.fspace) =
     List.filter_opt (List.map ~f:(fun t -> V.op_to_vertex_opt (AS.Temp t)) b.args)
   in
   let arg_edges = cartesian args args in
-  print_info
+  (* print_info
     (sprintf
        "arg edges: [%s]"
        (String.concat
           ~sep:","
-          (List.map arg_edges ~f:(fun (a, b) -> V._to_string a ^ "-" ^ V._to_string b))));
+          (List.map arg_edges ~f:(fun (a, b) -> V._to_string a ^ "-" ^ V._to_string b)))); *)
   let e = arg_edges @ get_edges t in
   let v = get_all_vertices b in
   v, e
