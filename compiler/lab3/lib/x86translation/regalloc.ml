@@ -193,3 +193,14 @@ let callee_save (t2r : reg_or_spill TM.t) : R.reg_enum list =
   |> List.filter ~f:R.callee_saved
   |> List.dedup_and_sort ~compare:R.compare_reg_enum
 ;;
+
+
+let pp_temp_map (t2r : reg_or_spill TM.t) : string = 
+  let t2r = TM.to_alist t2r in
+  let pp_r_or_spl = function 
+    | Reg r -> R.format_reg_32 r
+    | Spl i -> sprintf "spl[%s]" (Int.to_string i)
+  in
+  let res = List.map t2r ~f:(fun (t, rot) -> sprintf "%s:%s" (Temp.name t) (pp_r_or_spl rot)) in
+  sprintf "{%s\n}\n" (String.concat res ~sep:",")
+;;
