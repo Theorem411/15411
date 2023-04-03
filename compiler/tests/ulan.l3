@@ -1,8 +1,271 @@
-//test return 5050
-//make sure your stack can handle functions with over 6 argumentsint 
-int f(int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9, int a10, int a11, int a12, int a13, int a14, int a15, int a16, int a17, int a18, int a19, int a20, int a21, int a22, int a23, int a24, int a25, int a26, int a27, int a28, int a29, int a30, int a31, int a32, int a33, int a34, int a35, int a36, int a37, int a38, int a39, int a40, int a41, int a42, int a43, int a44, int a45, int a46, int a47, int a48, int a49, int a50, int a51, int a52, int a53, int a54, int a55, int a56, int a57, int a58, int a59, int a60, int a61, int a62, int a63, int a64, int a65, int a66, int a67, int a68, int a69, int a70, int a71, int a72, int a73, int a74, int a75, int a76, int a77, int a78, int a79, int a80, int a81, int a82, int a83, int a84, int a85, int a86, int a87, int a88, int a89, int a90, int a91, int a92, int a93, int a94, int a95, int a96, int a97, int a98, int a99, int a100){
-	return a1+a2+a3+a4+a5+a6+a7+a8+a9+a10+a11+a12+a13+a14+a15+a16+a17+a18+a19+a20+a21+a22+a23+a24+a25+a26+a27+a28+a29+a30+a31+a32+a33+a34+a35+a36+a37+a38+a39+a40+a41+a42+a43+a44+a45+a46+a47+a48+a49+a50+a51+a52+a53+a54+a55+a56+a57+a58+a59+a60+a61+a62+a63+a64+a65+a66+a67+a68+a69+a70+a71+a72+a73+a74+a75+a76+a77+a78+a79+a80+a81+a82+a83+a84+a85+a86+a87+a88+a89+a90+a91+a92+a93+a94+a95+a96+a97+a98+a99+a100;
-}
-int main(){
-	return f(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100);
+//test memerror
+struct s0 {
+    int x1;
+};
+
+struct s1 {
+    struct s0 s0;
+    struct s0 s1;
+};
+
+struct s2 {
+    struct s1 s0;
+    struct s1 s1;
+};
+
+struct s3 {
+    struct s2 s0;
+    struct s2 s1;
+};
+
+struct s4 {
+    struct s3 s0;
+    struct s3 s1;
+};
+
+struct s5 {
+    struct s4 s0;
+    struct s4 s1;
+};
+
+struct s6 {
+    struct s5 s0;
+    struct s5 s1;
+};
+
+struct s7 {
+    struct s6 s0;
+    struct s6 s1;
+};
+
+struct s8 {
+    struct s7 s0;
+    struct s7 s1;
+};
+
+struct s9 {
+    struct s8 s0;
+    struct s8 s1;
+};
+
+struct s10 {
+    struct s9 s0;
+    struct s9 s1;
+};
+
+struct s11 {
+    struct s10 s0;
+    struct s10 s1;
+};
+
+struct s12 {
+    struct s11 s0;
+    struct s11 s1;
+};
+
+struct s13 {
+    struct s12 s0;
+    struct s12 s1;
+};
+
+struct s14 {
+    struct s13 s0;
+    struct s13 s1;
+};
+
+struct s15 {
+    struct s14 s0;
+    struct s14 s1;
+};
+
+struct s16 {
+    struct s15 s0;
+    struct s15 s1;
+};
+
+struct s17 {
+    struct s16 s0;
+    struct s16 s1;
+};
+
+struct s18 {
+    struct s17 s0;
+    struct s17 s1;
+};
+
+struct s19 {
+    struct s18 s0;
+    struct s18 s1;
+};
+
+struct s20 {
+    struct s19 s0;
+    struct s19 s1;
+};
+
+struct s21 {
+    struct s20 s0;
+    struct s20 s1;
+};
+struct s22 {
+    struct s21 s0;
+    struct s21 s1;
+};
+struct s23 {
+    struct s22 s0;
+    struct s22 s1;
+};
+struct s24 {
+    struct s23 s0;
+    struct s23 s1;
+};
+struct s25 {
+    struct s24 s0;
+    struct s24 s1;
+};
+struct s26 {
+    struct s25 s0;
+    struct s25 s1;
+};
+struct s27 {
+    struct s26 s0;
+    struct s26 s1;
+};
+struct s28 {
+    struct s27 s0;
+    struct s27 s1;
+};
+struct s29 {
+    struct s28 s0;
+    struct s28 s1;
+};
+struct s30 {
+    struct s29 s0;
+    struct s29 s1;
+};
+struct s31 {
+    struct s30 s0;
+    struct s30 s1;
+};
+struct s32 {
+    struct s31 s0;
+    struct s31 s1;
+};
+struct s33 {
+    struct s32 s0;
+    struct s32 s1;
+};
+struct s34 {
+    struct s33 s0;
+    struct s33 s1;
+};
+struct s35 {
+    struct s34 s0;
+    struct s34 s1;
+};
+struct s36 {
+    struct s35 s0;
+    struct s35 s1;
+};
+struct s37 {
+    struct s36 s0;
+    struct s36 s1;
+};
+struct s38 {
+    struct s37 s0;
+    struct s37 s1;
+};
+struct s39 {
+    struct s38 s0;
+    struct s38 s1;
+};
+struct s40 {
+    struct s39 s0;
+    struct s39 s1;
+};
+struct s41 {
+    struct s40 s0;
+    struct s40 s1;
+};
+struct s42 {
+    struct s41 s0;
+    struct s41 s1;
+};
+struct s43 {
+    struct s42 s0;
+    struct s42 s1;
+};
+struct s44 {
+    struct s43 s0;
+    struct s43 s1;
+};
+struct s45 {
+    struct s44 s0;
+    struct s44 s1;
+};
+struct s46 {
+    struct s45 s0;
+    struct s45 s1;
+};
+struct s47 {
+    struct s46 s0;
+    struct s46 s1;
+};
+struct s48 {
+    struct s47 s0;
+    struct s47 s1;
+};
+struct s49 {
+    struct s48 s0;
+    struct s48 s1;
+};
+struct s50 {
+    struct s49 s0;
+    struct s49 s1;
+};
+struct s51 {
+    struct s50 s0;
+    struct s50 s1;
+};
+struct s52 {
+    struct s51 s0;
+    struct s51 s1;
+};
+struct s53 {
+    struct s52 s0;
+    struct s52 s1;
+};
+struct s54 {
+    struct s53 s0;
+    struct s53 s1;
+};
+struct s55 {
+    struct s54 s0;
+    struct s54 s1;
+};
+struct s56 {
+    struct s55 s0;
+    struct s55 s1;
+};
+struct s57 {
+    struct s56 s0;
+    struct s56 s1;
+};
+struct s58 {
+    struct s57 s0;
+    struct s57 s1;
+};
+struct s59 {
+    struct s58 s0;
+    struct s58 s1;
+};
+struct s60 {
+    struct s59 s0;
+    struct s59 s1;
+};
+
+int main() {
+    struct s60 *ptr60 = NULL;
+    ptr60->s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.s1.x1 = 1;
+    return 0;
 }
