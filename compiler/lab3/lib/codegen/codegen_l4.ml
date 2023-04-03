@@ -206,8 +206,8 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
   | T.Return eopt ->
     (* return e is implemented as %eax <- e *)
     (match eopt with
-     | None -> [ A.Ret ]
-     | Some e -> munch_exp (A.Reg A.EAX) e ~mfl @ [ A.Ret ])
+    | None -> [ A.Ret ]
+    | Some e -> munch_exp (A.Reg A.EAX) e ~mfl @ [ A.Ret ])
   | T.AssertFail -> [ A.AssertFail ]
   | T.Alloc { dest; size } ->
     [ (* edi <-4 size *)
@@ -265,7 +265,16 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
       ]
     in
     let t = A.Temp (Temp.create ()) in
-    let movp = [ A.PureBinop { dest=t; size = A.L; lhs= ts; op=A.Add; rhs=A.Imm (Int64.of_int_exn off) }] in
+    let movp =
+      [ A.PureBinop
+          { dest = t
+          ; size = A.L
+          ; lhs = ts
+          ; op = A.Add
+          ; rhs = A.Imm (Int64.of_int_exn off)
+          }
+      ]
+    in
     let tr = A.Temp (Temp.create ()) in
     let codegen_src = munch_exp tr src ~mfl in
     let movr = [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ] in
@@ -279,22 +288,41 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     let t1 = A.Temp (Temp.create ()) in
     let t2 = A.Temp (Temp.create ()) in
     let t = A.Temp (Temp.create ()) in
-    let codegen_head = munch_exp th (head) ~mfl in
+    let codegen_head = munch_exp th head ~mfl in
     let codegen_idx = munch_exp ti idx ~mfl in
-    let bound_chk = [
-      A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
-    ; A.Cjmp { typ = A.Je; l = mfl }
-    ; A.MovSxd { dest=ti'; src=ti}
-    ; A.Cmp { lhs = ti; size = A.S; rhs = A.Imm (Int64.of_int_exn 0) }
-    ; A.Cjmp { typ = A.Jl; l = mfl }
-    ; A.PureBinop { dest = tm; size = A.L; lhs = th; op=A.Sub; rhs = A.Imm (Int64.of_int_exn 8) }
-    ; A.MovFrom { dest = tl; size = A.S; src = tm }
-    ; A.Cmp { lhs = ti; size = A.S; rhs = tl }
-    ; A.Cjmp { typ = A.Jge; l = mfl }
-    ; A.PureBinop { dest = t1; size = A.L; lhs = ti'; op=A.Mul; rhs = A.Imm (Int64.of_int_exn typ_size) }
-    ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op=A.Add; rhs = A.Imm (Int64.of_int_exn extra) }
-    ; A.PureBinop { dest = t; size = A.L; lhs = th; op=A.Add; rhs = t2 }
-    ; ] in
+    let bound_chk =
+      [ A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
+      ; A.Cjmp { typ = A.Je; l = mfl }
+      ; A.MovSxd { dest = ti'; src = ti }
+      ; A.Cmp { lhs = ti; size = A.S; rhs = A.Imm (Int64.of_int_exn 0) }
+      ; A.Cjmp { typ = A.Jl; l = mfl }
+      ; A.PureBinop
+          { dest = tm
+          ; size = A.L
+          ; lhs = th
+          ; op = A.Sub
+          ; rhs = A.Imm (Int64.of_int_exn 8)
+          }
+      ; A.MovFrom { dest = tl; size = A.S; src = tm }
+      ; A.Cmp { lhs = ti; size = A.S; rhs = tl }
+      ; A.Cjmp { typ = A.Jge; l = mfl }
+      ; A.PureBinop
+          { dest = t1
+          ; size = A.L
+          ; lhs = ti'
+          ; op = A.Mul
+          ; rhs = A.Imm (Int64.of_int_exn typ_size)
+          }
+      ; A.PureBinop
+          { dest = t2
+          ; size = A.L
+          ; lhs = t1
+          ; op = A.Add
+          ; rhs = A.Imm (Int64.of_int_exn extra)
+          }
+      ; A.PureBinop { dest = t; size = A.L; lhs = th; op = A.Add; rhs = t2 }
+      ]
+    in
     let tr = A.Temp (Temp.create ()) in
     let codegen_src = munch_exp tr src ~mfl in
     (* let mov =
@@ -320,7 +348,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
       | None -> [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ]
     in *)
     let mov = [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ] in
-    [codegen_head; codegen_idx; bound_chk; codegen_src; mov] |> List.concat
+    [ codegen_head; codegen_idx; bound_chk; codegen_src; mov ] |> List.concat
   | T.MovFuncApp { dest; fname; args } ->
     let cogen_arg e =
       let t = Temp.create () in
@@ -341,16 +369,21 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) : A.instr list =
     let args_overflow = List.filter_mapi ops ~f:args_overflow_f in
     let call = A.Call { fname; args_in_regs; args_overflow } in
     (match dest with
-     | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
-     | Some (d, sz) ->
-       [ cogen_args
-       ; args_mv
-       ; [ call; A.Mov { dest = A.Temp d; size = munch_size sz; src = A.Reg A.EAX } ]
-       ]
-       |> List.concat)
+    | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
+    | Some (d, sz) ->
+      [ cogen_args
+      ; args_mv
+      ; [ call; A.Mov { dest = A.Temp d; size = munch_size sz; src = A.Reg A.EAX } ]
+      ]
+      |> List.concat)
 ;;
 
-let munch_block ({ label; block; jump } : T.block) ~(mfl : Label.t) : A.block =
+let munch_arg_moves (args : (Temp.t * A.size) list) = 
+  let args = List.take args 6 in 
+  List.mapi args ~f:(fun i (t, sz) -> A.Mov {dest = A.Temp t; src = A.Reg (A.arg_i_to_reg i); size = sz })
+
+let munch_block ({ label; block; jump } : T.block) ~(mfl : Label.t) ~(args: (Temp.t * A.size) list
+) : A.block =
   let jump =
     match jump with
     | T.JRet -> A.JRet
@@ -358,13 +391,18 @@ let munch_block ({ label; block; jump } : T.block) ~(mfl : Label.t) : A.block =
     | T.JUncon l -> A.JUncon l
   in
   let block' = List.map ~f:(fun s -> munch_stm s ~mfl) block |> List.concat in
-  { label; block = block'; jump }
+  let arg_moves =
+    match label with
+    | Label.BlockLbl _ -> []
+    | Label.FunName _ -> munch_arg_moves args
+  in
+  { label; block = arg_moves @ block'; jump }
 ;;
 
 let codegen (prog : T.program) ~(mfl : Label.t) : A.program =
   let map_f ({ fname; args; fdef } : T.fspace_block) : A.fspace =
     let args = List.map args ~f:(fun (t, i) -> t, munch_size i) in
-    let fdef_blocks = List.map fdef ~f:(fun b -> munch_block b ~mfl) in
+    let fdef_blocks = List.map fdef ~f:(fun b -> munch_block b ~mfl ~args) in
     { fname; args; fdef_blocks }
   in
   List.map prog ~f:map_f

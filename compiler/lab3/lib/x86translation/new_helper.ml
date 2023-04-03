@@ -16,8 +16,9 @@ let do_arg_moves
     (args : (Temp.t * AS.size) list)
     total_size
   =
-  let reg_args, stack_args = List.take args 6, List.drop args 6 in
-  let reg_moves =
+  let stack_args = List.drop args 6 in
+  (* let reg_args, stack_args = List.take args 6, List.drop args 6 in *)
+  (* let reg_moves =
     let srcs =
       List.mapi reg_args ~f:(fun i (_, sz) ->
           X86.to_size sz, X86.Reg (R.arg_i_to_reg (to_int sz) i))
@@ -30,7 +31,7 @@ let do_arg_moves
     in
     let create d (sz, s) = X86.BinCommand { op = Mov; dest = d; src = s; size = sz } in
     List.map2_exn dests srcs ~f:create
-  in
+  in *)
   let stack_refs =
     List.concat_mapi stack_args ~f:(fun i (t, sz) ->
         let d = TM.find_exn reg_map t in
@@ -55,7 +56,7 @@ let do_arg_moves
               { op = Mov; dest = X86.Stack i; src = X86.get_free sz; size = sz }
           ])
   in
-  reg_moves @ stack_refs
+  stack_refs
 ;;
 
 let callee_handle (reg_map : Regalloc.reg_or_spill TM.t) =

@@ -1,20 +1,10 @@
-//test return 0
-/* Simple function call to sum up numbers */
+//test return 3
 
-
-int sum(int i, int j) {
-  int sum = 0;
-  for (; i <= j; i+=1)
-    sum += i;
-  return sum;
+int mean (int a, int b, int c, int d, int e){
+    return (a + b + c + d + e) / 5;
 }
 
-int main () {
-  int n;
-  int x;
-  int y;
-  n = 100;
-  x = sum(1,100);
-  y = n*(n+1)/2;
-  return x-y;
+int main() {
+    int m = mean(1,2,3,4,5);
+    return m;
 }
