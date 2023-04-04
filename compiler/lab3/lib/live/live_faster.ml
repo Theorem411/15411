@@ -63,9 +63,16 @@ let block_in_out_init ({ fdef_blocks; _ } : B.fspace) : block_in_out =
   let l2i = List.map fdef_blocks ~f:mapf in
   LT.of_alist_exn l2i
 ;;
-(* 
-let rm_dead_blocks (fspace : B.fspace) =  *)
 
+(* let rm_dead_blocks (fspace : B.fspace) : B.fspace * cfg_pred =
+  let cfg = cfg_pred_init fspace in
+  let dlabs = LM.filter cfg ~f:(fun ls -> LS.is_empty ls) |> LM.keys |> LS.of_list in
+  let cfg_remain = LM.filter cfg ~f:(fun ls -> not (LS.is_empty ls)) in
+  let fdef_blocks' =
+    List.filter fspace.fdef_blocks ~f:(fun { label; _ } -> not (LS.mem dlabs label))
+  in
+  { fspace with fdef_blocks = fdef_blocks' }, cfg_remain
+;; *)
 
 (*_ the general passing algorithm *)
 let mk_liveness_fspace (fspace : B.fspace) =
@@ -94,7 +101,11 @@ let mk_liveness_fspace (fspace : B.fspace) =
   let general_passing (block : B.block) : unit =
     (*_ load info into variables *)
     let ({ label; _ } : B.block) = block in
-    let pred = match (LM.find cfg label) with Some ps -> ps | None -> LS.empty in
+    let pred =
+      match LM.find cfg label with
+      | Some ps -> ps
+      | None -> LS.empty
+    in
     let { bdef; buse } = LM.find_exn l2du label in
     let { liveout; livein } = LT.find_exn l2io label in
     (*_ update own livein *)
@@ -115,7 +126,7 @@ let mk_liveness_fspace (fspace : B.fspace) =
     match Queue.dequeue wq with
     | Some block ->
       general_passing block;
-      prerr_endline "done with 1 loop";
+      (* prerr_endline "done with 1 loop"; *)
       loop ()
     | None -> ()
   in
