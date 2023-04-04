@@ -2,6 +2,7 @@ open Core
 module B = Block
 module V = Graph.Vertex
 module SP = Singlepass
+module VertexTable = Graph.VertexTable
 module L = Label
 
 module T = struct
@@ -63,9 +64,9 @@ let block_in_out_init ({ fdef_blocks; _ } : B.fspace) : block_in_out =
   let l2i = List.map fdef_blocks ~f:mapf in
   LT.of_alist_exn l2i
 ;;
+
 (* 
 let rm_dead_blocks (fspace : B.fspace) =  *)
-
 
 (*_ the general passing algorithm *)
 let mk_liveness_fspace (fspace : B.fspace) =
@@ -94,7 +95,11 @@ let mk_liveness_fspace (fspace : B.fspace) =
   let general_passing (block : B.block) : unit =
     (*_ load info into variables *)
     let ({ label; _ } : B.block) = block in
-    let pred = match (LM.find cfg label) with Some ps -> ps | None -> LS.empty in
+    let pred =
+      match LM.find cfg label with
+      | Some ps -> ps
+      | None -> LS.empty
+    in
     let { bdef; buse } = LM.find_exn l2du label in
     let { liveout; livein } = LT.find_exn l2io label in
     (*_ update own livein *)
@@ -130,7 +135,6 @@ let mk_liveness_fspace (fspace : B.fspace) =
 ;;
 
 (*_ the final mk_graph_fspace function *)
-module VertexTable = Hashtbl.Make (V)
 
 let mk_graph_fspace (fspace : B.fspace) =
   let spt = mk_liveness_fspace fspace in
@@ -142,14 +146,14 @@ let mk_graph_fspace (fspace : B.fspace) =
   in
   let () =
     List.iter edges ~f:(fun (a, b) ->
-      let a_set = VertexTable.find_exn graph' a in
-      let b_set = VertexTable.find_exn graph' b in
-      if not (V.equal a b)
-      then (
-        let () = VertexTable.set graph' ~key:b ~data:(V.Set.add b_set a) in
-        let () = VertexTable.set graph' ~key:a ~data:(V.Set.add a_set b) in
-        ())
-      else ())
+        let a_set = VertexTable.find_exn graph' a in
+        let b_set = VertexTable.find_exn graph' b in
+        if not (V.equal a b)
+        then (
+          let () = VertexTable.set graph' ~key:b ~data:(V.Set.add b_set a) in
+          let () = VertexTable.set graph' ~key:a ~data:(V.Set.add a_set b) in
+          ())
+        else ())
   in
-  V.Map.of_hashtbl_exn graph'
+  (V.Map.of_hashtbl_exn graph', graph')
 ;;

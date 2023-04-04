@@ -57,6 +57,7 @@ let to_list (graph : t) : (Vertex.t * Vertex.t list) list =
   let map_f (v, vs) = v, Vertex.Set.to_list vs in
   List.map res ~f:map_f
 ;;
+
 (* 
 (*_ 
     graph coloring 
@@ -101,9 +102,6 @@ let initial_weight (graph : t) : int Vertex.Map.t =
 (*_ 
     maximum capacity searching 
   *)
-(* let print_weights (weights) = 
-  Vertex.Map.to_alist weights |> List.iter ~f:(fun (v, c) -> print_string (Vertex._to_string v ^","^(string_of_int c)^"\n"))
-;; *)
 let weights_max_vertex weights =
   let w_list : (Vertex.t * int) list = Vertex.Map.to_alist weights in
   let res_opt = List.max_elt w_list ~compare:(fun (_, w1) (_, w2) -> Int.compare w1 w2) in
@@ -115,23 +113,18 @@ let weights_max_vertex weights =
 let ordering (graph : t) : Vertex.t list =
   let n = Vertex.Map.length graph in
   let weights = initial_weight graph in
-  (* let () = print_weights weights in  *)
   let wkset = Vertex.Map.key_set graph in
   let rec aux wkset weights i =
     if i = 0
     then []
     else (
-      (* let (v_max, _) = Vertex.Map.max_elt_exn weights in  *)
       let v_max = weights_max_vertex weights in
-      (* let () = print_string ("v_max: "^Vertex._to_string v_max ^ "\n") in *)
       let nbrs = Vertex.Map.find_exn graph v_max in
       let inter = Vertex.Set.inter nbrs wkset in
       let incr_fn ~key ~data = if Vertex.Set.mem inter key then data + 1 else data in
       let wkset' = Set.remove wkset v_max in
       let weights' = Vertex.Map.remove weights v_max in
       let weights'' = Vertex.Map.mapi weights' ~f:incr_fn in
-      (*_ new changes *)
-      (* let () = print_weights weights'' in *)
       v_max :: aux wkset' weights'' (i - 1))
   in
   aux wkset weights n
@@ -139,14 +132,12 @@ let ordering (graph : t) : Vertex.t list =
 
 let unused_color_in_nbrs (graph : t) (color_palette : color_palette_t) (v : Vertex.t) =
   let nbrs = Vertex.Map.find_exn graph v in
-  (* let () = print_vertex_set nbrs ("this is nbrs of v="^Vertex._to_string v) in *)
   let fold_f (acc : int list) v =
     match Vertex.Map.find_exn color_palette v with
     | None -> acc
     | Some c -> c :: acc
   in
   let used_colors = Vertex.Set.fold nbrs ~init:[] ~f:fold_f |> Set.of_list (module Int) in
-  (* let () = List.iter (Vertex.Set.fold nbrs ~init:[] ~f:fold_f) ~f:(fun c -> print_string (string_of_int c ^ ", ")) in *)
   let rec aux i_max i =
     if i = i_max
     then i_max
@@ -166,8 +157,6 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
     | Some c_old -> (v, c_old) :: coloring_aux graph color_palette vs
     | None ->
       let c_new = unused_color_in_nbrs graph color_palette v in
-      (* let () =  CustomDebug.print_with_name "\n >> color palette" [sexp_of_color_palette_t color_palette] in *)
-      (* let () = print_string ("\nc_new should be 1 but got: " ^ string_of_int (c_new)^"\n") in *)
       let color_palette' = Vertex.Map.update color_palette v ~f:(fun _ -> Some c_new) in
       (v, c_new) :: coloring_aux graph color_palette' vs)
 ;;
@@ -178,3 +167,6 @@ let coloring (graph : t) =
   let v2c = coloring_aux graph color_palette vertex_order in
   Vertex.Map.of_alist_exn v2c
 ;;
+
+module VertexTable = Hashtbl.Make (Vertex)
+type new_graph = Vertex.Set.t VertexTable.t

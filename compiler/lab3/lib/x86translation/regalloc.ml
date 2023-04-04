@@ -120,7 +120,7 @@ let __free_regs (c2v : reg_n_temps CM.t) : reg_or_spill list =
 let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
   (*_ think of three layers: 1. the temps 2. the colors 3. the registers *)
   (*_ do the coloring magic: produce (T/R) to c mapping *)
-  let graph = Live.mk_graph_fspace (Block.of_fspace fspace) in
+  let graph, _ = Live.mk_graph_fspace (Block.of_fspace fspace) in
   let v2c = Graph.coloring graph in
   let c2v = __c2v v2c in
   (*_ t2c : map temp to the their colors*)
@@ -139,26 +139,6 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
     | Some (Second _) -> c2r
   in
   let c2r = CM.of_alist_exn c2r in
-  (* let combine ~key:c _ =
-    failwith
-      (sprintf
-         "regalloc: impossible! color %s is considered precolors and free at the same \
-          time"
-         (Int.to_string c))
-  in *)
-  (* let c2r = CM.merge_skewed c2r pc2pr ~combine in *)
-  (*
-  let () =
-    prerr_endline
-      (let l = CM.to_alist c2r in
-       String.concat ~sep:"," (List.map l ~f:(fun (i, _) -> Int.to_string i)))
-  in
-  let () =
-    prerr_endline
-      (let l = CM.to_alist pc2pr in
-       String.concat ~sep:"," (List.map l ~f:(fun (i, _) -> Int.to_string i)))
-  in 
-  *)
   let c2r = CM.of_alist_exn (CM.to_alist c2r @ CM.to_alist pc2pr) in
   (* combine precolor with postcolor*)
   (*_ compose t2c tith c2r to get t2r_or_spl *)
