@@ -36,8 +36,8 @@ let get_all_temps (f : AS.fspace) =
   List.dedup_and_sort ~compare:Temp.compare all_temps
 ;;
 
-let stack_alloc : AS.fspace -> Regalloc.reg_or_spill TM.t =
+let stack_alloc : AS.fspace -> Regalloc.reg_or_spill TM.t * AS.fspace  =
  fun (f : AS.fspace) ->
   let temps = get_all_temps f in
   let points = List.mapi temps ~f:(fun i t -> t, Regalloc.Spl i) in
-  TM.of_alist_exn points;;
+  TM.of_alist_exn points, f;;

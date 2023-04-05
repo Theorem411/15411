@@ -9,9 +9,9 @@ type reg_or_spill =
   | Reg of R.reg_enum
   | Spl of int
 
-val reg_alloc : AS.fspace -> reg_or_spill TM.t
+val reg_alloc : AS.fspace -> reg_or_spill TM.t * AS.fspace
 val mem_count : reg_or_spill TM.t -> int
 val caller_save : reg_or_spill TM.t -> R.reg_enum list
 val callee_save : reg_or_spill TM.t -> R.reg_enum list
-val asr2renum : AS.reg -> R.reg_enum 
+val asr2renum : AS.reg -> R.reg_enum
 val pp_temp_map : reg_or_spill TM.t -> string

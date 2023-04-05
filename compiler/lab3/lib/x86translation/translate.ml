@@ -404,28 +404,26 @@ let block_instrs (fspace : AS.fspace) : AS.instr list list =
 ;;
 
 let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr list =
-  match fspace with
-  | { fname; fdef_blocks; args = __args } ->
-    (* has to be changed to the global one *)
-    let reg_map : Regalloc.reg_or_spill TM.t = alloc fspace in
-    (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
-    let stack_cells = Regalloc.mem_count reg_map in
-    let final = get_final reg_map in
-    (* gets prologue and epilogue of the function *)
-    let b, e, stack_moves, retLabel =
-      Helper.get_function_be (fname, __args) reg_map stack_cells
-    in
-    let translated instructions : X86.instr list =
-      List.fold
-        instructions
-        ~init:[]
-        ~f:(translate_line (retLabel, errLabel) final stack_moves)
-    in
-    let res = List.concat_map ~f:translated (block_instrs fspace) in
-    let x = (List.nth_exn fdef_blocks 0).block in
-    let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
-    let full_rev = List.rev_append e res in
-    b @ first_block_code @ List.rev full_rev
+  (* has to be changed to the global one *)
+  let reg_map, new_fspace = alloc fspace in
+  (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
+  let stack_cells = Regalloc.mem_count reg_map in
+  let final = get_final reg_map in
+  (* gets prologue and epilogue of the function *)
+  let b, e, stack_moves, retLabel =
+    Helper.get_function_be (new_fspace.fname, new_fspace.args) reg_map stack_cells
+  in
+  let translated instructions : X86.instr list =
+    List.fold
+      instructions
+      ~init:[]
+      ~f:(translate_line (retLabel, errLabel) final stack_moves)
+  in
+  let res = List.concat_map ~f:translated (block_instrs fspace) in
+  let x = (List.nth_exn new_fspace.fdef_blocks 0).block in
+  let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
+  let full_rev = List.rev_append e res in
+  b @ first_block_code @ List.rev full_rev
 ;;
 
 let translate (fs : AS.program) ~mfail =

@@ -7,6 +7,7 @@ module Live = Live_faster
 module CM = Map.Make (Int)
 module CS = Set.Make (Int)
 module TM = Temp.Map
+module Coalesce = Coalesce
 
 module REnum = struct
   type t = AS.reg [@@deriving compare, equal, sexp]
@@ -117,11 +118,12 @@ let __free_regs (c2v : reg_n_temps CM.t) : reg_or_spill list =
   free_regs
 ;;
 
-let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
+let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * AS.fspace =
   (*_ think of three layers: 1. the temps 2. the colors 3. the registers *)
   (*_ do the coloring magic: produce (T/R) to c mapping *)
-  let graph, _ = Live.mk_graph_fspace (Block.of_fspace fspace) in
+  let graph, graph_tbl = Live.mk_graph_fspace (Block.of_fspace fspace) in
   let v2c = Graph.coloring graph in
+  let ({ v2c; fspace; _ } : Coalesce.t) = Coalesce.coalesce graph_tbl v2c fspace in
   let c2v = __c2v v2c in
   (*_ t2c : map temp to the their colors*)
   let t2c = __t2c c2v in
@@ -143,7 +145,7 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t =
   (* combine precolor with postcolor*)
   (*_ compose t2c tith c2r to get t2r_or_spl *)
   let t2r = TM.mapi t2c ~f:(fun ~key:_ ~data:c -> CM.find_exn c2r c) in
-  t2r
+  t2r, fspace
 ;;
 
 let mem_count (t2r : reg_or_spill TM.t) : int =
@@ -174,13 +176,14 @@ let callee_save (t2r : reg_or_spill TM.t) : R.reg_enum list =
   |> List.dedup_and_sort ~compare:R.compare_reg_enum
 ;;
 
-
-let pp_temp_map (t2r : reg_or_spill TM.t) : string = 
+let pp_temp_map (t2r : reg_or_spill TM.t) : string =
   let t2r = TM.to_alist t2r in
-  let pp_r_or_spl = function 
+  let pp_r_or_spl = function
     | Reg r -> R.format_reg_32 r
     | Spl i -> sprintf "spl[%s]" (Int.to_string i)
   in
-  let res = List.map t2r ~f:(fun (t, rot) -> sprintf "%s:%s" (Temp.name t) (pp_r_or_spl rot)) in
+  let res =
+    List.map t2r ~f:(fun (t, rot) -> sprintf "%s:%s" (Temp.name t) (pp_r_or_spl rot))
+  in
   sprintf "{%s\n}\n" (String.concat res ~sep:",")
 ;;
