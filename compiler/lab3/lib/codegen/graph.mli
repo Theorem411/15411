@@ -22,6 +22,8 @@ module Vertex : sig
   val print : t -> unit
 end
 
+module VertexTable : Hashtbl.S with type key = Vertex.t
+
 (*_ the graph type *)
 type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 
@@ -31,9 +33,11 @@ val coloring : t -> int Vertex.Map.t
 
 (*_ liveness *)
 (* val mk_interfere_graph : AS.instr list -> t *)
-module VertexTable : Hashtbl.S with type key = Vertex.t
-
 type new_graph = Vertex.Set.t VertexTable.t
+
+val can_coalesce : new_graph -> Vertex.t -> Vertex.t -> bool
+(* coalesce two vertices into third vertex and return the new vertex set *)
+val coalesce : new_graph -> Vertex.t * Vertex.t -> Vertex.t -> Vertex.Set.t
 
 (*_ debug printing *)
 val print : t -> unit

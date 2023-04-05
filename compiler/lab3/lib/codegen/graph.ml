@@ -169,4 +169,33 @@ let coloring (graph : t) =
 ;;
 
 module VertexTable = Hashtbl.Make (Vertex)
+
 type new_graph = Vertex.Set.t VertexTable.t
+
+(* let is_adjc (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
+  let a_set = VertexTable.find_exn g a in
+  Vertex.Set.find ~f:(Vertex.equal b) a_set |> Option.is_some
+;; *)
+
+let can_coalesce (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
+  if Vertex.equal a b
+  then false
+  else (
+    let a_set = VertexTable.find_exn g a in
+    let b_set = VertexTable.find_exn g b in
+    (* check if adjc *)
+    if Vertex.Set.find ~f:(Vertex.equal b) a_set |> Option.is_some
+    then false
+    else Vertex.Set.length (Vertex.Set.union a_set b_set) < AS.num_regs)
+;;
+
+(*_ Requires can_coalesce g a b  *)
+let coalesce (g : new_graph) ((a, b) : Vertex.t * Vertex.t) (new_v : Vertex.t) =
+  let a_set = VertexTable.find_exn g a in
+  let b_set = VertexTable.find_exn g b in
+  let u = Vertex.Set.union a_set b_set in
+  VertexTable.remove g a;
+  VertexTable.remove g b;
+  VertexTable.add_exn g ~key:new_v ~data:u;
+  u
+;;
