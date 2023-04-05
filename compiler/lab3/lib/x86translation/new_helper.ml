@@ -11,27 +11,12 @@ let to_int = function
 ;;
 
 (* returns move commands to move from rdi -> t_a1, rsi -> t_a2, ...  *)
-let do_arg_moves
+let do_stack_moves
     (reg_map : Regalloc.reg_or_spill TM.t)
     (args : (Temp.t * AS.size) list)
     total_size
   =
   let stack_args = List.drop args 6 in
-  (* let reg_args, stack_args = List.take args 6, List.drop args 6 in *)
-  (* let reg_moves =
-    let srcs =
-      List.mapi reg_args ~f:(fun i (_, sz) ->
-          X86.to_size sz, X86.Reg (R.arg_i_to_reg (to_int sz) i))
-    in
-    let dests =
-      List.map reg_args ~f:(fun (t, sz) ->
-          match TM.find_exn reg_map t with
-          | Spl i -> X86.Stack i
-          | Reg reg -> X86.Reg { reg; size = to_int sz })
-    in
-    let create d (sz, s) = X86.BinCommand { op = Mov; dest = d; src = s; size = sz } in
-    List.map2_exn dests srcs ~f:create
-  in *)
   let stack_refs =
     List.concat_mapi stack_args ~f:(fun i (t, sz) ->
         let d = TM.find_exn reg_map t in
@@ -107,7 +92,7 @@ let get_function_be
   let cee_regs_cnt = List.length cee_regs in
   let sub_c : int = if (n + cee_regs_cnt) % 2 = 0 then (n * 8) + 8 else n * 8 in
   (* total size of frame (added regs)*)
-  let stack_moves = do_arg_moves reg_map args (sub_c + (cee_regs_cnt * 8)) in
+  let stack_moves = do_stack_moves reg_map args (sub_c + (cee_regs_cnt * 8)) in
   let sub_enter, sub_exit = handle_sub sub_c in
   (* function labels *)
   let enter =
