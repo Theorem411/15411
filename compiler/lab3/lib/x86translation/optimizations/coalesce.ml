@@ -7,13 +7,15 @@ module UF = Unionfind
 
 type color = (int[@deriving compare, equal, hash])
 
+let coalesce_off = false 
+
 type t =
   { graph : Graph.new_graph
   ; v2c : color VM.t
   ; fspace : AS.fspace
   }
 
-let print_info s = prerr_endline s;
+(* let print_info s = prerr_endline s; *)
 
 module VT = Hashtbl.Make (V)
 module TT = Hashtbl.Make (Temp)
@@ -73,6 +75,7 @@ let new_lbl up (lbl : Label.bt) =
 ;;
 
 let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
+  if coalesce_off then {graph = g; v2c= __v2c; fspace = f} else 
   let forest = UF.create_forest () in
   let v2c = VT.of_alist_exn (VM.to_alist __v2c) in
   List.iter f.fdef_blocks ~f:(fun b ->
@@ -86,7 +89,7 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
             then ()
             else (
               let t3 = Temp.create () in
-              print_info (sprintf "Coalesing %s and %s -> %s" (Temp.name a) (Temp.name b) (Temp.name t3));
+              (* print_info (sprintf "Coalesing %s and %s -> %s" (Temp.name a) (Temp.name b) (Temp.name t3)); *)
               (* if not same color then do:  *)
               let col_a, col_b = VT.find_exn v2c (V.T a), VT.find_exn v2c (V.T b) in
               (* - Colesce two vertices into t3 in graph *)
@@ -101,13 +104,13 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
               ())
           | _ -> ()));
   let old_new_names = UF.get_final_parents forest in
-  print_info
+  (* print_info
     (sprintf
        "old_new_names [%s]"
        (String.concat
           ~sep:","
           (List.map old_new_names ~f:(fun (t1, t2) ->
-               sprintf "(%s -> %s)" (Temp.name t1) (Temp.name t2)))));
+               sprintf "(%s -> %s)" (Temp.name t1) (Temp.name t2))))); *)
   let update_map = TM.of_alist_exn old_new_names in
   let up t =
     match TM.find update_map t with
@@ -128,6 +131,6 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
     ; args = List.map f.args ~f:(fun (t, sz) -> up t, sz)
     }
   in
-  print_info (sprintf "new_fpace = %s" (AS.format_program [ new_space ]));
+  (* print_info (sprintf "new_fpace = %s" (AS.format_program [ new_space ])); *)
   { graph = g; v2c = VM.of_hashtbl_exn v2c; fspace = new_space }
 ;;

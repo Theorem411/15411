@@ -177,7 +177,7 @@ type new_graph = Vertex.Set.t VertexTable.t
   Vertex.Set.find ~f:(Vertex.equal b) a_set |> Option.is_some
 ;; *)
 
-let can_coalesce (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
+(* let can_coalesce (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
   if Vertex.equal a b
   then false
   else (
@@ -191,6 +191,17 @@ let can_coalesce (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
       if Vertex.Set.find ~f:(Vertex.equal b) a_set |> Option.is_some
       then false
       else Vertex.Set.length (Vertex.Set.union a_set b_set) < AS.num_regs)
+;; *)
+
+let can_coalesce (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
+  if Vertex.equal a b
+  then false
+  else (
+    let a_set = VertexTable.find_exn g a in
+    let b_set = VertexTable.find_exn g b in
+    if Vertex.Set.exists a_set ~f:(fun x -> Vertex.equal x b)
+    then false
+    else Vertex.Set.length (Vertex.Set.union a_set b_set) < AS.num_regs)
 ;;
 
 let neigh_aux g new_v (a, b) v =
@@ -212,13 +223,25 @@ let neigh_aux g new_v (a, b) v =
 
 (*_ Requires can_coalesce g a b  *)
 let coalesce (g : new_graph) ((a, b) : Vertex.t * Vertex.t) (new_v : Vertex.t) =
+  (* prerr_endline
+    (sprintf
+       "before coalesing %s %s -> %s"
+       (Vertex._to_string a)
+       (Vertex._to_string b)
+       (Vertex._to_string new_v));
+  print_endline
+    (sprintf
+       "before coalesing %s %s -> %s"
+       (Vertex._to_string a)
+       (Vertex._to_string b)
+       (Vertex._to_string new_v));
+  print (Vertex.Map.of_hashtbl_exn g); *)
   let a_set = VertexTable.find_exn g a in
   let b_set = VertexTable.find_exn g b in
   let u = Vertex.Set.union a_set b_set in
   VertexTable.remove g a;
   VertexTable.remove g b;
   VertexTable.add_exn g ~key:new_v ~data:u;
-  neigh_aux g new_v (a, b) a;
-  neigh_aux g new_v (a, b) b;
+  Vertex.Set.iter ~f:(neigh_aux g new_v (a, b)) u;
   u
 ;;
