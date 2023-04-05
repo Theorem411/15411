@@ -1,13 +1,14 @@
 type disjoint_set
 open Core
-module T = Temp
+module V = Graph.Vertex
 
-module TT : Hashtbl.S with type key = Temp.t
-type forest =  disjoint_set TT.t
+module VT : Hashtbl.S with type key = V.t
+type forest =  disjoint_set VT.t
 
 val create_forest : unit -> forest
-val add_vertex : forest -> Temp.t -> unit
-val find : forest -> Temp.t -> Temp.t
-val union : forest -> Temp.t -> Temp.t -> unit
-val union_to : forest -> Temp.t * Temp.t -> Temp.t -> unit
-val get_final_parents : forest -> (Temp.t * Temp.t) list
+val add_vertex : forest -> V.t -> unit
+val find : forest -> V.t -> V.t
+val union : forest -> V.t -> V.t -> unit
+val union_to : forest -> V.t * V.t -> V.t -> unit
+val union_to_x: forest -> x:V.t -> y:V.t -> unit
+val get_final_parents : forest -> (V.t * V.t) list

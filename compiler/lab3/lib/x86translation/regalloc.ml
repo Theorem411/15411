@@ -118,12 +118,20 @@ let __free_regs (c2v : reg_n_temps CM.t) : reg_or_spill list =
   free_regs
 ;;
 
-let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * AS.fspace =
+let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * (V.t -> V.t) =
   (*_ think of three layers: 1. the temps 2. the colors 3. the registers *)
   (*_ do the coloring magic: produce (T/R) to c mapping *)
   let graph, graph_tbl = Live.mk_graph_fspace (Block.of_fspace fspace) in
-  let v2c = Graph.coloring graph in
-  let ({ v2c; fspace; _ } : Coalesce.t) = Coalesce.coalesce graph_tbl v2c fspace in
+  let v2c_old = Graph.coloring graph in
+  let () =
+    prerr_endline
+      (String.concat
+         ~sep:","
+         (List.map
+            ~f:(fun (v, c) -> sprintf "%s -> %d" (V._to_string v) c)
+            (VM.to_alist v2c_old)))
+  in
+  let ({ v2c; updated; _ } : Coalesce.t) = Coalesce.coalesce graph_tbl v2c_old fspace in
   let c2v = __c2v v2c in
   (*_ t2c : map temp to the their colors*)
   let t2c = __t2c c2v in
@@ -145,7 +153,7 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * AS.fspace =
   (* combine precolor with postcolor*)
   (*_ compose t2c tith c2r to get t2r_or_spl *)
   let t2r = TM.mapi t2c ~f:(fun ~key:_ ~data:c -> CM.find_exn c2r c) in
-  t2r, fspace
+  t2r, updated
 ;;
 
 let mem_count (t2r : reg_or_spill TM.t) : int =

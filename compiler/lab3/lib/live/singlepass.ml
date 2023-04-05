@@ -260,7 +260,7 @@ let get_edges (table : t) : (V.t * V.t) list =
     (* remove d lin later *)
     let instr_specific_edges =
       match info.instr with
-      | AS.PureBinop { dest; lhs; rhs; _ } ->
+      | AS.EfktBinop { dest; lhs; rhs; _ } ->
         let d, l, r =
           V.op_to_vertex_opt dest, V.op_to_vertex_opt lhs, V.op_to_vertex_opt rhs
         in
