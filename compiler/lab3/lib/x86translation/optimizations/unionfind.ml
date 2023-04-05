@@ -54,8 +54,6 @@ let union (forest : disjoint_set TT.t) (x : 'a) (y : 'a) =
 ;;
 
 let union_to (forest : disjoint_set TT.t) (x, y) (z : T.t) =
-  (* prerr_endline
-    (sprintf "union to (%s, %s) -> %s" (Temp.name x) (Temp.name y) (Temp.name z)); *)
   let root_x = find forest x in
   let root_y = find forest y in
   let new_parent = find forest z in
