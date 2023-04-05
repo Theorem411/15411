@@ -85,11 +85,11 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     V.Set.of_list (List.map ~f:(fun (t, _) -> V.T t) stack_args), V.Set.empty
 ;;
 
-let format_v_set s =
+(* let format_v_set s =
   String.concat ~sep:"," (List.map (V.Set.to_list s) ~f:(fun v -> V._to_string v))
-;;
+;; *)
 
-let format_table_entry (k : int) (e : ht_entry) : string =
+(* let format_table_entry (k : int) (e : ht_entry) : string =
   let instr_raw = AS.format_instr e.instr in
   let instr = String.slice instr_raw 0 (String.length instr_raw - 1) in
   sprintf
@@ -100,9 +100,9 @@ let format_table_entry (k : int) (e : ht_entry) : string =
     (format_v_set e.u)
     (format_v_set e.lin)
     (format_v_set e.lout)
-;;
+;; *)
 
-let print_table (table : t) ~lines : string =
+(* let print_table (table : t) ~lines : string =
   let keys =
     match lines with
     | None -> IntTable.keys table
@@ -116,7 +116,7 @@ let print_table (table : t) ~lines : string =
          let v = IntTable.find_exn table k in
          format_table_entry k v)
        keys)
-;;
+;; *)
 
 let initialize_blocks table (fargs : Temp.t list) (x : B.block) =
   let b = x.block in
