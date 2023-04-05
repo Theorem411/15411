@@ -193,6 +193,23 @@ let can_coalesce (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
       else Vertex.Set.length (Vertex.Set.union a_set b_set) < AS.num_regs)
 ;;
 
+let neigh_aux g new_v (a, b) v =
+  match VertexTable.find g v with
+  | None -> () (* vertex not in adjacency list, do nothing *)
+  | Some neighbors ->
+    (* replace v1 and v2 with the new vertex in the neighbor set *)
+    let new_neighbors =
+      let rest =
+        Vertex.Set.filter
+          ~f:(fun v' -> (not (Vertex.equal v' a)) && not (Vertex.equal v' b))
+          neighbors
+      in
+      Vertex.Set.add rest new_v
+    in
+    VertexTable.remove g v;
+    VertexTable.add_exn g ~key:v ~data:new_neighbors
+;;
+
 (*_ Requires can_coalesce g a b  *)
 let coalesce (g : new_graph) ((a, b) : Vertex.t * Vertex.t) (new_v : Vertex.t) =
   let a_set = VertexTable.find_exn g a in
@@ -201,5 +218,7 @@ let coalesce (g : new_graph) ((a, b) : Vertex.t * Vertex.t) (new_v : Vertex.t) =
   VertexTable.remove g a;
   VertexTable.remove g b;
   VertexTable.add_exn g ~key:new_v ~data:u;
+  neigh_aux g new_v (a, b) a;
+  neigh_aux g new_v (a, b) b;
   u
 ;;
