@@ -83,7 +83,7 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
             if not (Graph.can_coalesce g (V.T a) (V.T b))
             then ()
             else (
-              prerr_endline (sprintf "Coalesing %s and %s" (Temp.name a) (Temp.name b));
+              (* prerr_endline (sprintf "Coalesing %s and %s" (Temp.name a) (Temp.name b)); *)
               (* if not same color then do:  *)
               let col_a, col_b = VT.find_exn v2c (V.T a), VT.find_exn v2c (V.T b) in
               (* - Colesce two vertices into t3 in graph *)
@@ -99,13 +99,13 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
               ())
           | _ -> ()));
   let old_new_names = UF.get_final_parents forest in
-  prerr_endline
+  (* prerr_endline
     (sprintf
        "old_new_names [%s]"
        (String.concat
           ~sep:","
           (List.map old_new_names ~f:(fun (t1, t2) ->
-               sprintf "(%s -> %s)" (Temp.name t1) (Temp.name t2)))));
+               sprintf "(%s -> %s)" (Temp.name t1) (Temp.name t2))))); *)
   let update_map = TM.of_alist_exn old_new_names in
   let up t =
     match TM.find update_map t with
@@ -126,6 +126,6 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
     ; args = List.map f.args ~f:(fun (t, sz) -> up t, sz)
     }
   in
-  prerr_endline (sprintf "new_fpace = %s" (AS.format_program [ new_space ]));
+  (* prerr_endline (sprintf "new_fpace = %s" (AS.format_program [ new_space ])); *)
   { graph = g; v2c = VM.of_hashtbl_exn v2c; fspace = new_space }
 ;;

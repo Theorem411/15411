@@ -385,7 +385,7 @@ let get_final (reg_map : Regalloc.reg_or_spill TM.t) ((o, size) : AS.operand * X
   | AS.Imm n -> X86.Imm n
   | AS.Reg r -> X86.Reg { reg = Regalloc.asr2renum r; size = X86.of_size size }
   | AS.Temp t ->
-    prerr_endline (sprintf "Checking if I have %s" (Temp.name t));
+    (* prerr_endline (sprintf "Checking if I have %s" (Temp.name t)); *)
     (match TM.find_exn reg_map t with
     | Spl i -> X86.Stack i
     | Reg reg -> X86.Reg { reg; size = X86.of_size size })
