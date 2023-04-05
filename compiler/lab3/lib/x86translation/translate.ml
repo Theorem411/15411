@@ -449,7 +449,7 @@ let speed_up (p : X86.instr list) : X86.instr list =
               && X86.equal_operand m2.src m1.dest)
               (* [x <- x] @ rest -> rest   *)
               || X86.equal_operand m2.src m2.dest
-           then prev
+           then X86.Comment (X86.format i) :: prev
            else i :: prev
          | _, _ -> i :: prev))
 ;;
