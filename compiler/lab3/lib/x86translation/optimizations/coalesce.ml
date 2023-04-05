@@ -2,9 +2,8 @@ open Core
 module AS = Assem_l4
 module V = Graph.Vertex
 module VM = Graph.Vertex.Map
+
 module TM = Temp.Map
-module R = Register
-module Regalloc = Regalloc
 module UF = Unionfind
 
 type color = (int[@deriving compare, equal, hash])
