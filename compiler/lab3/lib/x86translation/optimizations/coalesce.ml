@@ -90,8 +90,8 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
               let t3 = Temp.create () in
               let new_n = Graph.coalesce g (V.T a, V.T b) (V.T t3) in
               (* - connect the temps in the forest *)
-              UF.union_to forest (a, b) t3;
               let c = if equal col_b col_a then col_a else mex_color forest v2c new_n in
+              UF.union_to forest (a, b) t3;
               (* recolor the vertex *)
               VT.remove v2c (V.T a);
               VT.remove v2c (V.T b);
