@@ -385,6 +385,7 @@ let get_final (reg_map : Regalloc.reg_or_spill TM.t) ((o, size) : AS.operand * X
   | AS.Imm n -> X86.Imm n
   | AS.Reg r -> X86.Reg { reg = Regalloc.asr2renum r; size = X86.of_size size }
   | AS.Temp t ->
+    prerr_endline (sprintf "Checking if I have %s" (Temp.name t));
     (match TM.find_exn reg_map t with
     | Spl i -> X86.Stack i
     | Reg reg -> X86.Reg { reg; size = X86.of_size size })
@@ -403,9 +404,9 @@ let block_instrs (fspace : AS.fspace) : AS.instr list list =
         AS.Lab label :: block))
 ;;
 
-let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr list =
+let translate_function (errLabel : Label.t) (_fspace : AS.fspace) : X86.instr list =
   (* has to be changed to the global one *)
-  let reg_map, new_fspace = alloc fspace in
+  let reg_map, new_fspace = alloc _fspace in
   (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
   let stack_cells = Regalloc.mem_count reg_map in
   let final = get_final reg_map in
@@ -419,7 +420,7 @@ let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr lis
       ~init:[]
       ~f:(translate_line (retLabel, errLabel) final stack_moves)
   in
-  let res = List.concat_map ~f:translated (block_instrs fspace) in
+  let res = List.concat_map ~f:translated (block_instrs new_fspace) in
   let x = (List.nth_exn new_fspace.fdef_blocks 0).block in
   let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
   let full_rev = List.rev_append e res in
@@ -438,18 +439,20 @@ let translate (fs : AS.program) ~mfail =
 let speed_up (p : X86.instr list) : X86.instr list =
   List.rev
     (List.fold ~init:[] p ~f:(fun prev i ->
-         match prev, i with
-         | ( X86.BinCommand ({ op = X86.Mov; _ } as m1) :: _
-           , X86.BinCommand ({ op = X86.Mov; _ } as m2) ) ->
-           if (* [ y <- x; x <- y] @ rest ] => [x <- y] @ rest   *)
-              (X86.equal_size m1.size m2.size
-              && X86.equal_operand m1.src m2.dest
-              && X86.equal_operand m2.src m1.dest)
-              (* [x <- x] @ rest -> rest   *)
-              || X86.equal_operand m2.src m2.dest
+         match i with
+         | X86.BinCommand ({ op = X86.Mov; _ } as m2) ->
+           if X86.equal_operand m2.src m2.dest
            then X86.Comment (X86.format i) :: prev
-           else i :: prev
-         | _, _ -> i :: prev))
+           else (
+             match prev with
+             | X86.BinCommand ({ op = X86.Mov; _ } as m1) :: _ ->
+               if X86.equal_size m1.size m2.size
+                  && X86.equal_operand m1.src m2.dest
+                  && X86.equal_operand m2.src m1.dest
+               then X86.Comment (X86.format i) :: prev
+               else i :: prev
+             | _ -> i :: prev)
+         | _ -> i :: prev))
 ;;
 
 let speed_up_off = false

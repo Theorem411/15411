@@ -181,12 +181,16 @@ let can_coalesce (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
   if Vertex.equal a b
   then false
   else (
-    let a_set = VertexTable.find_exn g a in
-    let b_set = VertexTable.find_exn g b in
-    (* check if adjc *)
-    if Vertex.Set.find ~f:(Vertex.equal b) a_set |> Option.is_some
-    then false
-    else Vertex.Set.length (Vertex.Set.union a_set b_set) < AS.num_regs)
+    let a_set_opt = VertexTable.find g a in
+    let b_set_opt = VertexTable.find g b in
+    match a_set_opt, b_set_opt with
+    | None, _ -> false
+    | _, None -> false
+    | Some a_set, Some b_set ->
+      (* check if adjc *)
+      if Vertex.Set.find ~f:(Vertex.equal b) a_set |> Option.is_some
+      then false
+      else Vertex.Set.length (Vertex.Set.union a_set b_set) < AS.num_regs)
 ;;
 
 (*_ Requires can_coalesce g a b  *)

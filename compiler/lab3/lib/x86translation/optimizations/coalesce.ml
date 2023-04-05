@@ -2,7 +2,6 @@ open Core
 module AS = Assem_l4
 module V = Graph.Vertex
 module VM = Graph.Vertex.Map
-
 module TM = Temp.Map
 module UF = Unionfind
 
@@ -22,9 +21,15 @@ let rec find_mex (s : IntSet.t) (n : int) =
   if not (IntSet.mem s n) then n else find_mex s (n + 1)
 ;;
 
-let mex_color (v2c : color VT.t) (new_neigh : V.Set.t) : color =
+let mex_color forest (v2c : color VT.t) (new_neigh : V.Set.t) : color =
   let key_list = V.Set.to_list new_neigh in
-  let cols = List.map ~f:(VT.find_exn v2c) key_list in
+  let updated_key_list =
+    List.map key_list ~f:(fun v ->
+        match v with
+        | V.T t -> V.T (UF.find forest t)
+        | v -> v)
+  in
+  let cols = List.map ~f:(VT.find_exn v2c) updated_key_list in
   find_mex (IntSet.of_list cols) 0
 ;;
 
@@ -59,6 +64,12 @@ let update_instr (f : Temp.t -> Temp.t) (instr : AS.instr) =
   | AS.Comment _ -> instr
 ;;
 
+let new_lbl up (lbl : Label.bt) =
+  match lbl with
+  | Label.BlockLbl _ -> lbl
+  | Label.FunName f -> Label.FunName { f with args = List.map f.args ~f:up }
+;;
+
 let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
   let forest = UF.create_forest () in
   let v2c = VT.of_alist_exn (VM.to_alist __v2c) in
@@ -72,14 +83,15 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
             if not (Graph.can_coalesce g (V.T a) (V.T b))
             then ()
             else (
+              prerr_endline (sprintf "Coalesing %s and %s" (Temp.name a) (Temp.name b));
               (* if not same color then do:  *)
               let col_a, col_b = VT.find_exn v2c (V.T a), VT.find_exn v2c (V.T b) in
               (* - Colesce two vertices into t3 in graph *)
               let t3 = Temp.create () in
               let new_n = Graph.coalesce g (V.T a, V.T b) (V.T t3) in
               (* - connect the temps in the forest *)
-              UF.union forest a b;
-              let c = if equal col_b col_a then col_a else mex_color v2c new_n in
+              UF.union_to forest (a, b) t3;
+              let c = if equal col_b col_a then col_a else mex_color forest v2c new_n in
               (* recolor the vertex *)
               VT.remove v2c (V.T a);
               VT.remove v2c (V.T b);
@@ -87,16 +99,26 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
               ())
           | _ -> ()));
   let old_new_names = UF.get_final_parents forest in
+  prerr_endline
+    (sprintf
+       "old_new_names [%s]"
+       (String.concat
+          ~sep:","
+          (List.map old_new_names ~f:(fun (t1, t2) ->
+               sprintf "(%s -> %s)" (Temp.name t1) (Temp.name t2)))));
   let update_map = TM.of_alist_exn old_new_names in
   let up t =
     match TM.find update_map t with
     | None -> t
     | Some tnew -> tnew
   in
-  let new_fdef =
+  let new_fdef : AS.block list =
     List.map f.fdef_blocks ~f:(fun b ->
         let new_instrs : AS.instr list = List.map b.block ~f:(update_instr up) in
-        { b with block = new_instrs })
+        let new_block : AS.block =
+          { block = new_instrs; jump = b.jump; label = new_lbl up b.label }
+        in
+        new_block)
   in
   let new_space : AS.fspace =
     { fname = f.fname
@@ -104,5 +126,6 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
     ; args = List.map f.args ~f:(fun (t, sz) -> up t, sz)
     }
   in
+  prerr_endline (sprintf "new_fpace = %s" (AS.format_program [ new_space ]));
   { graph = g; v2c = VM.of_hashtbl_exn v2c; fspace = new_space }
 ;;
