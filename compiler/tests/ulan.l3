@@ -1,9 +1,18 @@
-//test return 2139095040
-/* print and return +infinity in floating point */
+//test return 8
+/* gcd */
+
+int gcd (int x, int y) {
+  /* x,y >= 0 */
+  int r;
+  while (y != 0) {
+    r = x%y;
+    x = y;
+    y = r;
+  }
+  return x;
+}
+  
 
 int main () {
-  fpt x = fdiv(itof(1), itof(0));
-  print_fpt(x);
-  print_hex(x);
-  return x;
+  return gcd(24,56);
 }

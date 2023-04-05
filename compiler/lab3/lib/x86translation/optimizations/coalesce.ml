@@ -13,6 +13,8 @@ type t =
   ; fspace : AS.fspace
   }
 
+let print_info s = prerr_endline s;
+
 module VT = Hashtbl.Make (V)
 module TT = Hashtbl.Make (Temp)
 module IntSet = Set.Make (Int)
@@ -83,11 +85,11 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
             if not (Graph.can_coalesce g (V.T a) (V.T b))
             then ()
             else (
-              (* prerr_endline (sprintf "Coalesing %s and %s" (Temp.name a) (Temp.name b)); *)
+              let t3 = Temp.create () in
+              print_info (sprintf "Coalesing %s and %s -> %s" (Temp.name a) (Temp.name b) (Temp.name t3));
               (* if not same color then do:  *)
               let col_a, col_b = VT.find_exn v2c (V.T a), VT.find_exn v2c (V.T b) in
               (* - Colesce two vertices into t3 in graph *)
-              let t3 = Temp.create () in
               let new_n = Graph.coalesce g (V.T a, V.T b) (V.T t3) in
               (* - connect the temps in the forest *)
               let c = if equal col_b col_a then col_a else mex_color forest v2c new_n in
@@ -99,13 +101,13 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
               ())
           | _ -> ()));
   let old_new_names = UF.get_final_parents forest in
-  (* prerr_endline
+  print_info
     (sprintf
        "old_new_names [%s]"
        (String.concat
           ~sep:","
           (List.map old_new_names ~f:(fun (t1, t2) ->
-               sprintf "(%s -> %s)" (Temp.name t1) (Temp.name t2))))); *)
+               sprintf "(%s -> %s)" (Temp.name t1) (Temp.name t2)))));
   let update_map = TM.of_alist_exn old_new_names in
   let up t =
     match TM.find update_map t with
@@ -126,6 +128,6 @@ let coalesce (g : Graph.new_graph) (__v2c : color VM.t) (f : AS.fspace) : t =
     ; args = List.map f.args ~f:(fun (t, sz) -> up t, sz)
     }
   in
-  (* prerr_endline (sprintf "new_fpace = %s" (AS.format_program [ new_space ])); *)
+  print_info (sprintf "new_fpace = %s" (AS.format_program [ new_space ]));
   { graph = g; v2c = VM.of_hashtbl_exn v2c; fspace = new_space }
 ;;
