@@ -452,13 +452,15 @@ let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
 ;;
 
 let speed_up (p : X86.instr list) : X86.instr list =
-  let rm i = X86.Comment (X86.format i) in 
+  (* let rm i = X86.Comment (X86.format i) in  *)
+  (* let rm i prev = X86.Comment (X86.format i) :: prev in  *)
+  let rm i prev = prev in
   List.rev
     (List.fold ~init:[] p ~f:(fun prev i ->
          match i with
          | X86.BinCommand ({ op = X86.Mov; _ } as m2) ->
            if X86.equal_operand m2.src m2.dest
-           then rm i :: prev
+           then rm i prev
            else (
              match prev with
              | X86.BinCommand ({ op = X86.Mov; _ } as m1) :: _ ->
@@ -468,7 +470,7 @@ let speed_up (p : X86.instr list) : X86.instr list =
                   || (X86.equal_size m1.size m2.size
                      && X86.equal_operand m1.src m2.src
                      && X86.equal_operand m1.dest m2.dest)
-               then rm i :: prev
+               then rm i prev
                else i :: prev
              | _ -> i :: prev)
          | _ -> i :: prev))
