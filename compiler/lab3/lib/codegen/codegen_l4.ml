@@ -84,7 +84,7 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
     | T.Unop { op; p } ->
       let op = munch_unary_op op in
       A.Unop { op; dest } :: munch_exp_rev ~mfl dest p
-    | T.Mem T.Null -> [ A.Jmp mfl ]
+    | T.Mem T.Null -> if unsafe then [] else [ A.Jmp mfl ]
     | T.Mem (T.Ptr { start; off }) ->
       let t1 = A.Temp (Temp.create ()) in
       let t2 = A.Temp (Temp.create ()) in
@@ -92,12 +92,22 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
       let off8 = A.Imm (Int64.of_int_exn off) in
       (* let size = munch_size off in *)
       let size = munch_size esize in
-      [ A.MovFrom { dest; src = t2; size }
-      ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
-      ; A.Cjmp { typ = A.Je; l = mfl }
-      ; A.Cmp { lhs = t1; rhs = zero8; size = A.L }
-      ]
-      @ munch_exp_rev ~mfl t1 start
+      let chck =
+        if unsafe
+        then
+          [ A.MovFrom { dest; src = t2; size }
+          ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
+            (* ; A.Cjmp { typ = A.Je; l = mfl } *)
+            (* ; A.Cmp { lhs = t1; rhs = zero8; size = A.L } *)
+          ]
+        else
+          [ A.MovFrom { dest; src = t2; size }
+          ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
+          ; A.Cjmp { typ = A.Je; l = mfl }
+          ; A.Cmp { lhs = t1; rhs = zero8; size = A.L }
+          ]
+      in
+      chck @ munch_exp_rev ~mfl t1 start
     | T.Mem (T.Arr { head; idx; typ_size; extra }) ->
       let a = A.Temp (Temp.create ()) in
       let b = A.Temp (Temp.create ()) in
@@ -297,7 +307,24 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     let codegen_idx = munch_exp ~unsafe ti idx ~mfl in
     let bound_chk =
       if unsafe
-      then []
+      then
+        [ A.MovSxd { dest = ti'; src = ti }
+        ; A.PureBinop
+            { dest = t1
+            ; size = A.L
+            ; lhs = ti'
+            ; op = A.Mul
+            ; rhs = A.Imm (Int64.of_int_exn typ_size)
+            }
+        ; A.PureBinop
+            { dest = t2
+            ; size = A.L
+            ; lhs = t1
+            ; op = A.Add
+            ; rhs = A.Imm (Int64.of_int_exn extra)
+            }
+        ; A.PureBinop { dest = t; size = A.L; lhs = th; op = A.Add; rhs = t2 }
+        ]
       else
         [ A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
         ; A.Cjmp { typ = A.Je; l = mfl }

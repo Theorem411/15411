@@ -1,9 +1,5 @@
-//test return 73
-
-int main () {
-  int x = 1;
-  int y = 40;
-  int z = x << y;
-  int t = z;
-  return z;
+int main(){
+  int[] a = alloc_array(int, 3);
+  a[0] = 123;
+  return a[0];
 }
