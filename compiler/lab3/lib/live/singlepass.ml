@@ -6,17 +6,6 @@ module IntTable = Hashtbl.Make (Int)
 
 let dump_liveness : bool ref = ref false
 
-(* let print_info =
-  if !dump_liveness
-  then (
-    prerr_endline)
-  else (
-    prerr_endline)
-;; *)
-
-(* let print_info = prerr_endline *)
-let print_info _ = ()
-
 type ht_entry =
   { d : V.Set.t
   ; u : V.Set.t
@@ -34,6 +23,18 @@ let get_init (_ : int) : live_t * live_t =
   empty_1, empty_2
 ;;
 
+let op_to_vset (op : AS.operand) : V.Set.t =
+  match V.op_to_vertex_opt op with
+  | Some v -> V.Set.singleton v
+  | None -> V.Set.empty
+;;
+
+let op_to_vset_mem_mov (op : AS.operand) : V.Set.t =
+  match V.op_to_vertex_opt op with
+  | Some v -> V.Set.of_list [ v ]
+  | None -> V.Set.of_list []
+;;
+
 (* let print_vset (es : V.Set.t) =
   print_string "[";
   V.Set.iter
@@ -45,21 +46,12 @@ let get_init (_ : int) : live_t * live_t =
 ;; *)
 (*_ return def set and uses set  and adds the function params to the stack if*)
 let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
-  let op_to_vset (op : AS.operand) : V.Set.t =
-    match V.op_to_vertex_opt op with
-    | Some v -> V.Set.singleton v
-    | None -> V.Set.empty
-  in
-  let op_to_vset_mem_mov (op : AS.operand) : V.Set.t =
-    match V.op_to_vertex_opt op with
-    | Some v -> V.Set.of_list [ v ]
-    | None -> V.Set.of_list []
-  in
   match instr with
   | AS.Mov { dest; src; _ } -> op_to_vset dest, op_to_vset src
   | AS.MovSxd { dest; src } -> op_to_vset dest, op_to_vset src
   | AS.MovFrom { dest; src; _ } -> op_to_vset_mem_mov dest, op_to_vset src
-  | AS.MovTo { dest; src; _ } -> V.Set.empty, V.Set.union_list [ op_to_vset src; op_to_vset dest ]
+  | AS.MovTo { dest; src; _ } ->
+    V.Set.empty, V.Set.union_list [ op_to_vset src; op_to_vset dest ]
   | AS.Unop { dest; _ } -> op_to_vset dest, op_to_vset dest
   | AS.PureBinop { dest; lhs; rhs; _ } ->
     op_to_vset dest, V.Set.union_list [ op_to_vset lhs; op_to_vset rhs ]
@@ -78,20 +70,26 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   | AS.Set { src; _ } ->
     V.Set.union_list (List.map ~f:op_to_vset [ src; AS.Reg AS.EAX ]), V.Set.empty
   (* defines a lot of registers *)
-  | AS.Call { args_in_regs; _ } ->
+  | AS.Call { args_in_regs; args_overflow; _ } ->
     (* %rdi, %rsi, %rdx, %rcx, %r8, %r9, %rax - caller saved registers *)
-    ( V.Set.of_list (List.map ~f:(fun r -> V.R r) [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D  ])
-    , V.Set.of_list (List.map ~f:(fun (r, _) -> V.R r) args_in_regs) )
+    ( V.Set.of_list
+        (List.map
+           ~f:(fun r -> V.R r)
+           [ AS.EAX; AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D ])
+      (* @ List.map ~f:(fun (r, _) -> V.T r) args_overflow) *)
+    , V.Set.of_list
+        (List.map ~f:(fun (r, _) -> V.R r) args_in_regs
+        @ List.map ~f:(fun (r, _) -> V.T r) args_overflow) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->
     V.Set.of_list (List.map ~f:(fun (t, _) -> V.T t) stack_args), V.Set.empty
 ;;
 
-let format_v_set s =
+(* let format_v_set s =
   String.concat ~sep:"," (List.map (V.Set.to_list s) ~f:(fun v -> V._to_string v))
-;;
+;; *)
 
-let format_table_entry (k : int) (e : ht_entry) : string =
+(* let format_table_entry (k : int) (e : ht_entry) : string =
   let instr_raw = AS.format_instr e.instr in
   let instr = String.slice instr_raw 0 (String.length instr_raw - 1) in
   sprintf
@@ -102,10 +100,14 @@ let format_table_entry (k : int) (e : ht_entry) : string =
     (format_v_set e.u)
     (format_v_set e.lin)
     (format_v_set e.lout)
-;;
+;; *)
 
-let print_table (table : t) : string =
-  let keys = IntTable.keys table in
+(* let print_table (table : t) ~lines : string =
+  let keys =
+    match lines with
+    | None -> IntTable.keys table
+    | Some i -> List.map ~f:(fun (n, _) -> n) i
+  in
   let keys = List.sort ~compare:Int.compare keys in
   String.concat
     ~sep:"\n"
@@ -114,7 +116,7 @@ let print_table (table : t) : string =
          let v = IntTable.find_exn table k in
          format_table_entry k v)
        keys)
-;;
+;; *)
 
 let initialize_blocks table (fargs : Temp.t list) (x : B.block) =
   let b = x.block in
@@ -136,7 +138,6 @@ let init_table (f : B.fspace) =
   let table : t = IntTable.create () in
   let helper = initialize_blocks table f.args in
   List.iter f.fdef_blocks ~f:helper;
-  print_info (print_table table);
   table
 ;;
 
@@ -202,29 +203,20 @@ let handle_instrs
 let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.t)
     : V.Set.t
   =
-  let () = print_info ("doing now: " ^ B.format_block b) in
-  let () =
-    print_info
-      ("input:["
-      ^ String.concat
-          ~sep:","
-          (List.map (V.Set.to_list input) ~f:(fun v -> V._to_string v))
-      ^ "]")
-  in
   (* handling arguments *)
   let args, black_list =
     match b.label with
     | Label.BlockLbl _ -> None, V.Set.empty
     | Label.FunName { args; _ } ->
-      Some args, V.Set.of_list (List.map ~f:(fun t -> V.T t) args)
+      ( Some args
+      , V.Set.of_list
+          (List.map ~f:(fun t -> V.T t) args
+          @ List.map
+              ~f:(fun r -> V.R r)
+              [ AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D ]) )
   in
   let out_raw = handle_instrs table (b.block, args) input in
   let out = V.Set.diff out_raw black_list in
-  print_info
-    ("output:["
-    ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
-    ^ "]\n\n\n\n\n");
-  print_info (print_table table);
   out
 ;;
 
@@ -255,21 +247,33 @@ let cartesian l l' =
 ;;
 
 let get_edges (table : t) : (V.t * V.t) list =
-  let f ~key ~data:info acc =
+  let f ~key:_ ~data:info acc =
     let d, lout, lin =
       V.Set.to_list info.d, V.Set.to_list info.lout, V.Set.to_list info.lin
     in
+    let defined_regs =
+      List.filter d ~f:(fun v ->
+          match v with
+          | V.R _ -> true
+          | V.T _ -> false)
+    in
     (* remove d lin later *)
-    let out_ed, in_ed = cartesian d lout, cartesian d lin in
-    print_info
-      (sprintf
-         "[%d] edges: [%s]"
-         key
-         (String.concat
-            ~sep:","
-            (List.map (out_ed @ in_ed) ~f:(fun (a, b) ->
-                 V._to_string a ^ "-" ^ V._to_string b))));
-    List.concat [ out_ed; in_ed; acc ]
+    let instr_specific_edges =
+      match info.instr with
+      | AS.PureBinop { dest; lhs; rhs; _ } ->
+        let d, l, r =
+          V.op_to_vertex_opt dest, V.op_to_vertex_opt lhs, V.op_to_vertex_opt rhs
+        in
+        List.filter_map
+          ~f:(fun (a, b) ->
+            match a, b with
+            | Some(x), Some(y) -> Some(x, y)
+            | _ -> None)
+          [ d, l; d, r ]
+      | _ -> []
+    in
+    let out_ed, defined_reg_edges = cartesian d lout, cartesian defined_regs lin in
+    List.concat [ out_ed; defined_reg_edges; instr_specific_edges; acc ]
   in
   let init = ([] : (V.t * V.t) list) in
   IntTable.fold table ~init ~f
