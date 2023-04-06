@@ -169,6 +169,7 @@ type block =
   { label : Label.bt
   ; block : instr list
   ; jump : assem_jump_tag_t
+  ; depth : int
   }
 [@@deriving equal, sexp, compare, hash]
 
@@ -294,10 +295,11 @@ let format_jump_tag = function
   | JUncon l -> Label.name l
 ;;
 
-let format_block ({ label; block; jump } : block) : string =
+let format_block ({ label; block; jump; depth } : block) : string =
   sprintf
-    "\n%s:\n%s\n%s\n"
+    "\n%s [at depth=%i]:\n%s\n%s\n"
     (Label.name_bt label)
+    (depth)
     (List.map block ~f:format_instr |> String.concat)
     (format_jump_tag jump)
 ;;

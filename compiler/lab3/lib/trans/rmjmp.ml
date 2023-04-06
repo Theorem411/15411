@@ -12,11 +12,12 @@ type entry =
   { code : Tree.stm list
   ; jtag : Tree.jump_t
   ; idx : int
+  ; depth : int
   }
 
 let lh_init (fdef : Tree.block list) : entry LH.t =
-  let mapf idx ({ label; block; jump } : Tree.block) =
-    label, { idx; code = block; jtag = jump }
+  let mapf idx ({ label; block; jump; loop_depth } : Tree.block) =
+    label, { idx; code = block; jtag = jump; depth = loop_depth }
   in
   let fdef' = List.mapi fdef ~f:mapf in
   LH.of_alist_exn fdef'
@@ -110,8 +111,8 @@ let run_till_none (fdef : Tree.block list) : entry LH.t =
 
 let tbl_to_blc_lst (tbl : entry LH.t) : Tree.block list =
   let lst = LH.to_alist tbl in
-  let mapf (label, { code; jtag; idx }) : int * Tree.block =
-    idx, { label; block = code; jump = jtag }
+  let mapf (label, { code; jtag; idx; depth }) : int * Tree.block =
+    idx, { label; block = code; jump = jtag; loop_depth = depth }
   in
   let lst' = List.map lst ~f:mapf in
   let compare (i1, _) (i2, _) = Int.compare i1 i2 in

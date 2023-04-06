@@ -17,6 +17,7 @@ type block =
   { label : Label.bt
   ; block : (int * AS.instr) list
   ; jump : jump_tag_t
+  ; depth : int
   }
   [@@derive compare, equal, sexp]
 
@@ -73,8 +74,8 @@ let to_bjump = function
   | AS.JUncon l -> JUncon l
 ;;
 
-let of_block ({ label; block; jump } : AS.block) : block =
-  { label; jump = to_bjump jump; block = numerate block }
+let of_block ({ label; block; jump; depth } : AS.block) : block =
+  { label; jump = to_bjump jump; block = numerate block; depth }
 ;;
 
 let of_fspace ({ fname; args; fdef_blocks } : AS.fspace) : fspace =

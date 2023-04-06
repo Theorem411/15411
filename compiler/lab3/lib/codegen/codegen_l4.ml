@@ -382,7 +382,7 @@ let munch_arg_moves (args : (Temp.t * A.size) list) =
   let args = List.take args 6 in 
   List.mapi args ~f:(fun i (t, sz) -> A.Mov {dest = A.Temp t; src = A.Reg (A.arg_i_to_reg i); size = sz })
 
-let munch_block ({ label; block; jump } : T.block) ~(mfl : Label.t) ~(args: (Temp.t * A.size) list
+let munch_block ({ label; block; jump; loop_depth } : T.block) ~(mfl : Label.t) ~(args: (Temp.t * A.size) list
 ) : A.block =
   let jump =
     match jump with
@@ -396,7 +396,7 @@ let munch_block ({ label; block; jump } : T.block) ~(mfl : Label.t) ~(args: (Tem
     | Label.BlockLbl _ -> []
     | Label.FunName _ -> munch_arg_moves args
   in
-  { label; block = arg_moves @ block'; jump }
+  { label; block = arg_moves @ block'; jump; depth=loop_depth }
 ;;
 
 let codegen (prog : T.program) ~(mfl : Label.t) : A.program =

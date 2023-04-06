@@ -159,6 +159,7 @@ type block =
   { label : Label.bt
   ; block : instr list
   ; jump : assem_jump_tag_t
+  ; depth : int
   }
   [@@deriving equal, sexp, compare, hash]
 

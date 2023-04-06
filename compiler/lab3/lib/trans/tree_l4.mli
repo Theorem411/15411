@@ -133,6 +133,7 @@ type block =
   { label : Label.bt
   ; block : stm list
   ; jump : jump_t
+  ; loop_depth: int
   }
 
 type fspace_block =

@@ -38,9 +38,10 @@ let intop_to_ebop = function
 type block_tobe =
   { l : Label.bt
   ; code : T.stm list
+  ; depth : int
   }
 
-let to_block ({ l; code } : block_tobe) ~(finisher : T.stm) : T.block =
+let to_block ({ l; code; depth } : block_tobe) ~(finisher : T.stm) : T.block =
   let jtag =
     match finisher with
     | T.Return _ -> T.JRet
@@ -48,13 +49,13 @@ let to_block ({ l; code } : block_tobe) ~(finisher : T.stm) : T.block =
     | T.Goto l -> T.JUncon l
     | _ -> failwith "ur kidding right?"
   in
-  { label = l; block = List.rev (finisher :: code); jump = jtag }
+  { label = l; block = List.rev (finisher :: code); jump = jtag; loop_depth = depth }
 ;;
 
 let update acc b ~(finisher : T.stm) ~(newlab : Label.t) =
   let new_block = to_block b ~finisher in
   let acc' = new_block :: acc in
-  let b' = { l = Label.BlockLbl newlab; code = [] } in
+  let b' = { l = Label.BlockLbl newlab; code = []; depth = b.depth } in
   acc', b'
 ;;
 
@@ -62,6 +63,7 @@ type tr_exp_t = T.mpexp * T.block list * block_tobe
 
 let rec tr_exp_rev
   (env : Temp.t S.t)
+  (dep : int)
   (exp : A.mexp)
   (acc_rev : T.block list)
   (block_rev : block_tobe)
@@ -79,7 +81,7 @@ let rec tr_exp_rev
     let l2 = Label.create () in
     let l3 = Label.create () in
     (*_ tr cond *)
-    let ec, acc, b = tr_exp_rev env cond acc_rev block_rev in
+    let ec, acc, b = tr_exp_rev env dep cond acc_rev block_rev in
     let tl = Temp.create () in
     let b = { b with code = T.MovPureExp { dest = tl; src = ec } :: b.code } in
     let cond : T.cond =
@@ -93,22 +95,22 @@ let rec tr_exp_rev
     let finisher = T.If { cond; lt = l1; lf = l2 } in
     let acc, b = update acc b ~finisher ~newlab:l1 in
     (*_ tr lb *)
-    let el, acc, b = tr_exp_rev env lb acc b in
+    let el, acc, b = tr_exp_rev env dep lb acc b in
     let b = { b with code = T.MovPureExp { dest = t; src = el } :: b.code } in
     let acc, b = update acc b ~finisher:(T.Goto l3) ~newlab:l2 in
     (*_ tr rb *)
-    let er, acc, b = tr_exp_rev env rb acc b in
+    let er, acc, b = tr_exp_rev env dep rb acc b in
     let b = { b with code = T.MovPureExp { dest = t; src = er } :: b.code } in
     let acc, b = update acc b ~finisher:(T.Goto l3) ~newlab:l3 in
     (T.Temp t, esize), acc, b
   | A.PureBinop { op; lhs; rhs } ->
-    let el, acc, b = tr_exp_rev env lhs acc_rev block_rev in
-    let er, acc, b = tr_exp_rev env rhs acc b in
+    let el, acc, b = tr_exp_rev env dep lhs acc_rev block_rev in
+    let er, acc, b = tr_exp_rev env dep rhs acc b in
     (T.Binop { op = intop_to_pbop op; lhs = el; rhs = er }, esize), acc, b
   | A.EfktBinop { op; lhs; rhs } ->
     let t = Temp.create () in
-    let el, acc, b = tr_exp_rev env lhs acc_rev block_rev in
-    let er, acc, b = tr_exp_rev env rhs acc b in
+    let el, acc, b = tr_exp_rev env dep lhs acc_rev block_rev in
+    let er, acc, b = tr_exp_rev env dep rhs acc b in
     let b =
       { b with
         code =
@@ -117,25 +119,25 @@ let rec tr_exp_rev
     in
     (T.Temp t, esize), acc, b
   | A.CmpBinop { op; size; lhs; rhs } ->
-    let el, acc, b = tr_exp_rev env lhs acc_rev block_rev in
-    let er, acc, b = tr_exp_rev env rhs acc b in
+    let el, acc, b = tr_exp_rev env dep lhs acc_rev block_rev in
+    let er, acc, b = tr_exp_rev env dep rhs acc b in
     (T.Cmpop { op = intop_to_cbop op; size; lhs = el; rhs = er }, esize), acc, b
   | A.Unop { op = A.LogNot; operand = A.Unop { op = A.LogNot; operand }, _ } ->
-    tr_exp_rev env operand acc_rev block_rev
+    tr_exp_rev env dep operand acc_rev block_rev
   | A.Unop { op = A.BitNot; operand = A.Unop { op = A.BitNot; operand }, _ } ->
-    tr_exp_rev env operand acc_rev block_rev
+    tr_exp_rev env dep operand acc_rev block_rev
   | A.Unop { op = A.LogNot; operand } ->
-    let e, acc, b = tr_exp_rev env operand acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep operand acc_rev block_rev in
     ( (T.Binop { op = T.BitXor; lhs = e; rhs = T.Const (Int32.of_int_exn 1), 4 }, esize)
     , acc
     , b )
   | A.Unop { op = A.BitNot; operand } ->
-    let e, acc, b = tr_exp_rev env operand acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep operand acc_rev block_rev in
     (T.Unop { op = T.BitNot; p = e }, esize), acc, b
   | A.Call { name; args } ->
     let t = Temp.create () in
     let fold_f (es, acc, b) a =
-      let e, acc, b = tr_exp_rev env a acc b in
+      let e, acc, b = tr_exp_rev env dep a acc b in
       e :: es, acc, b
     in
     let es, acc, b = List.fold args ~init:([], acc_rev, block_rev) ~f:fold_f in
@@ -147,7 +149,7 @@ let rec tr_exp_rev
     in
     (T.Temp t, esize), acc, b
   | A.Deref (A.Ptr { start; off }) | A.StructAccess (A.Ptr { start; off }) ->
-    let e, acc, b = tr_exp_rev env start acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep start acc_rev block_rev in
     let t = Temp.create () in
     let b =
       { b with
@@ -167,8 +169,8 @@ let rec tr_exp_rev
     (T.Temp t, esize), acc_rev, b
   | A.ArrayAccess { head; idx; size; extra } ->
     let t = Temp.create () in
-    let ehead, acc, b = tr_exp_rev env head acc_rev block_rev in
-    let eidx, acc, b = tr_exp_rev env idx acc b in
+    let ehead, acc, b = tr_exp_rev env dep head acc_rev block_rev in
+    let eidx, acc, b = tr_exp_rev env dep idx acc b in
     let src = T.Mem (T.Arr { head = ehead; idx = eidx; typ_size = size; extra }), esize in
     let b = { b with code = T.MovPureExp { dest = t; src } :: b.code } in
     (T.Temp t, esize), acc, b
@@ -177,19 +179,19 @@ let rec tr_exp_rev
     let b = { block_rev with code = T.Alloc { dest = t; size } :: block_rev.code } in
     (T.Temp t, esize), acc_rev, b
   | A.Alloc_array { type_size; len } ->
-    let elen, acc, b = tr_exp_rev env len acc_rev block_rev in
+    let elen, acc, b = tr_exp_rev env dep len acc_rev block_rev in
     let t = Temp.create () in
     let b =
       { b with code = T.Calloc { dest = t; len = elen; typ = type_size } :: b.code }
     in
     (T.Temp t, esize), acc, b
   | A.PtrAddr (A.Ptr { start; off }) ->
-    let e, acc, b = tr_exp_rev env start acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep start acc_rev block_rev in
     (T.Addr (T.Ptr { start = e; off }), esize), acc, b
   | A.PtrAddr A.Null -> (T.Addr T.Null, esize), acc_rev, block_rev
   | A.ArrAddr { head; idx; size; extra } ->
-    let ehead, acc, b = tr_exp_rev env head acc_rev block_rev in
-    let eidx, acc, b = tr_exp_rev env idx acc b in
+    let ehead, acc, b = tr_exp_rev env dep head acc_rev block_rev in
+    let eidx, acc, b = tr_exp_rev env dep idx acc b in
     (T.Addr (T.Arr { head = ehead; idx = eidx; typ_size = size; extra }), esize), acc, b
 ;;
 
@@ -197,6 +199,7 @@ type tr_stm_t = T.block list * block_tobe
 
 let rec tr_stm_rev
   (env : Temp.t S.t)
+  (dep : int)
   (stm : A.stm)
   (acc_rev : T.block list)
   (block_rev : block_tobe)
@@ -206,27 +209,27 @@ let rec tr_stm_rev
   | Declare { var; assign = None; body; _ } ->
     let t = Temp.create () in
     let env' = S.set env ~key:var ~data:t in
-    let acc, b = tr_stm_rev env' body acc_rev block_rev in
+    let acc, b = tr_stm_rev env' dep body acc_rev block_rev in
     acc, b
   | Declare { var; assign = Some exp; body; _ } ->
     let t = Temp.create () in
     let env' = S.set env ~key:var ~data:t in
     (*_ tr assign *)
-    let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep exp acc_rev block_rev in
     (*_ tr body *)
     let b = { b with code = T.MovPureExp { dest = t; src = e } :: b.code } in
-    let acc, b = tr_stm_rev env' body acc b in
+    let acc, b = tr_stm_rev env' dep body acc b in
     acc, b
   | Assign { var; exp; _ } ->
     let t = S.find_exn env var in
-    let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep exp acc_rev block_rev in
     let b = { b with code = T.MovPureExp { dest = t; src = e } :: b.code } in
     acc, b
   | A2PA { addr = A.Ptr { start; off }; op; exp } ->
     (*_ first address *)
-    let start, acc, b = tr_exp_rev env start acc_rev block_rev in
+    let start, acc, b = tr_exp_rev env dep start acc_rev block_rev in
     (*_ then translate e *)
-    let e, acc, b = tr_exp_rev env exp acc b in
+    let e, acc, b = tr_exp_rev env dep exp acc b in
     (* let opopt = Option.map op ~f:(intop_to_ibop) in *)
     let addr = T.Ptr { start; off } in
     let code =
@@ -243,7 +246,7 @@ let rec tr_stm_rev
         let t' = Temp.create () in
         T.MovToMem { addr; src = T.Temp t', 4 }
         :: T.MovEfktExp { dest = t'; ebop; lhs = T.Temp t, 4; rhs = e }
-        :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp; }
+        :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp }
         :: b.code
       | None -> T.MovToMem { addr; src = e } :: b.code
     in
@@ -257,7 +260,7 @@ let rec tr_stm_rev
         code = T.MovPureExp { dest = t; src = T.Mem T.Null, A.size exp } :: block_rev.code
       }
     in *)
-    let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep exp acc_rev block_rev in
     let code =
       match op with
       | Some (A.Pure op) ->
@@ -280,8 +283,8 @@ let rec tr_stm_rev
     (* let b = { b with code = T.MovToMem { addr=T.Null; src = e; } :: b.code } in *)
     acc, b
   | A2AA { addr = { head; idx; size; extra }; op; exp } ->
-    let head, acc, b = tr_exp_rev env head acc_rev block_rev in
-    let idx, acc, b = tr_exp_rev env idx acc b in
+    let head, acc, b = tr_exp_rev env dep head acc_rev block_rev in
+    let idx, acc, b = tr_exp_rev env dep idx acc b in
     let addr = T.Arr { head; idx; typ_size = size; extra } in
     (*_ translate read from mem first *)
     let t = Temp.create () in
@@ -289,14 +292,14 @@ let rec tr_stm_rev
       { b with code = T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } :: b.code }
     in
     (*_ then translate e *)
-    let e, acc, b = tr_exp_rev env exp acc b in
+    let e, acc, b = tr_exp_rev env dep exp acc b in
     (* let opopt = Option.map op ~f:intop_to_ibop in *)
     let code =
       match op with
       | Some (A.Pure op) ->
         (* let t = Temp.create () in *)
         let op = intop_to_pbop op in
-        T.MovToMem { addr; src = T.Binop { op; lhs = T.Temp t, 4; rhs = e }, 4 } 
+        T.MovToMem { addr; src = T.Binop { op; lhs = T.Temp t, 4; rhs = e }, 4 }
         (* :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } *)
         :: b.code
       | Some (A.Efkt op) ->
@@ -305,23 +308,23 @@ let rec tr_stm_rev
         let t' = Temp.create () in
         T.MovToMem { addr; src = T.Temp t', 4 }
         :: T.MovEfktExp { dest = t'; ebop; lhs = T.Temp t, 4; rhs = e }
-        (* :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } *)
+           (* :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } *)
         :: b.code
       | None -> T.MovToMem { addr; src = e } :: b.code
     in
     let b = { b with code } in
     acc, b
-  | If { cond = A.True, _; lb; _ } -> tr_stm_rev env lb acc_rev block_rev
-  | If { cond = A.False, _; rb; _ } -> tr_stm_rev env rb acc_rev block_rev
+  | If { cond = A.True, _; lb; _ } -> tr_stm_rev env dep lb acc_rev block_rev
+  | If { cond = A.False, _; rb; _ } -> tr_stm_rev env dep rb acc_rev block_rev
   | If { cond = A.Unop { op = A.LogNot; operand }, _; lb; rb } ->
-    tr_stm_rev env (If { cond = operand; lb = rb; rb = lb }) acc_rev block_rev
+    tr_stm_rev env dep (If { cond = operand; lb = rb; rb = lb }) acc_rev block_rev
   | If { cond = A.CmpBinop { op; size; lhs; rhs }, _; lb; rb } ->
     let l1 = Label.create () in
     let l2 = Label.create () in
     let l3 = Label.create () in
     (*_ translate cond *)
-    let el, acc, b = tr_exp_rev env lhs acc_rev block_rev in
-    let er, acc, b = tr_exp_rev env rhs acc b in
+    let el, acc, b = tr_exp_rev env dep lhs acc_rev block_rev in
+    let er, acc, b = tr_exp_rev env dep rhs acc b in
     let cond =
       match size with
       | 4 -> T.SCond { cmp = intop_to_cbop op; p1 = el; p2 = er }
@@ -331,17 +334,17 @@ let rec tr_stm_rev
     let finisher = T.If { cond; lt = l1; lf = l2 } in
     let new_block = to_block b ~finisher in
     (*_ translate lb *)
-    let b = { l = Label.BlockLbl l1; code = [] } in
+    let b = { l = Label.BlockLbl l1; code = []; depth=dep } in
     let acc = new_block :: acc in
-    let acc, b = tr_stm_rev env lb acc b in
+    let acc, b = tr_stm_rev env dep lb acc b in
     let new_block = to_block b ~finisher:(T.Goto l3) in
     (*_ translate rb *)
-    let b = { l = Label.BlockLbl l2; code = [] } in
+    let b = { l = Label.BlockLbl l2; code = []; depth=dep } in
     let acc = new_block :: acc in
-    let acc, b = tr_stm_rev env rb acc b in
+    let acc, b = tr_stm_rev env dep rb acc b in
     let new_block = to_block b ~finisher:(T.Goto l3) in
     (*_ result*)
-    let b = { l = Label.BlockLbl l3; code = [] } in
+    let b = { l = Label.BlockLbl l3; code = []; depth=dep } in
     let acc = new_block :: acc in
     acc, b
   | If { cond; lb; rb } ->
@@ -349,7 +352,7 @@ let rec tr_stm_rev
     let l2 = Label.create () in
     let l3 = Label.create () in
     (*_ translate cond *)
-    let ec, acc, b = tr_exp_rev env cond acc_rev block_rev in
+    let ec, acc, b = tr_exp_rev env dep cond acc_rev block_rev in
     let cond =
       match T.size ec with
       | 4 -> T.SCond { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4 }
@@ -358,17 +361,17 @@ let rec tr_stm_rev
     let finisher = T.If { cond; lt = l1; lf = l2 } in
     let new_block = to_block b ~finisher in
     (*_ translate lb *)
-    let b = { l = Label.BlockLbl l1; code = [] } in
+    let b = { l = Label.BlockLbl l1; code = []; depth=dep } in
     let acc = new_block :: acc in
-    let acc, b = tr_stm_rev env lb acc b in
+    let acc, b = tr_stm_rev env dep lb acc b in
     let new_block = to_block b ~finisher:(T.Goto l3) in
     (*_ translate rb *)
-    let b = { l = Label.BlockLbl l2; code = [] } in
+    let b = { l = Label.BlockLbl l2; code = []; depth=dep } in
     let acc = new_block :: acc in
-    let acc, b = tr_stm_rev env rb acc b in
+    let acc, b = tr_stm_rev env dep rb acc b in
     let new_block = to_block b ~finisher:(T.Goto l3) in
     (*_ result*)
-    let b = { l = Label.BlockLbl l3; code = [] } in
+    let b = { l = Label.BlockLbl l3; code = []; depth=dep } in
     let acc = new_block :: acc in
     acc, b
   | While { cond = A.True, _; body } ->
@@ -376,13 +379,13 @@ let rec tr_stm_rev
     let l2 = Label.create () in
     let new_block = to_block block_rev ~finisher:(T.Goto l1) in
     (*_ *)
-    let b = { l = Label.BlockLbl l1; code = [] } in
+    let b = { l = Label.BlockLbl l1; code = []; depth=dep } in
     let acc = new_block :: acc_rev in
-    let acc, b = tr_stm_rev env body acc b in
+    let acc, b = tr_stm_rev env (dep+1) body acc b in
     let new_block = to_block b ~finisher:(T.Goto l1) in
     (*_ res *)
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l2; code = [] } in
+    let b = { l = Label.BlockLbl l2; code = []; depth=dep } in
     acc, b
   | While { cond = A.False, _; _ } ->
     acc_rev, block_rev (*while of false is equivalent of NOP*)
@@ -392,10 +395,10 @@ let rec tr_stm_rev
     let l3 = Label.create () in
     let new_block = to_block block_rev ~finisher:(T.Goto l1) in
     let acc = new_block :: acc_rev in
-    let b = { l = Label.BlockLbl l1; code = [] } in
+    let b = { l = Label.BlockLbl l1; code = []; depth=dep } in
     (*_ tr cond *)
-    let el, acc, b = tr_exp_rev env lhs acc b in
-    let er, acc, b = tr_exp_rev env rhs acc b in
+    let el, acc, b = tr_exp_rev env dep lhs acc b in
+    let er, acc, b = tr_exp_rev env dep rhs acc b in
     let cond : T.cond =
       match size with
       | 4 -> T.SCond { cmp = intop_to_cbop op; p1 = el; p2 = er }
@@ -405,12 +408,12 @@ let rec tr_stm_rev
     let finisher = T.If { cond; lt = l2; lf = l3 } in
     let new_block = to_block b ~finisher in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l2; code = [] } in
+    let b = { l = Label.BlockLbl l2; code = []; depth=dep+1 } in
     (*_ tr body *)
-    let acc, b = tr_stm_rev env body acc b in
+    let acc, b = tr_stm_rev env (dep+1) body acc b in
     let new_block = to_block b ~finisher:(T.Goto l1) in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l3; code = [] } in
+    let b = { l = Label.BlockLbl l3; code = []; depth=dep } in
     acc, b
   | While { cond; body } ->
     let l1 = Label.create () in
@@ -418,9 +421,9 @@ let rec tr_stm_rev
     let l3 = Label.create () in
     let new_block = to_block block_rev ~finisher:(T.Goto l1) in
     let acc = new_block :: acc_rev in
-    let b = { l = Label.BlockLbl l1; code = [] } in
+    let b = { l = Label.BlockLbl l1; code = []; depth=dep} in
     (*_ tr cond *)
-    let ec, acc, b = tr_exp_rev env cond acc b in
+    let ec, acc, b = tr_exp_rev env dep cond acc b in
     let cond : T.cond =
       match T.size ec with
       | 4 -> T.SCond { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4 }
@@ -430,32 +433,32 @@ let rec tr_stm_rev
     let finisher = T.If { cond; lt = l2; lf = l3 } in
     let new_block = to_block b ~finisher in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l2; code = [] } in
+    let b = { l = Label.BlockLbl l2; code = []; depth=dep+1 } in
     (*_ tr body *)
-    let acc, b = tr_stm_rev env body acc b in
+    let acc, b = tr_stm_rev env (dep+1) body acc b in
     let new_block = to_block b ~finisher:(T.Goto l1) in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l3; code = [] } in
+    let b = { l = Label.BlockLbl l3; code = []; depth=dep } in
     acc, b
   | Return None ->
     let new_block = to_block block_rev ~finisher:(T.Return None) in
     let acc = new_block :: acc_rev in
-    let b = { l = Label.BlockLbl (Label.create ()); code = [] } in
+    let b = { l = Label.BlockLbl (Label.create ()); code = []; depth=dep } in
     acc, b
   | Return (Some exp) ->
-    let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep exp acc_rev block_rev in
     let new_block = to_block b ~finisher:(T.Return (Some e)) in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl (Label.create ()); code = [] } in
+    let b = { l = Label.BlockLbl (Label.create ()); code = []; depth=dep } in
     acc, b
   | Nop -> acc_rev, block_rev
   | Seq (s1, s2) ->
-    let acc, b = tr_stm_rev env s1 acc_rev block_rev in
-    let acc, b = tr_stm_rev env s2 acc b in
+    let acc, b = tr_stm_rev env dep s1 acc_rev block_rev in
+    let acc, b = tr_stm_rev env dep s2 acc b in
     acc, b
   | NakedExpr exp ->
     let t = Temp.create () in
-    let e, acc, b = tr_exp_rev env exp acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep exp acc_rev block_rev in
     let b = { b with code = T.MovPureExp { dest = t; src = e } :: b.code } in
     acc, b
   | AssertFail ->
@@ -463,7 +466,7 @@ let rec tr_stm_rev
     acc_rev, b
   | NakedCall { name; args } ->
     let fold_f (es, acc, b) a =
-      let e, acc, b = tr_exp_rev env a acc b in
+      let e, acc, b = tr_exp_rev env dep a acc b in
       e :: es, acc, b
     in
     let es, acc, b = List.fold args ~init:([], acc_rev, block_rev) ~f:fold_f in
@@ -474,8 +477,10 @@ let rec tr_stm_rev
     acc, b
 ;;
 
-let tr_stm (env : Temp.t S.t) (stm : A.stm) (binit : block_tobe) : T.block list =
-  let acc_rev, bleft = tr_stm_rev env stm ([] : T.block list) binit in
+let tr_stm (env : Temp.t S.t) (dep : int) (stm : A.stm) (binit : block_tobe)
+  : T.block list
+  =
+  let acc_rev, bleft = tr_stm_rev env dep stm ([] : T.block list) binit in
   (*_ finish off any leftover block by adding a jret *)
   let rem_intrs =
     match bleft.code with
@@ -483,7 +488,9 @@ let tr_stm (env : Temp.t S.t) (stm : A.stm) (binit : block_tobe) : T.block list 
     | _ -> List.rev (T.Return None :: bleft.code)
   in
   let acc_rev =
-    ({ label = bleft.l; block = rem_intrs; jump = T.JRet } : T.block) :: acc_rev
+    ({ label = bleft.l; block = rem_intrs; jump = T.JRet; loop_depth = bleft.depth }
+      : T.block)
+    :: acc_rev
   in
   (*_ reminder: blocks are in original order; blocks are in reverse order *)
   let acc = List.rev acc_rev in
@@ -504,8 +511,8 @@ let args_tag (sl : (Symbol.t * int) list) : (Temp.t * int) list * Temp.t S.t =
 let tr_glob ({ f; args; fdef } : A.glob) : T.fspace_block =
   let ts, env = args_tag args in
   let ts' = List.map ts ~f:(fun (t, _) -> t) in
-  let binit = { l = Label.FunName { fname = f; args = ts' }; code = [] } in
-  let fdef' = tr_stm env fdef binit in
+  let binit = { l = Label.FunName { fname = f; args = ts' }; code = []; depth = 0 } in
+  let fdef' = tr_stm env 0 fdef binit in
   { fname = f; args = ts; fdef = fdef' }
 ;;
 
