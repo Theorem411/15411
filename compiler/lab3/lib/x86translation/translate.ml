@@ -390,7 +390,9 @@ let get_memErrLabel_block memErrLabel =
 ;;
 
 (* maps reg_alloc results to  *)
-let get_final (reg_map : Regalloc.reg_or_spill TM.t) ((o, size) : AS.operand * X86.size)
+let get_final
+    (updater : Temp.t -> Regalloc.reg_or_spill)
+    ((o, size) : AS.operand * X86.size)
     : X86.operand
   =
   match o with
@@ -398,7 +400,7 @@ let get_final (reg_map : Regalloc.reg_or_spill TM.t) ((o, size) : AS.operand * X
   | AS.Reg r -> X86.Reg { reg = Regalloc.asr2renum r; size = X86.of_size size }
   | AS.Temp t ->
     (* prerr_endline (sprintf "Checking if I have %s" (Temp.name t)); *)
-    (match TM.find_exn reg_map t with
+    (match updater t with
     | Spl i -> X86.Stack i
     | Reg reg -> X86.Reg { reg; size = X86.of_size size })
 ;;
@@ -416,17 +418,17 @@ let block_instrs (fspace : AS.fspace) : AS.instr list list =
         AS.Lab label :: block))
 ;;
 
-let translate_function ~(unsafe : bool) (errLabel : Label.t) (_fspace : AS.fspace)
+let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace)
     : X86.instr list
   =
   (* has to be changed to the global one *)
-  let reg_map, new_fspace = alloc _fspace in
+  let ({ reg_spill_map = reg_map; updater } : Regalloc.t) = alloc fspace in
   (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
   let stack_cells = Regalloc.mem_count reg_map in
-  let final = get_final reg_map in
+  let final = get_final updater in
   (* gets prologue and epilogue of the function *)
   let b, e, stack_moves, retLabel =
-    Helper.get_function_be (new_fspace.fname, new_fspace.args) reg_map stack_cells
+    Helper.get_function_be (fspace.fname, fspace.args) reg_map stack_cells
   in
   let translated instructions : X86.instr list =
     List.fold
@@ -434,8 +436,8 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (_fspace : AS.fspac
       ~init:[]
       ~f:(translate_line ~unsafe (retLabel, errLabel) final stack_moves)
   in
-  let res = List.concat_map ~f:translated (block_instrs new_fspace) in
-  let x = (List.nth_exn new_fspace.fdef_blocks 0).block in
+  let res = List.concat_map ~f:translated (block_instrs fspace) in
+  let x = (List.nth_exn fspace.fdef_blocks 0).block in
   let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
   let full_rev = List.rev_append e res in
   b @ first_block_code @ List.rev full_rev

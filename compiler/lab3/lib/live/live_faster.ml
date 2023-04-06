@@ -155,5 +155,5 @@ let mk_graph_fspace (fspace : B.fspace) =
           ())
         else ())
   in
-  (V.Map.of_hashtbl_exn graph', graph')
+  graph'
 ;;

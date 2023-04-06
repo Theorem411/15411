@@ -1,0 +1,27 @@
+
+
+
+mk_graph_fspace: fspace -> 
+
+
+
+
+
+regalloc: fspace -> (temp -> reg / temp / stack)
+    1) g = mk_graph: fspace -> graph
+       
+
+    2) g' , spill_map =  pre_spill: graph -> (temp -> int)
+       c = coloring new g': temp / reg -> color
+
+    3) sorted_moves = get_moves: fspace -> moves
+       g'', c'', coalesce_map =  coalesce: graph -> coloring -> moves -> (temp -> temp)
+       
+    4) final_map  = create_final_map (g'', c''): graph -> coloring -> (temp -> reg / temp / stack)
+      return:
+         if temp in spill_map -> return spill_map[map]: stack
+            if temp in coalesce_map:
+               temp_parent = coalesce_map[temp]
+            else:
+               temp_parent = temp
+            return final_map[temp_parent]

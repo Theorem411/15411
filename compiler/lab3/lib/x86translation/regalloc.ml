@@ -7,6 +7,8 @@ module Live = Live_faster
 module CM = Map.Make (Int)
 module CS = Set.Make (Int)
 module TM = Temp.Map
+module VT = Hashtbl.Make (V)
+module Prespill = Prespill
 module Coalesce = Coalesce
 
 module REnum = struct
@@ -118,12 +120,27 @@ let __free_regs (c2v : reg_n_temps CM.t) : reg_or_spill list =
   free_regs
 ;;
 
-let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * AS.fspace =
+type t =
+  { reg_spill_map : reg_or_spill TM.t
+  ; updater : Temp.t -> reg_or_spill
+  }
+
+let reg_alloc (fspace : AS.fspace) : t =
   (*_ think of three layers: 1. the temps 2. the colors 3. the registers *)
   (*_ do the coloring magic: produce (T/R) to c mapping *)
-  let graph, graph_tbl = Live.mk_graph_fspace (Block.of_fspace fspace) in
-  let v2c = Graph.coloring graph in
-  let ({ v2c; fspace; _ } : Coalesce.t) = Coalesce.coalesce graph_tbl v2c fspace in
+  let graph_tbl = Live.mk_graph_fspace (Block.of_fspace fspace) in
+  (*  *)
+  (* Prespill modifies the graph_tbl *)
+  let stack_map, prespill_count = Prespill.prespill graph_tbl in
+  let spl_map = TM.map ~f:(fun i -> Spl i) stack_map in
+  let v2c = Graph.coloring (V.Map.of_hashtbl_exn graph_tbl) in
+  (*  *)
+  (* Coalesce modifies the graph_tbl and v2c_tbl *)
+  let v2c_tbl = VT.of_alist_exn (VM.to_alist v2c) in
+  let moves : (V.t * V.t) list = [] in
+  let coalesce_map : V.t TM.t = Coalesce.coalesce graph_tbl v2c_tbl moves in
+  (* done coealescing, doing the old algorithm *)
+  let v2c = VM.of_hashtbl_exn v2c_tbl in
   let c2v = __c2v v2c in
   (*_ t2c : map temp to the their colors*)
   let t2c = __t2c c2v in
@@ -136,7 +153,7 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * AS.fspace =
     match rem with
     | None -> c2r
     | Some (First cs) ->
-      let c2spl = List.mapi cs ~f:(fun i c -> c, Spl i) in
+      let c2spl = List.mapi cs ~f:(fun i c -> c, Spl (i + prespill_count)) in
       c2r @ c2spl
     | Some (Second _) -> c2r
   in
@@ -145,15 +162,31 @@ let reg_alloc (fspace : AS.fspace) : reg_or_spill TM.t * AS.fspace =
   (* combine precolor with postcolor*)
   (*_ compose t2c tith c2r to get t2r_or_spl *)
   let t2r = TM.mapi t2c ~f:(fun ~key:_ ~data:c -> CM.find_exn c2r c) in
-  t2r, fspace
+  let updater (t : Temp.t) =
+    match TM.find spl_map t with
+    | Some spill -> spill
+    | None ->
+      (match TM.find coalesce_map t with
+      | None -> TM.find_exn t2r t
+      | Some (V.R reg) -> Reg (asr2renum reg)
+      | Some (V.T parent) -> TM.find_exn t2r parent)
+  in
+  { reg_spill_map = t2r; updater }
 ;;
 
+(* gives number of memory cells used by finding max
+   spl index and adding 1. If no used, then returns 0 *)
 let mem_count (t2r : reg_or_spill TM.t) : int =
-  TM.filter t2r ~f:(fun r_or_spl ->
-      match r_or_spl with
-      | Reg _ -> false
-      | Spl _ -> true)
-  |> TM.length
+  let idx_list =
+    TM.filter_map t2r ~f:(fun r_or_spl ->
+        match r_or_spl with
+        | Reg _ -> None
+        | Spl j -> Some j)
+    |> TM.to_alist
+    |> List.map ~f:(fun (_, c) -> c)
+  in
+  let max_spl_idx = Option.value ~default:(-1) (List.max_elt ~compare idx_list) in
+  max_spl_idx + 1
 ;;
 
 let caller_save (t2r : reg_or_spill TM.t) : R.reg_enum list =
