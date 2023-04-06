@@ -209,6 +209,7 @@ type instr =
   | Comment of string
   | FunName of string
   | Call of string
+  | JumpToF of string
   | Ret
   | MovFrom of
       { dest : operand
@@ -281,6 +282,7 @@ let format = function
   | Jump { op; label } -> sprintf "\t%s\t%s" (format_jump op) (Label.name label)
   | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand src)
   | Call fname -> sprintf "\tcall\t%s" fname
+  | JumpToF fname -> sprintf "\tjmp\t%s" fname
 ;;
 
 let format_list l = List.map ~f:format l |> String.concat ~sep:"\n"

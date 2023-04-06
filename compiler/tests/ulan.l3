@@ -1,18 +1,9 @@
-//test return 8
-/* gcd */
-
-int gcd (int x, int y) {
-  /* x,y >= 0 */
-  int r;
-  while (y != 0) {
-    r = x%y;
-    x = y;
-    y = r;
-  }
-  return x;
-}
-  
+//test return 73
 
 int main () {
-  return gcd(24,56);
+  int x = 1;
+  int y = 40;
+  int z = x << y;
+  int t = z;
+  return z;
 }

@@ -92,6 +92,7 @@ type cmd_line_args =
   ; typecheck_only : bool
   ; regalloc_only : bool
   ; emit : Emit.t
+  ; unsafe : bool
   ; opt_level : Opt_level.t
   ; filename : string
   ; header_filename : string
@@ -137,6 +138,9 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   and typecheck_only =
     let doc = "If present, exit after typechecking." in
     flag (Arg.info [ "t"; "typecheck-only" ] ~doc)
+  and unsafe =
+    let doc = "If present, ignores safety in mem access" in
+    flag (Arg.info [ "unsafe" ] ~doc)
   and regalloc_only =
     let doc = "Regalloc only for l1 checkpoint" in
     flag (Arg.info [ "r"; "regalloc-only" ] ~doc)
@@ -172,27 +176,12 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   ; emit
   ; opt_level
   ; filename
+  ; unsafe
   ; header_filename
   }
 ;;
 
 let say_if (v : bool) (f : unit -> string) = if v then prerr_endline (f ())
-
-(* let regalloc (cmd : cmd_line_args) =
-  match String.chop_suffix cmd.filename ~suffix:".in" with
-  | None ->
-    prerr_endline "Invalid input filename";
-    exit 1
-  | Some base_filename ->
-    let input_json = Yojson.Basic.from_file cmd.filename in
-    let input = Lab1_checkpoint.program_of_json input_json in
-    let output = Regalloc.regalloc input in
-    let filename = base_filename ^ ".out" in
-    Out_channel.with_file filename ~f:(fun out ->
-        Out_channel.output_string
-          out
-          (output |> Lab1_checkpoint.json_of_allocations |> Yojson.Basic.to_string))
-;; *)
 
 let elaboration_step (ast, ast_h) cmd =
   say_if cmd.verbose (fun () -> "doing elaborating...");
@@ -200,7 +189,6 @@ let elaboration_step (ast, ast_h) cmd =
   let _elab_raw : Aste.program = Elaborater.elaborate ast in
   let elab_raw : Aste.program = Elaborater.add_main _elab_raw in
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
-  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
   elab_h, elab_raw
 ;;
@@ -211,63 +199,45 @@ let compile (cmd : cmd_line_args) : unit =
   (* Parse *)
   say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
   let ast_h = Parse.parse cmd.header_filename in
-  (* TODO check that ast_h has the only fdecl or typedef *)
-  (* TODO rename functions in ast_h *)
   let ast = Parse.parse cmd.filename in
-  say_if cmd.dump_parsing (fun () -> " dump_parsing... ");
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast_h);
-  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Ast.Print.pp_program ast);
-  (* if cmd.dump_parsing then exit 0; *)
   (* Elaborate *)
   let elab_h, elab_raw = elaboration_step (ast, ast_h) cmd in
-  (* if cmd.dump_ast then ignore (exit 0 : unit); *)
-  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_h);
-  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Aste.Print.print_all elab_raw);
-  say_if cmd.verbose (fun () -> "doing type Checking...");
+  say_if cmd.verbose (fun () -> "doing type checking...");
   let asts_raw = Statsem.static_semantic ~hdr:elab_h ~src:elab_raw in
   let (() : unit) = Return.ret_checker elab_raw in
   say_if cmd.verbose (fun () -> "renaming what is necc...");
   let elab = Preprocess.rename elab_h asts_raw in
-  say_if cmd.dump_ast (fun () -> "\n------------------------------------------\n");
   say_if cmd.dump_ast (fun () -> Asts.Print.print_all elab);
   (* Typecheck *)
-  (* Typechecker.typecheck ast; *)
   if cmd.typecheck_only then exit 0;
   (* Translate *)
   say_if cmd.verbose (fun () -> "Translating...");
-  let ir = TranslationM.translate (elab) in
+  let ir = TranslationM.translate elab in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
-  (* let assem_blocks = Cogen.cogen_block ir in
-  let assem = Cogen.cogen assem_blocks in *)
-  let mfail = Label.create () in 
-  let assem = Codegen_l4.codegen ~mfl:mfail ir in
+  let mfail = Label.create () in
+  let assem = Codegen_l4.codegen ~mfl:mfail ~unsafe:cmd.unsafe ir in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
-  (* Testing blocks *)
   say_if cmd.dump_assem (fun () -> Block.pp_all_blocks (Block.blocks_former assem));
-  (* Testing blocks *)
+  say_if cmd.verbose (fun () -> "Emitting...");
   match cmd.emit with
   (* Output: abstract 3-address assem *)
   | Abstract_assem ->
     let file = cmd.filename ^ ".abs" in
     say_if cmd.verbose (fun () -> sprintf "Writing abstract assem to %s..." file);
     Out_channel.with_file file ~f:(fun out ->
-        (* let output_instr instr = Out_channel.fprintf out "\t%s\n" (AssemM.format instr) in
-        output_instr (AssemM.Directive (".file\t\"" ^ cmd.filename ^ "\""));
-        output_instr (AssemM.Directive ".function\tmain()");
-        List.iter ~f:output_instr assem;
-        output_instr (AssemM.Directive ".ident\t\"15-411 L1 reference compiler\"")) *)
         Out_channel.fprintf out "%s" (AssemM.format_program assem))
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
     Out_channel.with_file file ~f:(fun out ->
         let output_x86_instr instr = Out_channel.fprintf out "%s\n" (X86.format instr) in
-        let translated = Translate.translate assem ~mfail in
+        let translated = Translate.translate assem ~mfail ~unsafe:cmd.unsafe in
         let union = Translate.get_string_list translated in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");
@@ -275,7 +245,8 @@ let compile (cmd : cmd_line_args) : unit =
 ;;
 
 let run (cmd : cmd_line_args) : unit =
-  try if cmd.regalloc_only then compile cmd else compile cmd with (*_ regalloc cmd*)
+  try if cmd.regalloc_only then compile cmd else compile cmd with
+  (*_ regalloc cmd*)
   | Error_msg.Error ->
     prerr_endline "Compilation failed.";
     exit 1

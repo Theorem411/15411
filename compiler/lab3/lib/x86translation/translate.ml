@@ -50,7 +50,10 @@ let translate_pure get_final = function
   | _ -> failwith "not a pure operation"
 ;;
 
-let translate_efkt (get_final : AS.operand * X86.size -> X86.operand) (errLabel : Label.t)
+let translate_efkt
+    ~(unsafe : bool)
+    (get_final : AS.operand * X86.size -> X86.operand)
+    (errLabel : Label.t)
   = function
   (* DIV / MOD *)
   | AS.EfktBinop { op = (Div | Mod) as op; dest = d; lhs; rhs } ->
@@ -99,33 +102,41 @@ let translate_efkt (get_final : AS.operand * X86.size -> X86.operand) (errLabel 
     let d_final = get_final (d, size) in
     let lhs_final = get_final (lhs, size) in
     let rhs_final = get_final (rhs, size) in
+    let chk =
+      if unsafe
+      then []
+      else
+        [ (* check for the shift >= 32 *)
+          X86.Cmp
+            { lhs = X86.Reg { reg = R.ECX; size = 4 }
+            ; rhs = Imm (Int64.of_int_exn 32)
+            ; size
+            }
+        ; X86.Jump { op = Some AS.Jge; label = errLabel }
+          (* pre check end *)
+          (* check for the shift < 32 *)
+        ; X86.Cmp
+            { lhs = X86.Reg { reg = R.ECX; size = 4 }
+            ; rhs = Imm (Int64.of_int_exn 0)
+            ; size
+            }
+        ; X86.Jump { op = Some AS.Jl; label = errLabel }
+        ]
+    in
     let right_commands =
-      [ X86.BinCommand { op = Mov; dest = X86.get_free size; src = lhs_final; size }
-      ; X86.BinCommand
-          { op = Mov; dest = X86.Reg { reg = R.ECX; size = 4 }; src = rhs_final; size }
-        (* check for the shift >= 32 *)
-      ; X86.Cmp
-          { lhs = X86.Reg { reg = R.ECX; size = 4 }
-          ; rhs = Imm (Int64.of_int_exn 32)
-          ; size
-          }
-      ; X86.Jump { op = Some AS.Jge; label = errLabel }
-        (* pre check end *)
-        (* check for the shift < 32 *)
-      ; X86.Cmp
-          { lhs = X86.Reg { reg = R.ECX; size = 4 }
-          ; rhs = Imm (Int64.of_int_exn 0)
-          ; size
-          }
-      ; X86.Jump { op = Some AS.Jl; label = errLabel }
-      ; X86.BinCommand
-          { op = X86.efkt_to_opr op
-          ; dest = X86.get_free size
-          ; src = X86.Reg { reg = R.ECX; size = 4 }
-          ; size
-          }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
-      ]
+      ([ X86.BinCommand { op = Mov; dest = X86.get_free size; src = lhs_final; size }
+       ; X86.BinCommand
+           { op = Mov; dest = X86.Reg { reg = R.ECX; size = 4 }; src = rhs_final; size }
+       ]
+      @ chk)
+      @ [ X86.BinCommand
+            { op = X86.efkt_to_opr op
+            ; dest = X86.get_free size
+            ; src = X86.Reg { reg = R.ECX; size = 4 }
+            ; size
+            }
+        ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
+        ]
     in
     right_commands
   | _ -> failwith "translate_efkt not implemented yet"
@@ -308,6 +319,7 @@ let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = functi
 
 let translate_line
     (retLabel, errLabel)
+    ~(unsafe : bool)
     (get_final : AS.operand * X86.size -> X86.operand)
     (stack_moves : X86.instr list)
     (prev_lines : X86.instr list)
@@ -320,7 +332,8 @@ let translate_line
   (* Translating pure operations *)
   | AS.PureBinop _ -> List.rev_append (translate_pure get_final line) prev_lines
   (* Translating effectful operations *)
-  | AS.EfktBinop _ -> List.rev_append (translate_efkt get_final errLabel line) prev_lines
+  | AS.EfktBinop _ ->
+    List.rev_append (translate_efkt ~unsafe get_final errLabel line) prev_lines
   | Unop { op; dest } ->
     X86.UnCommand { op = X86.unary_to_opr op; src = get_final (dest, X86.L) }
     :: prev_lines
@@ -404,7 +417,9 @@ let block_instrs (fspace : AS.fspace) : AS.instr list list =
         AS.Lab label :: block))
 ;;
 
-let translate_function (errLabel : Label.t) (_fspace : AS.fspace) : X86.instr list =
+let translate_function ~(unsafe : bool) (errLabel : Label.t) (_fspace : AS.fspace)
+    : X86.instr list
+  =
   (* has to be changed to the global one *)
   let reg_map, new_fspace = alloc _fspace in
   (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
@@ -418,7 +433,7 @@ let translate_function (errLabel : Label.t) (_fspace : AS.fspace) : X86.instr li
     List.fold
       instructions
       ~init:[]
-      ~f:(translate_line (retLabel, errLabel) final stack_moves)
+      ~f:(translate_line ~unsafe (retLabel, errLabel) final stack_moves)
   in
   let res = List.concat_map ~f:translated (block_instrs new_fspace) in
   let x = (List.nth_exn new_fspace.fdef_blocks 0).block in
@@ -427,29 +442,33 @@ let translate_function (errLabel : Label.t) (_fspace : AS.fspace) : X86.instr li
   b @ first_block_code @ List.rev full_rev
 ;;
 
-let translate (fs : AS.program) ~mfail =
+let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
   let arithErrLabel = Label.create () in
-  [ Custom.get_alloc_function mfail ]
-  @ [ Custom.get_arrayalloc_function mfail ]
-  @ [ get_memErrLabel_block mfail ]
+  (if unsafe then [] else [ get_memErrLabel_block mfail ])
+  @ (if unsafe then [] else [ Custom.get_alloc_function mfail ~unsafe ])
+  @ [ Custom.get_arrayalloc_function mfail ~unsafe ]
   @ [ get_error_block arithErrLabel ]
-  @ List.map ~f:(fun f -> translate_function arithErrLabel f) fs
+  @ List.map ~f:(fun f -> translate_function ~unsafe arithErrLabel f) fs
 ;;
 
 let speed_up (p : X86.instr list) : X86.instr list =
+  let rm i = X86.Comment (X86.format i) in 
   List.rev
     (List.fold ~init:[] p ~f:(fun prev i ->
          match i with
          | X86.BinCommand ({ op = X86.Mov; _ } as m2) ->
            if X86.equal_operand m2.src m2.dest
-           then X86.Comment (X86.format i) :: prev
+           then rm i :: prev
            else (
              match prev with
              | X86.BinCommand ({ op = X86.Mov; _ } as m1) :: _ ->
-               if X86.equal_size m1.size m2.size
+               if (X86.equal_size m1.size m2.size
                   && X86.equal_operand m1.src m2.dest
-                  && X86.equal_operand m2.src m1.dest
-               then X86.Comment (X86.format i) :: prev
+                  && X86.equal_operand m2.src m1.dest)
+                  || (X86.equal_size m1.size m2.size
+                     && X86.equal_operand m1.src m2.src
+                     && X86.equal_operand m1.dest m2.dest)
+               then rm i :: prev
                else i :: prev
              | _ -> i :: prev)
          | _ -> i :: prev))

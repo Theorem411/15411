@@ -95,6 +95,7 @@ type instr =
   | Comment of string
   | FunName of string
   | Call of string
+  | JumpToF of string
   | Ret
   | MovFrom of
       { dest : operand
