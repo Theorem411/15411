@@ -36,7 +36,12 @@ let lab_to_block_init (fspace : B.fspace) : lab_to_block =
   LM.of_alist_exn lbs
 ;;
 
-let wq_init ({ fdef_blocks; _ } : B.fspace) = Queue.of_list (List.rev fdef_blocks)
+let wq_init ({ fdef_blocks; _ } : B.fspace) = 
+  let blst = List.rev fdef_blocks in
+  let blst = List.filter blst ~f:(fun b -> match b.jump with | B.JRet -> true | _ -> false) in
+  (* let () = prerr_endline (sprintf "wqinit:%s\n" (List.map blst ~f:(fun b -> Label.name_bt b.label) |> String.concat ~sep:",\n")) in  *)
+  let res = Queue.of_list blst in
+  res
 
 let cfg_pred_init ({ fdef_blocks; _ } : B.fspace) : cfg_pred =
   let mapf ({ label; jump; _ } : B.block) =
@@ -65,8 +70,15 @@ let block_in_out_init ({ fdef_blocks; _ } : B.fspace) : block_in_out =
   LT.of_alist_exn l2i
 ;;
 
-(* 
-let rm_dead_blocks (fspace : B.fspace) =  *)
+(* let rm_dead_blocks (fspace : B.fspace) : B.fspace * cfg_pred =
+  let cfg = cfg_pred_init fspace in
+  let dlabs = LM.filter cfg ~f:(fun ls -> LS.is_empty ls) |> LM.keys |> LS.of_list in
+  let cfg_remain = LM.filter cfg ~f:(fun ls -> not (LS.is_empty ls)) in
+  let fdef_blocks' =
+    List.filter fspace.fdef_blocks ~f:(fun { label; _ } -> not (LS.mem dlabs label))
+  in
+  { fspace with fdef_blocks = fdef_blocks' }, cfg_remain
+;; *)
 
 (*_ the general passing algorithm *)
 let mk_liveness_fspace (fspace : B.fspace) =
@@ -119,18 +131,28 @@ let mk_liveness_fspace (fspace : B.fspace) =
   let rec loop (_ : unit) : unit =
     match Queue.dequeue wq with
     | Some block ->
+      (* printf
+        "right before processing bid=^%s, |wq| = %i\n"
+        (Label.name_bt block.label)
+        (Queue.length wq); *)
       general_passing block;
-      (* prerr_endline "done with 1 loop"; *)
+      (* prerr_endline
+        (sprintf "after processing bid=^%s, |wq| = %i"
+        (Label.name_bt block.label)
+        (Queue.length wq)); *)
       loop ()
     | None -> ()
   in
   let () = loop () in
+  let () = prerr_endline "surprise! loop finishes!\n" in
   (*_ do one final single passing using biot *)
   let l2io' =
     LT.to_alist l2io |> List.map ~f:(fun (l, lio) -> LM.find_exn l2b l, lio.liveout)
   in
+  let () = prerr_endline (sprintf "about to go into slow zone! |l2io'| = %i\n" (List.length l2io')) in
   let mapf ((b, liveout) : B.block * V.Set.t) = SP.singlepass sptbl b liveout in
   let (_ : V.Set.t list) = List.map l2io' ~f:mapf in
+  let () = prerr_endline "surprise! SP finishes!\n" in
   sptbl
 ;;
 
@@ -138,6 +160,7 @@ let mk_liveness_fspace (fspace : B.fspace) =
 
 let mk_graph_fspace (fspace : B.fspace) =
   let spt = mk_liveness_fspace fspace in
+  let () = prerr_endline "starts making graph!\n" in
   let vertices, edges = SP.get_edges_vertices spt fspace in
   (*_ create a hashtable graph *)
   let graph' = VertexTable.create () in
@@ -155,5 +178,7 @@ let mk_graph_fspace (fspace : B.fspace) =
           ())
         else ())
   in
-  graph'
+  let res = V.Map.of_hashtbl_exn graph' in
+  let () = prerr_endline "done!" in
+  res
 ;;

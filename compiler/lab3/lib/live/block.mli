@@ -12,6 +12,7 @@ type block =
   { label : Label.bt
   ; block : (int * AS.instr) list
   ; jump : jump_tag_t
+  ; depth : int
   }
   [@@derive compare, equal, sexp, hash]
 

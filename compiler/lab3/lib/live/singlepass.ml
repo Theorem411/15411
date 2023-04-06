@@ -216,7 +216,14 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
               [ AS.EDI; AS.ESI; AS.EDX; AS.ECX; AS.R8D; AS.R9D ]) )
   in
   let out_raw = handle_instrs table (b.block, args) input in
+  (* let () = prerr_endline ">> SP: handle_instrs" in *)
   let out = V.Set.diff out_raw black_list in
+  let () = prerr_endline ">> SP: done exiting..." in
+  print_info
+    ("output:["
+    ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
+    ^ "]\n\n\n\n\n");
+  print_info (print_table table);
   out
 ;;
 

@@ -134,6 +134,7 @@ type block =
   { label : Label.bt
   ; block : stm list
   ; jump : jump_t
+  ; loop_depth : int
   }
 
 type fspace_block =
@@ -275,9 +276,10 @@ module Print = struct
     | JUncon l -> sprintf "goto %s" (Label.name l)
   ;;
 
-  let pp_block ({ label; block; jump } : block) =
+  let pp_block ({ label; block; jump; loop_depth } : block) =
     sprintf
-      "%s\n%s\n-------[%s]---------"
+      "------d=%i------\n%s\n%s\n-------[%s]---------"
+      (loop_depth)
       (Label.name_bt label)
       (List.map block ~f:pp_stm |> String.concat ~sep:"\n")
       (pp_jump jump)

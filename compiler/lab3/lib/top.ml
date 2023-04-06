@@ -218,6 +218,10 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.verbose (fun () -> "Translating...");
   let ir = TranslationM.translate elab in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
+  (*_ opt: remove empty jmp blocks *)
+  say_if cmd.verbose (fun () -> "Removing unncessary jumps...");
+  let ir = Rmjmp.rmjmp ir in
+  say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
   let mfail = Label.create () in
