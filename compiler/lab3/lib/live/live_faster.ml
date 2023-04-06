@@ -178,7 +178,8 @@ let mk_graph_fspace (fspace : B.fspace) =
           ())
         else ())
   in
-  let res = V.Map.of_hashtbl_exn graph' in
+  (* let res = V.Map.of_hashtbl_exn graph' in
   let () = prerr_endline "done!" in
-  res
+  res *)
+  graph'
 ;;

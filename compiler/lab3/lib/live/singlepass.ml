@@ -5,6 +5,7 @@ module AS = Assem_l4
 module IntTable = Hashtbl.Make (Int)
 
 let dump_liveness : bool ref = ref false
+let print_info f = if true then () else prerr_endline (f ())
 
 type ht_entry =
   { d : V.Set.t
@@ -85,11 +86,11 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     V.Set.of_list (List.map ~f:(fun (t, _) -> V.T t) stack_args), V.Set.empty
 ;;
 
-(* let format_v_set s =
+let format_v_set s =
   String.concat ~sep:"," (List.map (V.Set.to_list s) ~f:(fun v -> V._to_string v))
-;; *)
+;;
 
-(* let format_table_entry (k : int) (e : ht_entry) : string =
+let format_table_entry (k : int) (e : ht_entry) : string =
   let instr_raw = AS.format_instr e.instr in
   let instr = String.slice instr_raw 0 (String.length instr_raw - 1) in
   sprintf
@@ -100,9 +101,9 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     (format_v_set e.u)
     (format_v_set e.lin)
     (format_v_set e.lout)
-;; *)
+;;
 
-(* let print_table (table : t) ~lines : string =
+let print_table (table : t) ~lines : string =
   let keys =
     match lines with
     | None -> IntTable.keys table
@@ -116,7 +117,7 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
          let v = IntTable.find_exn table k in
          format_table_entry k v)
        keys)
-;; *)
+;;
 
 let initialize_blocks table (fargs : Temp.t list) (x : B.block) =
   let b = x.block in
@@ -219,11 +220,11 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
   (* let () = prerr_endline ">> SP: handle_instrs" in *)
   let out = V.Set.diff out_raw black_list in
   let () = prerr_endline ">> SP: done exiting..." in
-  print_info
-    ("output:["
-    ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
-    ^ "]\n\n\n\n\n");
-  print_info (print_table table);
+  print_info (fun () ->
+      "output:["
+      ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
+      ^ "]\n\n\n\n\n");
+  print_info (fun () -> print_table table ~lines:None);
   out
 ;;
 
@@ -274,7 +275,7 @@ let get_edges (table : t) : (V.t * V.t) list =
         List.filter_map
           ~f:(fun (a, b) ->
             match a, b with
-            | Some(x), Some(y) -> Some(x, y)
+            | Some x, Some y -> Some (x, y)
             | _ -> None)
           [ d, l; d, r ]
       | _ -> []
