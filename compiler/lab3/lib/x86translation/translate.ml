@@ -284,10 +284,8 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       ]
     | _, Stack _ ->
       (* mov (reg) -> mem *)
-      [ X86.BinCommand
-          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
-      ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free X86.Q; size }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
+      [ X86.MovFrom { dest = X86.get_free size; src = src_final; size }
+      ; X86.BinCommand { op = Mov; src = X86.get_free size; dest = d_final; size }
       ]
     | Imm _, _ -> failwith "deref of an imm"
     | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
@@ -474,8 +472,8 @@ let speed_up (p : X86.instr list) : X86.instr list =
                then rm i prev
                else i :: prev
              | _ -> i :: prev)
-         | X86.BinCommand { op = X86.Add | X86.Addq; src = Imm n; _ } ->
-           if Int64.equal n Int64.zero then rm i prev else prev
+         | X86.BinCommand { op = X86.Add | X86.Addq | X86.Sub | X86.Subq; src = Imm n; _ }
+           -> if Int64.equal n Int64.zero then rm i prev else i :: prev
          | _ -> i :: prev))
 ;;
 
