@@ -269,6 +269,7 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
     let d_final = get_final (d, size) in
     let src_final = get_final (s, X86.Q) in
     (match src_final, d_final with
+    (* (mem) -> mem *)
     | Stack _, Stack _ ->
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
@@ -276,18 +277,14 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
       ]
     | Stack _, _ ->
-      (* mov (mem) -> sth *)
+      (* mov (mem) -> reg *)
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
       ; X86.MovFrom { dest = d_final; src = X86.get_free X86.Q; size }
       ]
     | _, Stack _ ->
       (* mov (reg) -> mem *)
-      [ X86.BinCommand
-          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
-      ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free X86.Q; size }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
-      ]
+      [ X86.MovFrom { dest = d_final; src = src_final; size } ]
     | Imm _, _ -> failwith "deref of an imm"
     | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
   | _ -> failwith "translate_mov_from is getting not mov_from"

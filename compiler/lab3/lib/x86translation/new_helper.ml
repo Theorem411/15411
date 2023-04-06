@@ -101,13 +101,6 @@ let get_function_be
     ; X86.FunName (Symbol.name fname)
     ]
     @ cee_start
-    @ [ X86.BinCommand
-          { op = Mov
-          ; dest = X86.Reg { reg = R.RBP; size = 8 }
-          ; src = X86.Reg { reg = R.RSP; size = 8 }
-          ; size = X86.Q
-          }
-      ]
     @ sub_enter
   in
   let ret_label = Label.create () in
