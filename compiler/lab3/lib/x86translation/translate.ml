@@ -284,7 +284,11 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       ]
     | _, Stack _ ->
       (* mov (reg) -> mem *)
-      [ X86.MovFrom { dest = d_final; src = src_final; size } ]
+      [ X86.BinCommand
+          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
+      ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free X86.Q; size }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
+      ]
     | Imm _, _ -> failwith "deref of an imm"
     | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
   | _ -> failwith "translate_mov_from is getting not mov_from"
@@ -450,8 +454,8 @@ let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
 
 let speed_up (p : X86.instr list) : X86.instr list =
   (* let rm i = X86.Comment (X86.format i) in  *)
-  (* let rm i prev = X86.Comment (X86.format i) :: prev in  *)
-  let rm _ prev = prev in
+  let rm i prev = X86.Comment (X86.format i) :: prev in
+  (* let rm _ prev = prev in *)
   List.rev
     (List.fold ~init:[] p ~f:(fun prev i ->
          match i with
@@ -470,6 +474,8 @@ let speed_up (p : X86.instr list) : X86.instr list =
                then rm i prev
                else i :: prev
              | _ -> i :: prev)
+         | X86.BinCommand { op = X86.Add | X86.Addq; src = Imm n; _ } ->
+           if Int64.equal n Int64.zero then rm i prev else prev
          | _ -> i :: prev))
 ;;
 
