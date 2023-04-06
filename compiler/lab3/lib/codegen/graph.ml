@@ -193,17 +193,6 @@ type new_graph = Vertex.Set.t VertexTable.t
       else Vertex.Set.length (Vertex.Set.union a_set b_set) < AS.num_regs)
 ;; *)
 
-let can_coalesce (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
-  if Vertex.equal a b
-  then false
-  else (
-    let a_set = VertexTable.find_exn g a in
-    let b_set = VertexTable.find_exn g b in
-    if Vertex.Set.exists a_set ~f:(fun x -> Vertex.equal x b)
-    then false
-    else Vertex.Set.length (Vertex.Set.union a_set b_set) < AS.num_regs)
-;;
-
 let neigh_aux g new_v (a, b) v =
   match VertexTable.find g v with
   | None -> () (* vertex not in adjacency list, do nothing *)

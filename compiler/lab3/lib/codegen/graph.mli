@@ -35,7 +35,7 @@ val coloring : t -> int Vertex.Map.t
 (* val mk_interfere_graph : AS.instr list -> t *)
 type new_graph = Vertex.Set.t VertexTable.t
 
-val can_coalesce : new_graph -> Vertex.t -> Vertex.t -> bool
+(* val can_coalesce : new_graph -> Vertex.t -> Vertex.t -> bool *)
 (* coalesce two vertices into third vertex and return the new vertex set *)
 val coalesce : new_graph -> Vertex.t * Vertex.t -> Vertex.t -> Vertex.Set.t
 
