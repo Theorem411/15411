@@ -454,7 +454,7 @@ let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
 let speed_up (p : X86.instr list) : X86.instr list =
   (* let rm i = X86.Comment (X86.format i) in  *)
   (* let rm i prev = X86.Comment (X86.format i) :: prev in  *)
-  let rm i prev = prev in
+  let rm _ prev = prev in
   List.rev
     (List.fold ~init:[] p ~f:(fun prev i ->
          match i with
