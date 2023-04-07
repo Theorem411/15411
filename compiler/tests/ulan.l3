@@ -1,15 +1,13 @@
-//test div-by-zero
+//return 1025
 
-int f(int x) {
-  int y = x + 1;
-  return 1 / (y * y * y * y * y * y * y * y);
+int pow(int acc, int x, int n) {
+    if (n == 0) {
+        return acc;
+    }
+    return pow(acc * x, x, n-1);
 }
-
 int main () {
-  int x;
-  x = 0;
-  while (f(x) > 0 || f(x) == 0 || f(x) < 0) {
-    x++;
-  }
-  return 0;			/* should be unreachable */
+  int s = 1;
+  s = pow(1, 2, 10);
+  return s;
 }
