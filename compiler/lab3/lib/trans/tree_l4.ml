@@ -8,12 +8,14 @@ type pbop =
   | BitAnd
   | BitOr
   | BitXor
+  [@@deriving equal]
 
 type ebop =
   | Div
   | Mod
   | ShftL
   | ShftR
+  [@@deriving equal]
 
 type ibop =
   | Pure of pbop
@@ -197,8 +199,7 @@ module Print = struct
         (pp_mpexp rhs)
     | Unop { op; p } -> sprintf "%s%s" (pp_unop op) (pp_mpexp p)
     | Mem Null -> "(null)"
-    | Mem (Ptr { start; off }) ->
-      sprintf "(%s, %s)" (pp_mpexp start) (Int.to_string off)
+    | Mem (Ptr { start; off }) -> sprintf "(%s, %s)" (pp_mpexp start) (Int.to_string off)
     | Mem (Arr { head; idx; typ_size; extra }) ->
       sprintf
         "(%s, %s, %s, %s)"
@@ -225,7 +226,8 @@ module Print = struct
     | SCond { cmp; p1; p2 } ->
       sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "small" (pp_mpexp p2)
   ;;
-(* 
+
+  (* 
   let pp_opt (op: ibop option ) = 
     match op with 
     | Some o -> pp_ibop o
@@ -267,7 +269,11 @@ module Print = struct
     | Alloc { dest; size } ->
       sprintf "%s <-- alloc (%s)" (Temp.name dest) (Int.to_string size)
     | Calloc { dest; len; typ } ->
-      sprintf "%s <-- calloc (typ:%s, len:%s)" (Temp.name dest) (Int.to_string typ) (pp_mpexp len)
+      sprintf
+        "%s <-- calloc (typ:%s, len:%s)"
+        (Temp.name dest)
+        (Int.to_string typ)
+        (pp_mpexp len)
   ;;
 
   let pp_jump = function
@@ -279,7 +285,7 @@ module Print = struct
   let pp_block ({ label; block; jump; loop_depth } : block) =
     sprintf
       "------d=%i------\n%s\n%s\n-------[%s]---------"
-      (loop_depth)
+      loop_depth
       (Label.name_bt label)
       (List.map block ~f:pp_stm |> String.concat ~sep:"\n")
       (pp_jump jump)
