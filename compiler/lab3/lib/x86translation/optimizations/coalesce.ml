@@ -9,7 +9,7 @@ module UF = Unionfind
 
 type color = (int[@deriving compare, equal, hash])
 
-let coalesce_on = false
+let coalesce_on = true
 let coalesce_regs = true
 
 (* let print_info s = prerr_endline s; *)
@@ -60,12 +60,12 @@ let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
     let forest = UF.create_forest () in
     let process_t_t a b =
       let t3 = Temp.create () in
-      prerr_endline
+      (* prerr_endline
         (sprintf
            "Coalesing temps: %s and %s -> %s"
            (V._to_string a)
            (V._to_string b)
-           (Temp.name t3));
+           (Temp.name t3)); *)
       (* if not same color then do:  *)
       let col_a, col_b = VT.find_exn v2c a, VT.find_exn v2c b in
       (* - Colesce two vertices into t3 in graph *)
@@ -77,19 +77,19 @@ let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
       VT.remove v2c a;
       VT.remove v2c b;
       VT.add_exn v2c ~key:(V.T t3) ~data:c;
-      prerr_endline "coloring table:";
-      prerr_endline
+      (* prerr_endline "coloring table:"; *)
+      (* prerr_endline
         (sprintf
            "[%s]"
            (String.concat
               ~sep:","
               (List.map (VT.to_alist v2c) ~f:(fun (v, c) ->
-                   sprintf "%s -> %d" (V._to_string v) c))));
+                   sprintf "%s -> %d" (V._to_string v) c)))); *)
       ()
     in
     let process_r_t r t =
-      prerr_endline
-        (sprintf "Coalesing reg: %s and temp: %s." (V._to_string r) (V._to_string t));
+      (* prerr_endline
+        (sprintf "Coalesing reg: %s and temp: %s." (V._to_string r) (V._to_string t)); *)
       (* if not same color then do:  *)
       (* - Colesce two vertices into t3 in graph *)
       let (_ : V.Set.t) = Graph.coalesce g (r, t) r in
@@ -97,14 +97,14 @@ let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
       UF.union_to_x forest ~x:r ~y:t;
       (* just remove the coloring of temp *)
       VT.remove v2c t;
-      prerr_endline "coloring table:";
+      (* prerr_endline "coloring table:";
       prerr_endline
         (sprintf
            "[%s]"
            (String.concat
               ~sep:","
               (List.map (VT.to_alist v2c) ~f:(fun (v, c) ->
-                   sprintf "%s -> %d" (V._to_string v) c))));
+                   sprintf "%s -> %d" (V._to_string v) c)))); *)
       ()
     in
     let process a b =
@@ -116,9 +116,9 @@ let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
         | V.R _, V.T _ -> if coalesce_regs then process_r_t a b else ()
         | V.T _, V.R _ -> if coalesce_regs then process_r_t b a else ()
         | _ -> failwith "coalseing two regs???")
-      else (
-        prerr_endline (sprintf "Can not coalesce %s and %s" (V._to_string a) (V._to_string b));
-      )
+      else ()
+      (* prerr_endline
+          (sprintf "Can not coalesce %s and %s" (V._to_string a) (V._to_string b)) *)
     in
     List.iter moves ~f:(fun (a, b) -> process a b);
     let roots = UF.get_final_parents forest in
@@ -130,13 +130,13 @@ let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
             if AS.equal_reg r1 r2 then None else failwith "merged two regs. "
           | V.R _, V.T _ -> failwith "Register's parent can not be a temp")
     in
-    prerr_endline
+    (* prerr_endline
       (sprintf
          "old_new_names [%s]"
          (String.concat
             ~sep:","
             (List.map temp_final_versions ~f:(fun (t1, t2) ->
-                 sprintf "(%s -> %s)" (Temp.name t1) (V._to_string t2)))));
+                 sprintf "(%s -> %s)" (Temp.name t1) (V._to_string t2))))); *)
     TM.of_alist_exn temp_final_versions)
 ;;
 

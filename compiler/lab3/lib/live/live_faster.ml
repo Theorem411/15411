@@ -181,6 +181,6 @@ let mk_graph_fspace (fspace : B.fspace) =
   (* let res = V.Map.of_hashtbl_exn graph' in
   let () = prerr_endline "done!" in
   res *)
-  Graph.print (V.Map.of_hashtbl_exn graph');
+  (* Graph.print (V.Map.of_hashtbl_exn graph'); *)
   graph', spt
 ;;
