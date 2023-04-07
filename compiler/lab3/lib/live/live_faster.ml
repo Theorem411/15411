@@ -38,7 +38,7 @@ let lab_to_block_init (fspace : B.fspace) : lab_to_block =
 
 let wq_init ({ fdef_blocks; _ } : B.fspace) = 
   let blst = List.rev fdef_blocks in
-  let blst = List.filter blst ~f:(fun b -> match b.jump with | B.JRet -> true | _ -> false) in
+  (* let blst = List.filter blst ~f:(fun b -> match b.jump with | B.JRet -> true | _ -> false) in testing idea *)
   (* let () = prerr_endline (sprintf "wqinit:%s\n" (List.map blst ~f:(fun b -> Label.name_bt b.label) |> String.concat ~sep:",\n")) in  *)
   let res = Queue.of_list blst in
   res
@@ -181,5 +181,6 @@ let mk_graph_fspace (fspace : B.fspace) =
   (* let res = V.Map.of_hashtbl_exn graph' in
   let () = prerr_endline "done!" in
   res *)
+  Graph.print (V.Map.of_hashtbl_exn graph');
   graph', spt
 ;;
