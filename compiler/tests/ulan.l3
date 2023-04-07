@@ -1,20 +1,17 @@
-//test return 73
+//test return 1
+/* using an int as a boolean */
 
-int swap (int * p, int * q) {
-  int x;
-  x = *p;
-  *p = *q;
-  *q = x;
-  return 0;
+bool xor (bool b, bool c) {
+  return (b && !c) || (!b && c);
 }
 
 int main () {
-  int * p;
-  int * q;
-  p = alloc(int);
-  q = alloc(int);
-  *p = 3;
-  *q = 7;
-  swap(p,q);
-  return *p*10+*q;
+  bool t;
+  bool f;
+  t = true;
+  f = false;
+  if (!xor(t,t) && xor(t,f) && xor(f,t) && !xor(f,f))
+    return 1;
+  else
+    return 0;
 }
