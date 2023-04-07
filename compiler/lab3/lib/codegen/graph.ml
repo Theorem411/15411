@@ -214,6 +214,13 @@ let neigh_aux g new_v (a, b) v =
 
 (*_ Requires can_coalesce (no interferene between edges and other heuristics) g a b  *)
 let coalesce (g : new_graph) ((a, b) : Vertex.t * Vertex.t) (new_v : Vertex.t) =
+  print_endline
+    (sprintf
+       "before coalesing %s %s -> %s"
+       (Vertex._to_string a)
+       (Vertex._to_string b)
+       (Vertex._to_string new_v));
+  print (Vertex.Map.of_hashtbl_exn g);
   let a_set = VertexTable.find_exn g a in
   let b_set = VertexTable.find_exn g b in
   let u = Vertex.Set.union a_set b_set in
