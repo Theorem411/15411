@@ -10,6 +10,7 @@ module TM = Temp.Map
 module VT = Hashtbl.Make (V)
 module Prespill = Prespill
 module Coalesce = Coalesce
+module W = Weights
 
 module REnum = struct
   type t = AS.reg [@@deriving compare, equal, sexp]
@@ -128,16 +129,16 @@ type t =
 let reg_alloc (fspace : AS.fspace) : t =
   (*_ think of three layers: 1. the temps 2. the colors 3. the registers *)
   (*_ do the coloring magic: produce (T/R) to c mapping *)
-  let graph_tbl = Live.mk_graph_fspace (Block.of_fspace fspace) in
-  (*  *)
+  let bspace = Block.of_fspace fspace in 
+  let graph_tbl, spt = Live.mk_graph_fspace (bspace) in
+  let temp_weight, moves = W.calc_weights spt bspace in
   (* Prespill modifies the graph_tbl *)
-  let stack_map, prespill_count = Prespill.prespill graph_tbl in
+  let stack_map, prespill_count = Prespill.prespill graph_tbl spt in
   let spl_map = TM.map ~f:(fun i -> Spl i) stack_map in
-  let v2c = Graph.coloring (V.Map.of_hashtbl_exn graph_tbl) in
+  let v2c = Graph.coloring (V.Map.of_hashtbl_exn graph_tbl) ~temp_weight in
   (*  *)
   (* Coalesce modifies the graph_tbl and v2c_tbl *)
   let v2c_tbl = VT.of_alist_exn (VM.to_alist v2c) in
-  let moves : (V.t * V.t) list = [] in
   let coalesce_map : V.t TM.t = Coalesce.coalesce graph_tbl v2c_tbl moves in
   (* done coealescing, doing the old algorithm *)
   let v2c = VM.of_hashtbl_exn v2c_tbl in

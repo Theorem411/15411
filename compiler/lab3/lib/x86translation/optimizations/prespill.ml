@@ -8,4 +8,4 @@ module VT = Graph.VertexTable
    Where the map is temporary to stack index (integer) and 
    n is the number of different indicies applied
 *)
-let prespill (_ : G.new_graph) = TM.of_alist_exn [], 0
+let prespill (_ : G.new_graph) (_: Singlepass.t) = TM.of_alist_exn [], 0

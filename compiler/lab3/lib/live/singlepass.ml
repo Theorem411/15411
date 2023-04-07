@@ -324,3 +324,7 @@ let uses_defs_block (b : B.block) =
   in
   ufinal, dfinal
 ;;
+
+
+let get_uses_exn (tbl: t) (line: int): V.Set.t = 
+  let entry = IntTable.find_exn tbl line in entry.u

@@ -92,6 +92,7 @@ let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
       ()
     in
     let process a b =
+      let a, b = UF.find forest a,  UF.find forest b in 
       if can_coalesce ~g ~v2c a b
       then (
         match a, b with

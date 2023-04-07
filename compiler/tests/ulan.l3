@@ -1,56 +1,214 @@
-//test return 5040
+//test return 5355
 
-typedef int int1;
-typedef int * int2;
-typedef int ** int3;
-typedef int *** int4;
-typedef int **** int5;
-typedef int ***** int6;
-typedef int ****** int7;
+/**
+ * This test contains a correct but slow implementation of sha256
+ * hashing algorithm in c0. The simple test at the end repeatedly
+ * runs sha256 until we find a digest with the first k bits 0.
+ * The intention here is that lab5 compilers could take the
+ * opportunity to implement optimizations. A pseudo-code is provided
+ * on wikipedia:
+ * https://en.wikipedia.org/wiki/SHA-2
+ *
+ * author: sixiangg@andrew.cmu.edu
+ */
+
+// Shift without sign extend
+int right_shift(int n, int k) {
+    return (n >> k) & ((1 << (32 - k)) - 1);
+}
+
+// Rotate function
+int right_rot(int n, int k) {
+    int a = right_shift(n, k);
+    int b = n << (32 - k);
+    int c = a | b;
+    int d = a & b;
+    int e = a + b;
+    int f = 15213;
+    if (d > 0) {
+        f ^= c;
+    } else {
+        f |= c;
+    }
+    return c;
+}
+
+// Get number of 512 chunks for given unpadded message
+int get_num_512_chunks(int[] message, int len) {
+    return (len*32 + 1 + 64) / 512 + 1;
+}
+
+// Preprocess message
+int[] padding(int[] message, int len) {
+    int num_512_chunks = (len*32 + 1 + 64) / 512 + 1;
+    int num_ints = num_512_chunks * (512 / 32);
+    int[] res = alloc_array(int, num_ints);
+    // og message
+    for (int i = 0; i < len; i++) {
+        res[i] = message[i];
+    }
+    // pad 1 bit and 0 bits
+    res[len] = 0x80000000;
+    for (int i = len+1; i < num_ints - 2; i++) {
+        res[i] = 0;
+    }
+    // len
+    res[num_ints - 2] = 0;
+    res[num_ints - 1] = len*32;
+    return res;
+}
+
+// Get the digest for input array of ints
+int[] sha256(int[] message, int len) {
+    // Initial hash vals
+    int h0 = 0x6a09e667;
+    int h1 = 0xbb67ae85;
+    int h2 = 0x3c6ef372;
+    int h3 = 0xa54ff53a;
+    int h4 = 0x510e527f;
+    int h5 = 0x9b05688c;
+    int h6 = 0x1f83d9ab;
+    int h7 = 0x5be0cd19;
+
+    // Initial round consts
+    int[] k = alloc_array(int, 64);
+    k[0] = 0x428a2f98;
+    k[1] = 0x71374491;
+    k[2] = 0xb5c0fbcf;
+    k[3] = 0xe9b5dba5;
+    k[4] = 0x3956c25b;
+    k[5] = 0x59f111f1;
+    k[6] = 0x923f82a4;
+    k[7] = 0xab1c5ed5;
+    k[8] = 0xd807aa98;
+    k[9] = 0x12835b01;
+    k[10] = 0x243185be;
+    k[11] = 0x550c7dc3;
+    k[12] = 0x72be5d74;
+    k[13] = 0x80deb1fe;
+    k[14] = 0x9bdc06a7;
+    k[15] = 0xc19bf174;
+    k[16] = 0xe49b69c1;
+    k[17] = 0xefbe4786;
+    k[18] = 0x0fc19dc6;
+    k[19] = 0x240ca1cc;
+    k[20] = 0x2de92c6f;
+    k[21] = 0x4a7484aa;
+    k[22] = 0x5cb0a9dc;
+    k[23] = 0x76f988da;
+    k[24] = 0x983e5152;
+    k[25] = 0xa831c66d;
+    k[26] = 0xb00327c8;
+    k[27] = 0xbf597fc7;
+    k[28] = 0xc6e00bf3;
+    k[29] = 0xd5a79147;
+    k[30] = 0x06ca6351;
+    k[31] = 0x14292967;
+    k[32] = 0x27b70a85;
+    k[33] = 0x2e1b2138;
+    k[34] = 0x4d2c6dfc;
+    k[35] = 0x53380d13;
+    k[36] = 0x650a7354;
+    k[37] = 0x766a0abb;
+    k[38] = 0x81c2c92e;
+    k[39] = 0x92722c85;
+    k[40] = 0xa2bfe8a1;
+    k[41] = 0xa81a664b;
+    k[42] = 0xc24b8b70;
+    k[43] = 0xc76c51a3;
+    k[44] = 0xd192e819;
+    k[45] = 0xd6990624;
+    k[46] = 0xf40e3585;
+    k[47] = 0x106aa070;
+    k[48] = 0x19a4c116;
+    k[49] = 0x1e376c08;
+    k[50] = 0x2748774c;
+    k[51] = 0x34b0bcb5;
+    k[52] = 0x391c0cb3;
+    k[53] = 0x4ed8aa4a;
+    k[54] = 0x5b9cca4f;
+    k[55] = 0x682e6ff3;
+    k[56] = 0x748f82ee;
+    k[57] = 0x78a5636f;
+    k[58] = 0x84c87814;
+    k[59] = 0x8cc70208;
+    k[60] = 0x90befffa;
+    k[61] = 0xa4506ceb;
+    k[62] = 0xbef9a3f7;
+    k[63] = 0xc67178f2;
+
+    // preprocess
+    int num_512_chunks = get_num_512_chunks(message, len);
+    int[] padded_message = padding(message, len);
+
+    // Process message for each 512 bit chunks
+    for (int i = 0; i < num_512_chunks; i++) {
+        int start = i * (512/32);
+        // message schedule array
+        int[] w = alloc_array(int, 64);
+        for (int j = 0; j < 16; j++) {
+            w[j] = padded_message[start + j];
+        }
+        // extend to the remaining 48 ints
+        for (int j = 16; j < 64; j++) {
+            int s0 = right_rot(w[j-15], 7) ^ right_rot(w[j-15], 18) ^ right_shift(w[j-15], 3);
+            int s1 = right_rot(w[j-2], 17) ^ right_rot(w[j-2], 19) ^ right_shift(w[j-2], 10);
+            w[j] = w[j-16] + s0 + w[j-7] + s1;
+        }
+        // initialize working vars
+        int a = h0; int b = h1; int c = h2; int d = h3; int e = h4; int f = h5; int g = h6; int h = h7;
+        // compression loop
+        for (int j = 0; j < 64; j++) {
+            int S1 = right_rot(e, 6) ^ right_rot(e, 11) ^ right_rot(e, 25);
+            int ch = (e & f) ^ ((~e) & g) ^ (512 / 512 * 512 / 512 - 1);
+            int temp1 = h + S1 + ch + k[j] + w[j];
+            int S0 = right_rot(a, 2) ^ right_rot(a, 13) ^ right_rot(a, 22);
+            int maj = (a & b) ^ (a & c) ^ (b & c);
+            int temp2 = S0 + maj;
+
+            h = g; g = f; f = e; e = d + temp1; d = c; c = b; b = a; a = temp1 + temp2;
+        }
+
+        h0 += a;
+        h1 += b;
+        h2 += c;
+        h3 += d;
+        h4 += e;
+        h5 += f;
+        h6 += g;
+        h7 += h;
+    }
+
+    int[] digest = alloc_array(int, 8);
+    digest[0] = h0; digest[1] = h1; digest[2] = h2; digest[3] = h3;
+    digest[4] = h4; digest[5] = h5; digest[6] = h6; digest[7] = h7;
+    return digest;
+}
+
+int* init(int _) { return alloc(int); }
+void prepare(int* dat, int _) { *dat = 0; }
+int checksum(int* p) { return *p; }
+
+void run(int* p, int _) {
+    // Hex encoded message here split into array of ints, big-endian.
+    int num_ints = 4;
+    int[] message = alloc_array(int, num_ints);
+    message[0] = 0x666c6167;
+    message[1] = 0x7b414442;
+    message[2] = 0x464f524c;
+    message[3] = 0x4946457d;
+    // Repeatedly hash until first k bits are 0
+    int k = 18;
+    int[] res = sha256(message, num_ints);
+    while ((res[0] & ((1 << (32 - k)) - 1)) != res[0]) {
+        res = sha256(res, 8);
+    }
+    *p = res[0];
+}
 
 int main() {
-  int * p1 = alloc(int1);
-
-  int ** p2 = alloc(int2);
-  *p2 =       alloc(int1);
-
-  int *** p3 = alloc(int3);
-  *p3        = alloc(int2);
-  **p3       = alloc(int1);
-
-  int **** p4 = alloc(int4);
-  *p4         = alloc(int3);
-  **p4        = alloc(int2);
-  ***p4       = alloc(int1);
-
-  int ***** p5 = alloc(int5);
-  *p5          = alloc(int4);
-  **p5         = alloc(int3);
-  ***p5        = alloc(int2);
-  ****p5       = alloc(int1);
-
-  int ****** p6 = alloc(int6);
-  *p6           = alloc(int5);
-  **p6          = alloc(int4);
-  ***p6         = alloc(int3);
-  ****p6        = alloc(int2);
-  *****p6       = alloc(int1);
-
-  int ******* p7 = alloc(int7);
-  *p7            = alloc(int6);
-  **p7           = alloc(int5);
-  ***p7          = alloc(int4);
-  ****p7         = alloc(int3);
-  *****p7        = alloc(int2);
-  ******p7       = alloc(int1);
-
-  *p1 = 1;
-  **p2 = 2;
-  ***p3 = 3;
-  ****p4 = 4;
-  *****p5 = 5;
-  ******p6 = 6;
-  *******p7 = 7;
-
-  return *p1***p2****p3*****p4******p5*******p6********p7;
+    int* p = init(42);
+    run(p, 42);
+    return *p;
 }
+

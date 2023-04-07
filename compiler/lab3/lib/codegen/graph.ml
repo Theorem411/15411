@@ -99,26 +99,49 @@ let initial_weight (graph : t) : int Vertex.Map.t =
   init_weights
 ;;
 
+let custom_compare
+    ~(get_degree : Vertex.t -> int)
+    ~(temp_weight : Vertex.t -> int option)
+    ((v1, w1) : Vertex.t * int)
+    ((v2, w2) : Vertex.t * int)
+  =
+  let res = Int.compare w1 w2 in
+  if res <> 0
+  then res
+  else (
+    match temp_weight v1, temp_weight v2 with
+    | Some c1, Some c2 ->
+      let d1 = get_degree v1 in
+      let d2 = get_degree v2 in
+      Float.compare (float c1 /. float d1) (float c2 /. float d2)
+    | _ -> res)
+;;
+
 (*_ 
     maximum capacity searching 
   *)
-let weights_max_vertex weights =
+let weights_max_vertex
+    ~(get_degree : Vertex.t -> int)
+    ~(temp_weight : Vertex.t -> int option)
+    weights
+  =
   let w_list : (Vertex.t * int) list = Vertex.Map.to_alist weights in
-  let res_opt = List.max_elt w_list ~compare:(fun (_, w1) (_, w2) -> Int.compare w1 w2) in
+  let res_opt = List.max_elt w_list ~compare:(custom_compare ~get_degree ~temp_weight) in
   match res_opt with
   | None -> raise (Failure "max should not be called on empty")
   | Some (vmax, _) -> vmax
 ;;
 
-let ordering (graph : t) : Vertex.t list =
+let ordering (graph : t) ~(temp_weight : Vertex.t -> int option) : Vertex.t list =
   let n = Vertex.Map.length graph in
   let weights = initial_weight graph in
   let wkset = Vertex.Map.key_set graph in
+  let get_degree (v : Vertex.t) = Vertex.Map.find_exn graph v |> Vertex.Set.length in
   let rec aux wkset weights i =
     if i = 0
     then []
     else (
-      let v_max = weights_max_vertex weights in
+      let v_max = weights_max_vertex ~get_degree ~temp_weight weights in
       let nbrs = Vertex.Map.find_exn graph v_max in
       let inter = Vertex.Set.inter nbrs wkset in
       let incr_fn ~key ~data = if Vertex.Set.mem inter key then data + 1 else data in
@@ -161,8 +184,8 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
       (v, c_new) :: coloring_aux graph color_palette' vs)
 ;;
 
-let coloring (graph : t) =
-  let vertex_order = ordering graph in
+let coloring (graph : t) ~(temp_weight : Vertex.t -> int option) =
+  let vertex_order = ordering graph ~temp_weight in
   let color_palette = precolor graph in
   let v2c = coloring_aux graph color_palette vertex_order in
   Vertex.Map.of_alist_exn v2c
@@ -171,27 +194,6 @@ let coloring (graph : t) =
 module VertexTable = Hashtbl.Make (Vertex)
 
 type new_graph = Vertex.Set.t VertexTable.t
-
-(* let is_adjc (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
-  let a_set = VertexTable.find_exn g a in
-  Vertex.Set.find ~f:(Vertex.equal b) a_set |> Option.is_some
-;; *)
-
-(* let can_coalesce (g : new_graph) (a : Vertex.t) (b : Vertex.t) =
-  if Vertex.equal a b
-  then false
-  else (
-    let a_set_opt = VertexTable.find g a in
-    let b_set_opt = VertexTable.find g b in
-    match a_set_opt, b_set_opt with
-    | None, _ -> false
-    | _, None -> false
-    | Some a_set, Some b_set ->
-      (* check if adjc *)
-      if Vertex.Set.find ~f:(Vertex.equal b) a_set |> Option.is_some
-      then false
-      else Vertex.Set.length (Vertex.Set.union a_set b_set) < AS.num_regs)
-;; *)
 
 let neigh_aux g new_v (a, b) v =
   match VertexTable.find g v with
@@ -210,21 +212,8 @@ let neigh_aux g new_v (a, b) v =
     VertexTable.add_exn g ~key:v ~data:new_neighbors
 ;;
 
-(*_ Requires can_coalesce g a b  *)
+(*_ Requires can_coalesce (no interferene between edges and other heuristics) g a b  *)
 let coalesce (g : new_graph) ((a, b) : Vertex.t * Vertex.t) (new_v : Vertex.t) =
-  (* prerr_endline
-    (sprintf
-       "before coalesing %s %s -> %s"
-       (Vertex._to_string a)
-       (Vertex._to_string b)
-       (Vertex._to_string new_v));
-  print_endline
-    (sprintf
-       "before coalesing %s %s -> %s"
-       (Vertex._to_string a)
-       (Vertex._to_string b)
-       (Vertex._to_string new_v));
-  print (Vertex.Map.of_hashtbl_exn g); *)
   let a_set = VertexTable.find_exn g a in
   let b_set = VertexTable.find_exn g b in
   let u = Vertex.Set.union a_set b_set in

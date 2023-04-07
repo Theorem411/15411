@@ -29,7 +29,7 @@ type t = Vertex.Set.t Vertex.Map.t (* adjacency list *)
 
 (*_ graph utilities *)
 val to_list : t -> (Vertex.t * Vertex.t list) list
-val coloring : t -> int Vertex.Map.t
+val coloring : t -> temp_weight:(Vertex.t -> int option) -> int Vertex.Map.t
 
 (*_ liveness *)
 (* val mk_interfere_graph : AS.instr list -> t *)

@@ -181,5 +181,5 @@ let mk_graph_fspace (fspace : B.fspace) =
   (* let res = V.Map.of_hashtbl_exn graph' in
   let () = prerr_endline "done!" in
   res *)
-  graph'
+  graph', spt
 ;;
