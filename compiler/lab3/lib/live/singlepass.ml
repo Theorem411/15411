@@ -5,7 +5,7 @@ module AS = Assem_l4
 module IntTable = Hashtbl.Make (Int)
 
 let dump_liveness : bool ref = ref false
-let print_info f = if true then () else prerr_endline (f ())
+(* let print_info f = if true then () else prerr_endline (f ()) *)
 
 type ht_entry =
   { d : V.Set.t
@@ -86,7 +86,7 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     V.Set.of_list (List.map ~f:(fun (t, _) -> V.T t) stack_args), V.Set.empty
 ;;
 
-let format_v_set s =
+(* let format_v_set s =
   String.concat ~sep:"," (List.map (V.Set.to_list s) ~f:(fun v -> V._to_string v))
 ;;
 
@@ -117,7 +117,7 @@ let print_table (table : t) ~lines : string =
          let v = IntTable.find_exn table k in
          format_table_entry k v)
        keys)
-;;
+;; *)
 
 let initialize_blocks table (fargs : Temp.t list) (x : B.block) =
   let b = x.block in
@@ -219,12 +219,6 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
   let out_raw = handle_instrs table (b.block, args) input in
   (* let () = prerr_endline ">> SP: handle_instrs" in *)
   let out = V.Set.diff out_raw black_list in
-  let () = prerr_endline ">> SP: done exiting..." in
-  print_info (fun () ->
-      "output:["
-      ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
-      ^ "]\n\n\n\n\n");
-  print_info (fun () -> print_table table ~lines:None);
   out
 ;;
 

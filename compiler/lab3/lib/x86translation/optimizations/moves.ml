@@ -36,7 +36,7 @@ let process_block (consume : PairV.t -> int -> unit) (b : AS.block) : unit =
 ;;
 
 let order_moves (f : AS.fspace) : (V.t * V.t) list =
-  prerr_endline "Started ordering moves";
+  (* prerr_endline "Started ordering moves"; *)
   let tbl : int PairVTbl.t = PairVTbl.create () in
   List.iter f.fdef_blocks ~f:(process_block (add_weight tbl));
   let moves : (PairV.t * int) list = PairVTbl.to_alist tbl in
@@ -45,7 +45,7 @@ let order_moves (f : AS.fspace) : (V.t * V.t) list =
     List.sort moves ~compare:(fun (_, w1) (_, w2) -> Int.compare w2 w1)
   in
   let res = List.map sorted_moves ~f:(fun (p, _) -> p) in
-  if true
+  if false
   then
     (fun () ->
       prerr_endline

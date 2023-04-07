@@ -144,15 +144,15 @@ let mk_liveness_fspace (fspace : B.fspace) =
     | None -> ()
   in
   let () = loop () in
-  let () = prerr_endline "surprise! loop finishes!\n" in
+  (* let () = prerr_endline "surprise! loop finishes!\n" in *)
   (*_ do one final single passing using biot *)
   let l2io' =
     LT.to_alist l2io |> List.map ~f:(fun (l, lio) -> LM.find_exn l2b l, lio.liveout)
   in
-  let () = prerr_endline (sprintf "about to go into slow zone! |l2io'| = %i\n" (List.length l2io')) in
+  (* let () = prerr_endline (sprintf "about to go into slow zone! |l2io'| = %i\n" (List.length l2io')) in *)
   let mapf ((b, liveout) : B.block * V.Set.t) = SP.singlepass sptbl b liveout in
   let (_ : V.Set.t list) = List.map l2io' ~f:mapf in
-  let () = prerr_endline "surprise! SP finishes!\n" in
+  (* let () = prerr_endline "surprise! SP finishes!\n" in *)
   sptbl
 ;;
 
@@ -160,7 +160,7 @@ let mk_liveness_fspace (fspace : B.fspace) =
 
 let mk_graph_fspace (fspace : B.fspace) =
   let spt = mk_liveness_fspace fspace in
-  let () = prerr_endline "starts making graph!\n" in
+  (* let () = prerr_endline "starts making graph!\n" in *)
   let vertices, edges = SP.get_edges_vertices spt fspace in
   (*_ create a hashtable graph *)
   let graph' = VertexTable.create () in
