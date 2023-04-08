@@ -191,14 +191,14 @@ let get_call_stack_arg_moves
 ;;
 
 let translate_call
-    ((tail_call, bodyLabel, tail_offset) : bool * Label.t * int)
+    ((tail_call, bodyLabel, tail_offset, this_fun_name) : bool * Label.t * int * string)
     (get_final : AS.operand * X86.size -> X86.operand)
     (fname : string)
     (stack_args : (Temp.t * AS.size) list)
   =
   let call, to_tail =
-    match stupid_tail_optimization_on, tail_call with
-    | true, true -> [ X86.Jump { op = None; label = bodyLabel } ], true
+    match stupid_tail_optimization_on, tail_call, String.equal this_fun_name fname with
+    | true, true, true -> [ X86.Jump { op = None; label = bodyLabel } ], true
     | _ -> [ X86.Call fname ], false
   in
   if List.length stack_args = 0
@@ -341,6 +341,7 @@ let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = functi
 let translate_line
     (retLabel, errLabel, bodyLabel)
     ~(unsafe : bool)
+    (this_fun_name : string)
     (get_final : AS.operand * X86.size -> X86.operand)
     ((stack_moves, stack_offset) : X86.instr list * int)
     (prev_lines : X86.instr list)
@@ -371,7 +372,7 @@ let translate_line
   | AS.AssertFail -> [ X86.Call "abort@plt" ] @ prev_lines
   | AS.Call { fname; args_overflow = stack_args; tail_call; _ } ->
     translate_call
-      (tail_call, bodyLabel, stack_offset)
+      (tail_call, bodyLabel, stack_offset, this_fun_name)
       get_final
       (Symbol.name fname)
       stack_args
@@ -466,6 +467,7 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
         (translate_line
            ~unsafe
            (retLabel, errLabel, fun_body_label)
+           (Symbol.name fspace.fname)
            final
            (stack_moves, stack_offset))
   in
@@ -497,8 +499,8 @@ let speed_up (p : X86.instr list) : X86.instr list =
          | X86.BinCommand ({ op = X86.Mov; _ } as m2) ->
            if X86.equal_operand m2.src m2.dest
            then rm i prev
-           else if match m2.src with
-                   | Imm n -> Int64.equal n Int64.zero
+           else if match m2.src, m2.dest with
+                   | Imm n, X86.Reg _ -> Int64.equal n Int64.zero
                    | _ -> false
            then
              X86.BinCommand
