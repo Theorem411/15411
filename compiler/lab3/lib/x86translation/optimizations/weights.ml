@@ -70,7 +70,7 @@ let get_sorted_moves tbl =
     List.sort moves ~compare:(fun (_, w1) (_, w2) -> Int.compare w2 w1)
   in
   let res = List.map sorted_moves ~f:(fun (p, _) -> p) in
-  if true
+  if false
   then
     (fun () ->
       prerr_endline

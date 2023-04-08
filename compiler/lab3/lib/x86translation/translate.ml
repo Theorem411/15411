@@ -428,7 +428,7 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
   let final = get_final updater in
   (* gets prologue and epilogue of the function *)
   let b, e, stack_moves, retLabel =
-    Helper.get_function_be (fspace.fname, fspace.args) reg_map stack_cells
+    Helper.get_function_be (fspace.fname, fspace.args) (reg_map, updater) stack_cells
   in
   let translated instructions : X86.instr list =
     List.fold
