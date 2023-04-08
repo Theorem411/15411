@@ -2,7 +2,9 @@ open Core
 module AS = Assem_l4
 module R = Register
 
-let alloc_fname ~(unsafe : bool) = if unsafe then "calloc" else "____calloc_javaway"
+let alloc_fname ~(unsafe : bool) =
+  if unsafe then "_unsafe_calloc" else "____calloc_javaway"
+;;
 
 (* alloc_fname:
         cmp     %edi, 0
@@ -18,10 +20,10 @@ let alloc_fname ~(unsafe : bool) = if unsafe then "calloc" else "____calloc_java
         je     memoryfail
         ret *)
 let get_alloc_function memErrLabel ~(unsafe : bool) =
+  let name = alloc_fname ~unsafe in
   if not unsafe
   then (
     let l1 = Label.create () in
-    let name = alloc_fname ~unsafe in
     [ X86.Directive (sprintf ".globl %s" name)
     ; X86.Directive (sprintf ".type\t%s, @function" name)
     ; X86.FunName name
@@ -62,7 +64,24 @@ let get_alloc_function memErrLabel ~(unsafe : bool) =
     ; X86.UnCommand { op = X86.Popq; src = X86.Reg { reg = R.EBX; size = 8 } }
     ; X86.Ret
     ])
-  else []
+  else
+    [ X86.Directive (sprintf ".globl %s" name)
+    ; X86.Directive (sprintf ".type\t%s, @function" name)
+    ; X86.FunName name
+    ; X86.BinCommand
+        { op = X86.Movsl
+        ; src = X86.Reg { reg = R.EDI; size = 4 }
+        ; dest = X86.Reg { reg = R.ESI; size = 8 }
+        ; size = X86.Q
+        }
+    ; X86.BinCommand
+        { op = X86.Mov
+        ; dest = X86.Reg { reg = R.EDI; size = 4 }
+        ; src = Imm Int64.one
+        ; size = X86.L
+        }
+    ; X86.JumpToF "calloc"
+    ]
 ;;
 
 let alloc_array_fname ~(unsafe : bool) =

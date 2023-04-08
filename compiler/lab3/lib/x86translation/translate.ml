@@ -446,7 +446,7 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
 let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
   let arithErrLabel = Label.create () in
   (if unsafe then [] else [ get_memErrLabel_block mfail ])
-  @ (if unsafe then [] else [ Custom.get_alloc_function mfail ~unsafe ])
+  @ [ Custom.get_alloc_function mfail ~unsafe ]
   @ [ Custom.get_arrayalloc_function mfail ~unsafe ]
   @ [ get_error_block arithErrLabel ]
   @ List.map ~f:(fun f -> translate_function ~unsafe arithErrLabel f) fs
