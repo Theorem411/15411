@@ -14,7 +14,7 @@ let to_int = function
 let do_stack_moves
     (updater : Temp.t -> Regalloc.reg_or_spill)
     (args : (Temp.t * AS.size) list)
-    total_size
+    offset
   =
   let stack_args = List.drop args 6 in
   let stack_refs =
@@ -25,7 +25,7 @@ let do_stack_moves
           [ X86.BinCommand
               { op = Mov
               ; dest = X86.Reg { reg; size = to_int sz }
-              ; src = X86.Stack ((total_size / 8) + 1 + i)
+              ; src = X86.Stack (offset + i)
               ; size = X86.to_size sz
               }
           ]
@@ -34,7 +34,7 @@ let do_stack_moves
           [ X86.BinCommand
               { op = Mov
               ; dest = sz |> X86.get_free
-              ; src = X86.Stack ((total_size / 8) + 1 + i)
+              ; src = X86.Stack (offset + i)
               ; size = sz
               }
           ; X86.BinCommand
@@ -90,9 +90,12 @@ let get_function_be
   =
   let cee_regs, cee_start, cee_finish = callee_handle reg_map in
   let cee_regs_cnt = List.length cee_regs in
+  (* TODO OPTIMIZE DIVISIONS BY 8 *)
   let sub_c : int = if (n + cee_regs_cnt) % 2 = 0 then (n * 8) + 8 else n * 8 in
   (* total size of frame (added regs)*)
-  let stack_moves = do_stack_moves updater args (sub_c + (cee_regs_cnt * 8)) in
+  let total_size = sub_c + (cee_regs_cnt * 8) in
+  let offset = (total_size / 8) + 1 in
+  let stack_moves = do_stack_moves updater args offset in
   let sub_enter, sub_exit = handle_sub sub_c in
   (* function labels *)
   let enter =
@@ -110,5 +113,5 @@ let get_function_be
     @ cee_finish
     @ [ X86.Ret ]
   in
-  enter, exit, stack_moves, ret_label
+  enter, exit, (stack_moves, offset), ret_label
 ;;

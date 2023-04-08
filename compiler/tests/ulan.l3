@@ -1,33 +1,39 @@
-//test return 1421606573
-//Tests order of evaluation for function with side effects
-int swap(int *x, int *y) {
-  int t = *x;
-  *x = *y;
-  *y = t;
-  return t;
+//test return 15411
+// testing fermat's last theorem in SML
+
+int pow(int acc, int x, int n) {
+    if (n == 0) {
+        return acc;
+    }
+    return pow(acc * x, x, n-1);
 }
 
-int fun(int *x, int *y) {
-  int v = *x * *y;
-  *x += *y;
-  (*x)++;
-  return swap(x, y);
-}
-
-int *stuff(int *x, int *y) {
-  int *new = alloc(int);
-  int i;
-  for(i=0;i<*x+5;i++) {
-    fun(y, new);
+bool fermat(int n, int a, int b, int c) {
+  if (a < 60) {
+    if (b < 60) {
+      if (c < 60) {
+        if (pow(1, a, n) + pow(1, b, n) == pow(1, c,n)) {
+          return false;
+        }
+        return fermat(n, a, b, c+1);
+      }
+      return fermat(n, a, b+1, 1);
+    }
+    return fermat(n, a+1, 1, 1);
   }
-  return new;
+  return true;
 }
+
+int* init(int param) { return alloc(int); }
+void prepare(int* p, int n) { *p = 0; }
+int checksum(int* p) { return *p; }
 
 int main() {
-  int *first = alloc(int);
-  int *second = alloc(int);
-  int *third = alloc(int);
-  *first = fun(second, third) == 1 ? fun(second, first) * fun(third, first) 
-    : fun(third, first) * fun(second, first);
-  return *stuff(stuff(first, second), stuff(second, stuff(first, third)));
+  if (!fermat(3,1,1,1)) {
+    return 0;
+  }
+  return 15411;
 }
+
+void run(int* p, int n) { *p = main(); }
+

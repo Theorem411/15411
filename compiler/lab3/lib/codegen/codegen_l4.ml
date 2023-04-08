@@ -229,6 +229,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
         { fname = Symbol.symbol (CustomAssembly.alloc_fname ~unsafe)
         ; args_overflow = []
         ; args_in_regs = [ A.EDI, A.S ]
+        ; tail_call = false
         }
       (* dest <-8 rax *)
     ; A.Mov { dest = A.Temp dest; size = A.L; src = A.Reg A.EAX }
@@ -244,6 +245,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
           { fname = Symbol.symbol (CustomAssembly.alloc_array_fname ~unsafe)
           ; args_overflow = []
           ; args_in_regs = [ A.EDI, A.S; A.ESI, A.S ]
+          ; tail_call = false
           }
         (* dest <-8 rax *)
       ; A.Mov { dest = A.Temp dest; size = A.L; src = A.Reg A.EAX }
@@ -384,7 +386,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     in *)
     let mov = [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ] in
     [ codegen_head; codegen_idx; bound_chk; codegen_src; mov ] |> List.concat
-  | T.MovFuncApp { dest; fname; args } ->
+  | T.MovFuncApp { dest; fname; args; tail_call } ->
     let cogen_arg ~unsafe e =
       let t = Temp.create () in
       let sz = munch_size (T.size e) in
@@ -402,7 +404,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     let args_in_regs = List.filter_mapi ops ~f:args_in_regs_f in
     let args_overflow_f i op = if i >= 6 then Some op else None in
     let args_overflow = List.filter_mapi ops ~f:args_overflow_f in
-    let call = A.Call { fname; args_in_regs; args_overflow } in
+    let call = A.Call { fname; args_in_regs; args_overflow; tail_call } in
     (match dest with
     | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
     | Some (d, sz) ->
@@ -439,7 +441,7 @@ let munch_block
     | Label.BlockLbl _ -> []
     | Label.FunName _ -> munch_arg_moves args
   in
-  { label; block = arg_moves @ block'; jump; depth=loop_depth }
+  { label; block = arg_moves @ block'; jump; depth = loop_depth }
 ;;
 
 let codegen (prog : T.program) ~(mfl : Label.t) ~(unsafe : bool) : A.program =

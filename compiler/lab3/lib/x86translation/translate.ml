@@ -10,6 +10,7 @@ module Helper = New_helper
 (*_ DEBUGGING STAFF  *)
 
 let debug = false
+let stupid_tail_optimization_on = true
 let alloc = if not debug then Regalloc.reg_alloc else Stackalloc.stack_alloc
 
 type fspace = X86.instr list
@@ -161,13 +162,45 @@ let translate_set get_final = function
   | _ -> failwith "Not a set operation on translate_set"
 ;;
 
-(* TODO could have an issue with ordering staff *)
+let get_call_stack_arg_moves
+    (get_final : AS.operand * X86.size -> X86.operand)
+    (jump_int : int)
+    (stack_args : (Temp.t * AS.size) list)
+    (offset : int)
+  =
+  let arg_moves =
+    List.concat_mapi
+      ~f:(fun i (t, sz) ->
+        let sz = X86.to_size sz in
+        let src = get_final (AS.Temp t, sz) in
+        let d = X86.Stack (i + offset) in
+        match src with
+        | X86.Stack mem_i ->
+          [ X86.BinCommand
+              { op = Mov
+              ; dest = X86.get_free sz
+              ; src = X86.Stack (mem_i + jump_int + offset)
+              ; size = sz
+              }
+          ; X86.BinCommand { op = Mov; dest = d; src = X86.get_free sz; size = sz }
+          ]
+        | _ -> [ X86.BinCommand { op = Mov; dest = d; src; size = sz } ])
+      stack_args
+  in
+  arg_moves
+;;
+
 let translate_call
+    ((tail_call, bodyLabel, tail_offset) : bool * Label.t * int)
     (get_final : AS.operand * X86.size -> X86.operand)
     (fname : string)
     (stack_args : (Temp.t * AS.size) list)
   =
-  let call = [ X86.Call fname ] in
+  let call, to_tail =
+    match stupid_tail_optimization_on, tail_call with
+    | true, true -> [ X86.Jump { op = None; label = bodyLabel } ], true
+    | _ -> [ X86.Call fname ], false
+  in
   if List.length stack_args = 0
   then call
   else (
@@ -175,42 +208,31 @@ let translate_call
       let n = List.length stack_args in
       if n % 2 = 0 then n else n + 1
     in
+    let jump_int = if to_tail then jump_int % 2 else jump_int in
+    let offset = if to_tail then tail_offset else 0 in
+    (* very very not sure, to test *)
     let jump_size = Int64.of_int_exn (8 * jump_int) in
-    let arg_moves =
-      List.concat_mapi
-        ~f:(fun i (t, sz) ->
-          let sz = X86.to_size sz in
-          let src = get_final (AS.Temp t, sz) in
-          let d = X86.Stack i in
-          match src with
-          | Stack mem_i ->
-            [ X86.BinCommand
-                { op = Mov
-                ; dest = X86.get_free sz
-                ; src = X86.Stack (mem_i + jump_int)
-                ; size = sz
-                }
-            ; X86.BinCommand { op = Mov; dest = d; src = X86.get_free sz; size = sz }
-            ]
-          | _ -> [ X86.BinCommand { op = Mov; dest = d; src; size = sz } ])
-        stack_args
+    let arg_moves = get_call_stack_arg_moves get_final jump_int stack_args offset in
+    let jump_b, jump_e =
+      if Int64.equal jump_size Int64.zero
+      then [], []
+      else
+        ( [ X86.BinCommand
+              { op = X86.Add
+              ; dest = X86.Reg { reg = R.RSP; size = 8 }
+              ; src = X86.Imm jump_size
+              ; size = X86.Q
+              }
+          ]
+        , [ X86.BinCommand
+              { op = X86.Sub
+              ; dest = X86.Reg { reg = R.RSP; size = 8 }
+              ; src = X86.Imm jump_size
+              ; size = X86.Q
+              }
+          ] )
     in
-    [ X86.BinCommand
-        { op = X86.Add
-        ; dest = X86.Reg { reg = R.RSP; size = 8 }
-        ; src = X86.Imm jump_size
-        ; size = X86.Q
-        }
-    ]
-    @ call
-    @ List.rev arg_moves
-    @ [ X86.BinCommand
-          { op = X86.Sub
-          ; dest = X86.Reg { reg = R.RSP; size = 8 }
-          ; src = X86.Imm jump_size
-          ; size = X86.Q
-          }
-      ])
+    jump_b @ call @ List.rev arg_moves @ jump_e)
 ;;
 
 let translate_cmp get_final = function
@@ -317,10 +339,10 @@ let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = functi
 ;;
 
 let translate_line
-    (retLabel, errLabel)
+    (retLabel, errLabel, bodyLabel)
     ~(unsafe : bool)
     (get_final : AS.operand * X86.size -> X86.operand)
-    (stack_moves : X86.instr list)
+    ((stack_moves, stack_offset) : X86.instr list * int)
     (prev_lines : X86.instr list)
     (line : AS.instr)
     : X86.instr list
@@ -347,8 +369,13 @@ let translate_line
   | AS.Ret -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
   (* | AS.App _ -> failwith "app is not allowed :(" *)
   | AS.AssertFail -> [ X86.Call "abort@plt" ] @ prev_lines
-  | AS.Call { fname; args_overflow = stack_args; _ } ->
-    translate_call get_final (Symbol.name fname) stack_args @ prev_lines
+  | AS.Call { fname; args_overflow = stack_args; tail_call; _ } ->
+    translate_call
+      (tail_call, bodyLabel, stack_offset)
+      get_final
+      (Symbol.name fname)
+      stack_args
+    @ prev_lines
   | AS.LoadFromStack _ ->
     List.rev_append ([ X86.Comment "\tloading from stack..." ] @ stack_moves) prev_lines
   | AS.MovFrom _ -> List.rev_append (translate_mov_from get_final line) prev_lines
@@ -427,20 +454,28 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
   let stack_cells = Regalloc.mem_count reg_map in
   let final = get_final updater in
   (* gets prologue and epilogue of the function *)
-  let b, e, stack_moves, retLabel =
+  let b, e, (stack_moves, stack_offset), retLabel =
     Helper.get_function_be (fspace.fname, fspace.args) (reg_map, updater) stack_cells
   in
+  let fun_body_label = Label.create () in
   let translated instructions : X86.instr list =
     List.fold
       instructions
       ~init:[]
-      ~f:(translate_line ~unsafe (retLabel, errLabel) final stack_moves)
+      ~f:
+        (translate_line
+           ~unsafe
+           (retLabel, errLabel, fun_body_label)
+           final
+           (stack_moves, stack_offset))
   in
   let res = List.concat_map ~f:translated (block_instrs fspace) in
   let x = (List.nth_exn fspace.fdef_blocks 0).block in
   let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
   let full_rev = List.rev_append e res in
-  b @ first_block_code @ List.rev full_rev
+  if not stupid_tail_optimization_on
+  then b @ first_block_code @ List.rev full_rev
+  else b @ [ X86.Lbl fun_body_label ] @ first_block_code @ List.rev full_rev
 ;;
 
 let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
@@ -454,14 +489,21 @@ let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
 
 let speed_up (p : X86.instr list) : X86.instr list =
   (* let rm i = X86.Comment (X86.format i) in  *)
-  let rm i prev = X86.Comment (X86.format i) :: prev in
-  (* let rm _ prev = prev in *)
+  (* let rm i prev = X86.Comment (X86.format i) :: prev in *)
+  let rm _ prev = prev in
   List.rev
     (List.fold ~init:[] p ~f:(fun prev i ->
          match i with
          | X86.BinCommand ({ op = X86.Mov; _ } as m2) ->
            if X86.equal_operand m2.src m2.dest
            then rm i prev
+           else if match m2.src with
+                   | Imm n -> Int64.equal n Int64.zero
+                   | _ -> false
+           then
+             X86.BinCommand
+               { op = X86.Xor; size = m2.size; src = m2.dest; dest = m2.dest }
+             :: prev
            else (
              match prev with
              | X86.BinCommand ({ op = X86.Mov; _ } as m1) :: _ ->

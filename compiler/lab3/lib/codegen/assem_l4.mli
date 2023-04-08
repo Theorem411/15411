@@ -139,6 +139,7 @@ type instr =
       { fname : Symbol.t
       ; args_in_regs : (reg * size) list
       ; args_overflow : (Temp.t * size) list
+      ; tail_call: bool
       }
   (* Assembly directive. *)
   | Directive of string

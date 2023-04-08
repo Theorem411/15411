@@ -104,6 +104,7 @@ type stm =
       { dest : (Temp.t * int) option
       ; fname : Symbol.t
       ; args : mpexp list
+      ; tail_call : bool
       }
   | Alloc of
       { dest : Temp.t
@@ -197,8 +198,7 @@ module Print = struct
         (pp_mpexp rhs)
     | Unop { op; p } -> sprintf "%s%s" (pp_unop op) (pp_mpexp p)
     | Mem Null -> "(null)"
-    | Mem (Ptr { start; off }) ->
-      sprintf "(%s, %s)" (pp_mpexp start) (Int.to_string off)
+    | Mem (Ptr { start; off }) -> sprintf "(%s, %s)" (pp_mpexp start) (Int.to_string off)
     | Mem (Arr { head; idx; typ_size; extra }) ->
       sprintf
         "(%s, %s, %s, %s)"
@@ -225,7 +225,8 @@ module Print = struct
     | SCond { cmp; p1; p2 } ->
       sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "small" (pp_mpexp p2)
   ;;
-(* 
+
+  (* 
   let pp_opt (op: ibop option ) = 
     match op with 
     | Some o -> pp_ibop o
@@ -242,12 +243,18 @@ module Print = struct
       ^ "  <--  "
       ^ Printf.sprintf "(%s %s %s)" (pp_mpexp lhs) (pp_ebop ebop) (pp_mpexp rhs)
     | MovPureExp { dest; src } -> Temp.name dest ^ "  <--  " ^ pp_mpexp src
-    | MovFuncApp { dest; fname; args } ->
+    | MovFuncApp { dest; fname; args; tail_call } ->
       let fstr = Symbol.name fname in
       let argstr = List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mpexp e ^ ", ") in
       (match dest with
-       | None -> Printf.sprintf "void <-- %s(%s)" fstr argstr
-       | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
+      | None -> Printf.sprintf "void <-- %s(%s)" fstr argstr
+      | Some (d, _) ->
+        Printf.sprintf
+          "%s  <--  %s(%s) [tail_call - %b]"
+          (Temp.name d)
+          fstr
+          argstr
+          tail_call)
     | MovToMem { addr = Null; src } -> sprintf "(null) <-- %s" (pp_mpexp src)
     | MovToMem { addr = Ptr { start; off }; src } ->
       sprintf "(%s, %s) <-- %s" (pp_mpexp start) (Int.to_string off) (pp_mpexp src)
@@ -261,13 +268,17 @@ module Print = struct
         (pp_mpexp src)
     | Return eopt ->
       (match eopt with
-       | None -> "return"
-       | Some e -> "return " ^ pp_mpexp e)
+      | None -> "return"
+      | Some e -> "return " ^ pp_mpexp e)
     | AssertFail -> "assertfail"
     | Alloc { dest; size } ->
       sprintf "%s <-- alloc (%s)" (Temp.name dest) (Int.to_string size)
     | Calloc { dest; len; typ } ->
-      sprintf "%s <-- calloc (typ:%s, len:%s)" (Temp.name dest) (Int.to_string typ) (pp_mpexp len)
+      sprintf
+        "%s <-- calloc (typ:%s, len:%s)"
+        (Temp.name dest)
+        (Int.to_string typ)
+        (pp_mpexp len)
   ;;
 
   let pp_jump = function
@@ -279,7 +290,7 @@ module Print = struct
   let pp_block ({ label; block; jump; loop_depth } : block) =
     sprintf
       "------d=%i------\n%s\n%s\n-------[%s]---------"
-      (loop_depth)
+      loop_depth
       (Label.name_bt label)
       (List.map block ~f:pp_stm |> String.concat ~sep:"\n")
       (pp_jump jump)
