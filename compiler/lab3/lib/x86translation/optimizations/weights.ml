@@ -3,6 +3,25 @@ module V = Graph.Vertex
 module AS = Assem_l4
 module VT = Graph.VertexTable
 
+(* UTILS *)
+
+let power (base : int) (exponent : int) : int =
+  let max_int = 2147483647 (* maximum value of an int in OCaml *) in
+  let rec helper acc base exponent =
+    if exponent = 0
+    then acc
+    else if exponent mod 2 = 0
+    then
+      if acc > max_int / (base * base)
+      then max_int
+      else helper acc (base * base) (exponent / 2)
+    else if acc > max_int / base
+    then max_int
+    else helper (acc * base) base (exponent - 1)
+  in
+  if base = 0 then 0 else if exponent < 0 then 0 else helper 1 base exponent
+;;
+
 (* TEMP ANALYSIS *)
 let add_weight (tbl : int VT.t) (key : V.t) (v : int) =
   let current_value = VT.find tbl key in
@@ -36,11 +55,11 @@ let add_weight_pair (tbl : int PairVTbl.t) (key : PairV.t) (v : int) =
 
 let process_move consume depth = function
   | AS.Mov { dest = AS.Temp t1; src = AS.Temp t2; _ } ->
-    consume (V.T t1, V.T t2) (Int.pow 10 depth)
+    consume (V.T t1, V.T t2) (power 2 depth)
   | AS.Mov { dest = AS.Reg r; src = AS.Temp t; _ } ->
-    consume (V.T t, V.R r) (Int.pow 10 depth)
+    consume (V.T t, V.R r) (power 2 depth)
   | AS.Mov { dest = AS.Temp t; src = AS.Reg r; _ } ->
-    consume (V.T t, V.R r) (Int.pow 10 depth)
+    consume (V.T t, V.R r) (power 2 depth)
   | _ -> ()
 ;;
 
@@ -51,7 +70,7 @@ let get_sorted_moves tbl =
     List.sort moves ~compare:(fun (_, w1) (_, w2) -> Int.compare w2 w1)
   in
   let res = List.map sorted_moves ~f:(fun (p, _) -> p) in
-  if false
+  if true
   then
     (fun () ->
       prerr_endline
@@ -79,7 +98,7 @@ let calc_weights (sptbl : Singlepass.t) (b : Block.fspace) =
           V.Set.iter used_in_line ~f:(function
               | V.T _ as v ->
                 add_weight uses v 1;
-                add_weight depths v (Int.pow 10 b.depth)
+                add_weight depths v (power 2 b.depth)
               | V.R _ -> ());
           (* process moves *)
           process_move (add_weight_pair pair_tbl) b.depth instr;
@@ -91,9 +110,11 @@ let calc_weights (sptbl : Singlepass.t) (b : Block.fspace) =
     | V.T t ->
       let u = VT.find uses (V.T t) in
       (* overall calculate function u * (sum of 10 ^ d_i) ??? *)
-      match u with
-      | Some u' ->  let d = VT.find_exn depths (V.T t) in Some (u' * d)
-      | None -> None
+      (match u with
+      | Some u' ->
+        let d = VT.find_exn depths (V.T t) in
+        Some (u' * d)
+      | None -> None)
   in
   weight, moves
 ;;
