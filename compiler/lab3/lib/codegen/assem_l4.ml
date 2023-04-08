@@ -21,7 +21,7 @@ type reg =
 [@@deriving equal, sexp, compare, enum, hash]
 
 let all_regs =
-  [ [ EAX; EDI; ESI; EDX; ECX; R8D; R9D ]; [ RBP; EBX; R12D; R13D; R14D; R15D ] ]
+  [ [ EDI; ESI; EDX; ECX; EAX; R8D; R9D ]; [ RBP; EBX; R12D; R13D; R14D; R15D ] ]
   |> List.concat
 ;;
 

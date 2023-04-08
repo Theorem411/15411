@@ -179,7 +179,7 @@ let get_call_stack_arg_moves
           [ X86.BinCommand
               { op = Mov
               ; dest = X86.get_free sz
-              ; src = X86.Stack (mem_i + jump_int + offset)
+              ; src = X86.Stack (mem_i + jump_int)
               ; size = sz
               }
           ; X86.BinCommand { op = Mov; dest = d; src = X86.get_free sz; size = sz }
