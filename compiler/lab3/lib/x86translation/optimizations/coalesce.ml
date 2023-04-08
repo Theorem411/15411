@@ -116,7 +116,8 @@ let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
         | V.R _, V.T _ -> if coalesce_regs then process_r_t a b else ()
         | V.T _, V.R _ -> if coalesce_regs then process_r_t b a else ()
         | _ -> failwith "coalseing two regs???")
-      else ()
+      else 
+        ()
       (* prerr_endline
           (sprintf "Can not coalesce %s and %s" (V._to_string a) (V._to_string b)) *)
     in
