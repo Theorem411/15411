@@ -2,6 +2,7 @@ open Core
 module B = Block
 module V = Graph.Vertex
 module SP = Singlepass
+module AS = Assem_l4
 module VertexTable = Graph.VertexTable
 module L = Label
 
@@ -9,9 +10,11 @@ module T = struct
   type t = L.bt [@@deriving compare, equal, sexp, hash]
 end
 
-module LM = Map.Make (T)
-module LS = Set.Make (T)
+module LComp = Comparable.Make (T)
+module LM = LComp.Map
+module LS = LComp.Set
 module LT = Hashtbl.Make (T)
+module OperS = AS.Set
 
 (*_ For general passing: important data for each blocks *)
 type block_du_t =
@@ -30,18 +33,29 @@ type block_in_out = block_lv_t LT.t
 type cfg_pred = LS.t LM.t
 type lab_to_block = B.block LM.t
 
+(*_ shared by many other compiler phases that needs liveness info *)
+type live_package_t =
+  { singlepass : SP.t
+  ; block_def : OperS.t LM.t
+  ; block_use : OperS.t LM.t
+  ; block_in : OperS.t LM.t
+  ; block_out : OperS.t LM.t
+  ; cfg_pred : LS.t LM.t
+  }
+
 (*_ many init functions *)
 let lab_to_block_init (fspace : B.fspace) : lab_to_block =
   let lbs = List.map fspace.fdef_blocks ~f:(fun b -> b.label, b) in
   LM.of_alist_exn lbs
 ;;
 
-let wq_init ({ fdef_blocks; _ } : B.fspace) = 
+let wq_init ({ fdef_blocks; _ } : B.fspace) =
   let blst = List.rev fdef_blocks in
   (* let blst = List.filter blst ~f:(fun b -> match b.jump with | B.JRet -> true | _ -> false) in testing idea *)
   (* let () = prerr_endline (sprintf "wqinit:%s\n" (List.map blst ~f:(fun b -> Label.name_bt b.label) |> String.concat ~sep:",\n")) in  *)
   let res = Queue.of_list blst in
   res
+;;
 
 let cfg_pred_init ({ fdef_blocks; _ } : B.fspace) : cfg_pred =
   let mapf ({ label; jump; _ } : B.block) =
@@ -81,7 +95,7 @@ let block_in_out_init ({ fdef_blocks; _ } : B.fspace) : block_in_out =
 ;; *)
 
 (*_ the general passing algorithm *)
-let mk_liveness_fspace (fspace : B.fspace) =
+let mk_liveness_fspace (fspace : B.fspace) : live_package_t =
   (* init:
      1. init wq : the reverse of the original block ordering 
      2. init cfg : predecessor map 
@@ -153,14 +167,18 @@ let mk_liveness_fspace (fspace : B.fspace) =
   let mapf ((b, liveout) : B.block * V.Set.t) = SP.singlepass sptbl b liveout in
   let (_ : V.Set.t list) = List.map l2io' ~f:mapf in
   (* let () = prerr_endline "surprise! SP finishes!\n" in *)
-  sptbl
+  let block_def = l2du in
+  let block_use = failwith "no" in
+  let block_in = failwith "no" in
+  let block_out = failwith "no" in
+  { singlepass = sptbl; block_def; block_use; block_in; block_out; cfg_pred = cfg }
 ;;
 
 (*_ the final mk_graph_fspace function *)
 
 let mk_graph_fspace (fspace : B.fspace) =
-  let spt = mk_liveness_fspace fspace in
-  (* let () = prerr_endline "starts making graph!\n" in *)
+  let { singlepass = spt; _ } = mk_liveness_fspace fspace in
+  let () = prerr_endline "starts making graph!\n" in
   let vertices, edges = SP.get_edges_vertices spt fspace in
   (*_ create a hashtable graph *)
   let graph' = VertexTable.create () in

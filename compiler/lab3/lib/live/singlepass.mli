@@ -1,5 +1,7 @@
 module B = Block
 module V = Graph.Vertex
+module AS = Assem_l4
+module OperS = AS.Set
 
 type t
 
@@ -10,11 +12,9 @@ val init_table : B.fspace -> t
    returns the live in of the first line *)
 val singlepass : t -> B.block -> V.Set.t -> V.Set.t
 
-val dump_liveness : bool ref
-
 (* returns the vertex set and edge list of the given block *)
 val get_edges_vertices : t -> B.fspace -> V.Set.t * (V.t * V.t) list
 
 (* gives back (block uses set, block defs set) *)
-val uses_defs_block: B.block -> V.Set.t * V.Set.t
+val uses_defs_block: B.block -> OperS.t * OperS.t
 val get_uses_exn: t -> int -> V.Set.t
