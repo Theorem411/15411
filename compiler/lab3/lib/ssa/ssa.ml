@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module AS = Assem_l4
 
 module L = struct
@@ -137,4 +137,4 @@ let instr_renaming (instr : AS.instr) (told2new : told2new) : AS.instr =
 let global_renaming (prog : AS.program) (lparams : lparams) : lparams * AS.program =
   let told2new : told2new = TH.of_alist_exn [] in
   failwith "no"
-;;
+;; *)
