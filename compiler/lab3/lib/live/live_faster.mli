@@ -20,4 +20,4 @@ type live_package_t =
   }
 
 val mk_liveness_fspace : B.fspace -> live_package_t
-val mk_graph_fspace : B.fspace -> Graph.t * SP.t
+val mk_graph_fspace : B.fspace -> Graph.new_graph * SP.t

@@ -3,8 +3,9 @@ module B = Block
 module V = Graph.Vertex
 module AS = Assem_l4
 module IntTable = Hashtbl.Make (Int)
+module OperS = AS.Set
 
-let dump_liveness : bool ref = ref false
+(* let dump_liveness : bool ref = ref false *)
 (* let print_info f = if true then () else prerr_endline (f ()) *)
 
 type ht_entry =
@@ -291,7 +292,7 @@ let get_edges_vertices t (b : B.fspace) =
   v, e
 ;;
 
-let uses_defs_block (b : B.block) =
+let _uses_defs_block (b : B.block) =
   let fargs : Temp.t list =
     match b.label with
     | Label.BlockLbl _ -> []
@@ -319,6 +320,7 @@ let uses_defs_block (b : B.block) =
   ufinal, dfinal
 ;;
 
+let uses_defs_block (_ : B.block) : OperS.t * OperS.t = failwith "no"
 
 let get_uses_exn (tbl: t) (line: int): V.Set.t = 
   let entry = IntTable.find_exn tbl line in entry.u
