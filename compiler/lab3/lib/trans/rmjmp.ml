@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module Tree = Tree_l4
 
 module T = struct
@@ -218,4 +218,4 @@ let rmjmp_fspace (fspace : Tree.fspace_block) : Tree.fspace_block =
   { fspace with fdef }
 ;;
 
-let rmjmp = List.map ~f:rmjmp_fspace
+let rmjmp = List.map ~f:rmjmp_fspace *)
