@@ -292,7 +292,7 @@ let get_edges_vertices t (b : B.fspace) =
   v, e
 ;;
 
-let _uses_defs_block (b : B.block) =
+let vset_uses_defs_block (b : B.block) =
   let fargs : Temp.t list =
     match b.label with
     | Label.BlockLbl _ -> []
@@ -320,7 +320,17 @@ let _uses_defs_block (b : B.block) =
   ufinal, dfinal
 ;;
 
-let uses_defs_block (_ : B.block) : OperS.t * OperS.t = failwith "no"
+let uses_defs_block (b : B.block) : OperS.t * OperS.t =
+  let u_v, d_v = vset_uses_defs_block b in
+  let f = function
+    | V.T t -> AS.Temp t
+    | V.R r -> AS.Reg r
+  in
+  let of_vset s = OperS.of_list (List.( >>| ) (V.Set.to_list s) f) in
+  of_vset u_v, of_vset d_v
+;;
 
-let get_uses_exn (tbl: t) (line: int): V.Set.t = 
-  let entry = IntTable.find_exn tbl line in entry.u
+let get_uses_exn (tbl : t) (line : int) : V.Set.t =
+  let entry = IntTable.find_exn tbl line in
+  entry.u
+;;
