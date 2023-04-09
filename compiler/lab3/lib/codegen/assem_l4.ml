@@ -21,7 +21,7 @@ type reg =
 [@@deriving equal, sexp, compare, enum, hash]
 
 let all_regs =
-  [ [ EAX; EDI; ESI; EDX; ECX; R8D; R9D ]; [ RBP; EBX; R12D; R13D; R14D; R15D ] ]
+  [ [ EDI; ESI; EDX; ECX; EAX; R8D; R9D ]; [ RBP; EBX; R12D; R13D; R14D; R15D ] ]
   |> List.concat
 ;;
 
@@ -149,6 +149,7 @@ type instr =
       { fname : Symbol.t
       ; args_in_regs : (reg * size) list
       ; args_overflow : (Temp.t * size) list
+      ; tail_call : bool
       }
   (* Assembly directive. *)
   | Directive of string
@@ -266,16 +267,17 @@ let format_instr' = function
   | Cmp { size; lhs; rhs } ->
     sprintf "cmp%s %s, %s" (format_size size) (format_operand lhs) (format_operand rhs)
   | AssertFail -> "call __assert_fail"
-  | Call { fname; args_in_regs; args_overflow } ->
+  | Call { fname; args_in_regs; args_overflow; tail_call } ->
     sprintf
-      "call %s(%s|%s)"
+      "call %s(%s|%s)[tail call - %b]"
       (Symbol.name fname)
       (List.map args_in_regs ~f:(fun (r, s) ->
-         sprintf "%s%s" (format_reg r) (format_size s))
+           sprintf "%s%s" (format_reg r) (format_size s))
       |> String.concat ~sep:", ")
       (List.map args_overflow ~f:(fun (t, s) ->
-         sprintf "%s%s" (Temp.name t) (format_size s))
+           sprintf "%s%s" (Temp.name t) (format_size s))
       |> String.concat ~sep:", ")
+      tail_call
   | LoadFromStack ts ->
     sprintf
       "loadfromstack {%s}"
@@ -299,7 +301,7 @@ let format_block ({ label; block; jump; depth } : block) : string =
   sprintf
     "\n%s [at depth=%i]:\n%s\n%s\n"
     (Label.name_bt label)
-    (depth)
+    depth
     (List.map block ~f:format_instr |> String.concat)
     (format_jump_tag jump)
 ;;

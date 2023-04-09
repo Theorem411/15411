@@ -5,6 +5,7 @@ module AS = Assem_l4
 module IntTable = Hashtbl.Make (Int)
 
 let dump_liveness : bool ref = ref false
+(* let print_info f = if true then () else prerr_endline (f ()) *)
 
 type ht_entry =
   { d : V.Set.t
@@ -87,9 +88,9 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
 
 (* let format_v_set s =
   String.concat ~sep:"," (List.map (V.Set.to_list s) ~f:(fun v -> V._to_string v))
-;; *)
+;;
 
-(* let format_table_entry (k : int) (e : ht_entry) : string =
+let format_table_entry (k : int) (e : ht_entry) : string =
   let instr_raw = AS.format_instr e.instr in
   let instr = String.slice instr_raw 0 (String.length instr_raw - 1) in
   sprintf
@@ -100,9 +101,9 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     (format_v_set e.u)
     (format_v_set e.lin)
     (format_v_set e.lout)
-;; *)
+;;
 
-(* let print_table (table : t) ~lines : string =
+let print_table (table : t) ~lines : string =
   let keys =
     match lines with
     | None -> IntTable.keys table
@@ -203,16 +204,6 @@ let handle_instrs
 let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.t)
     : V.Set.t
   =
-  (* let () = prerr_endline "dived into slow SP\n" in *)
-  (* let () = print_info ("doing now: " ^ B.format_block b) in
-  let () =
-    print_info
-      ("input:["
-      ^ String.concat
-          ~sep:","
-          (List.map (V.Set.to_list input) ~f:(fun v -> V._to_string v))
-      ^ "]")
-  in *)
   (* handling arguments *)
   let args, black_list =
     match b.label with
@@ -228,12 +219,6 @@ let singlepass (table : (int, ht_entry) Hashtbl.t) (b : B.block) (input : V.Set.
   let out_raw = handle_instrs table (b.block, args) input in
   (* let () = prerr_endline ">> SP: handle_instrs" in *)
   let out = V.Set.diff out_raw black_list in
-  let () = prerr_endline ">> SP: done exiting..." in
-  (* print_info
-    ("output:["
-    ^ String.concat ~sep:"," (List.map (V.Set.to_list out) ~f:V._to_string)
-    ^ "]\n\n\n\n\n");
-  print_info (print_table table); *)
   out
 ;;
 
@@ -284,7 +269,7 @@ let get_edges (table : t) : (V.t * V.t) list =
         List.filter_map
           ~f:(fun (a, b) ->
             match a, b with
-            | Some(x), Some(y) -> Some(x, y)
+            | Some x, Some y -> Some (x, y)
             | _ -> None)
           [ d, l; d, r ]
       | _ -> []
@@ -333,3 +318,7 @@ let uses_defs_block (b : B.block) =
   in
   ufinal, dfinal
 ;;
+
+
+let get_uses_exn (tbl: t) (line: int): V.Set.t = 
+  let entry = IntTable.find_exn tbl line in entry.u

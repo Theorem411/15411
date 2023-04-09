@@ -106,6 +106,7 @@ type stm =
       { dest : (Temp.t * int) option
       ; fname : Symbol.t
       ; args : mpexp list
+      ; tail_call : bool
       }
   | Alloc of
       { dest : Temp.t
@@ -244,12 +245,18 @@ module Print = struct
       ^ "  <--  "
       ^ Printf.sprintf "(%s %s %s)" (pp_mpexp lhs) (pp_ebop ebop) (pp_mpexp rhs)
     | MovPureExp { dest; src } -> Temp.name dest ^ "  <--  " ^ pp_mpexp src
-    | MovFuncApp { dest; fname; args } ->
+    | MovFuncApp { dest; fname; args; tail_call } ->
       let fstr = Symbol.name fname in
       let argstr = List.fold args ~init:"" ~f:(fun acc e -> acc ^ pp_mpexp e ^ ", ") in
       (match dest with
-       | None -> Printf.sprintf "void <-- %s(%s)" fstr argstr
-       | Some (d, _) -> Printf.sprintf "%s  <--  %s(%s)" (Temp.name d) fstr argstr)
+      | None -> Printf.sprintf "void <-- %s(%s)" fstr argstr
+      | Some (d, _) ->
+        Printf.sprintf
+          "%s  <--  %s(%s) [tail_call - %b]"
+          (Temp.name d)
+          fstr
+          argstr
+          tail_call)
     | MovToMem { addr = Null; src } -> sprintf "(null) <-- %s" (pp_mpexp src)
     | MovToMem { addr = Ptr { start; off }; src } ->
       sprintf "(%s, %s) <-- %s" (pp_mpexp start) (Int.to_string off) (pp_mpexp src)
@@ -263,8 +270,8 @@ module Print = struct
         (pp_mpexp src)
     | Return eopt ->
       (match eopt with
-       | None -> "return"
-       | Some e -> "return " ^ pp_mpexp e)
+      | None -> "return"
+      | Some e -> "return " ^ pp_mpexp e)
     | AssertFail -> "assertfail"
     | Alloc { dest; size } ->
       sprintf "%s <-- alloc (%s)" (Temp.name dest) (Int.to_string size)

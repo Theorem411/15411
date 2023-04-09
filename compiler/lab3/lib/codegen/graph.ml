@@ -57,6 +57,7 @@ let to_list (graph : t) : (Vertex.t * Vertex.t list) list =
   let map_f (v, vs) = v, Vertex.Set.to_list vs in
   List.map res ~f:map_f
 ;;
+
 (* 
 (*_ 
     graph coloring 
@@ -98,40 +99,55 @@ let initial_weight (graph : t) : int Vertex.Map.t =
   init_weights
 ;;
 
+let custom_compare
+    ~(get_degree : Vertex.t -> int)
+    ~(temp_weight : Vertex.t -> int option)
+    ((v1, w1) : Vertex.t * int)
+    ((v2, w2) : Vertex.t * int)
+  =
+  let res = Int.compare w1 w2 in
+  if res <> 0
+  then res
+  else (
+    match temp_weight v1, temp_weight v2 with
+    | Some c1, Some c2 ->
+      let d1 = get_degree v1 in
+      let d2 = get_degree v2 in
+      Float.compare (float c1 /. float d1) (float c2 /. float d2)
+    | _ -> res)
+;;
+
 (*_ 
     maximum capacity searching 
   *)
-(* let print_weights (weights) = 
-  Vertex.Map.to_alist weights |> List.iter ~f:(fun (v, c) -> print_string (Vertex._to_string v ^","^(string_of_int c)^"\n"))
-;; *)
-let weights_max_vertex weights =
+let weights_max_vertex
+    ~(get_degree : Vertex.t -> int)
+    ~(temp_weight : Vertex.t -> int option)
+    weights
+  =
   let w_list : (Vertex.t * int) list = Vertex.Map.to_alist weights in
-  let res_opt = List.max_elt w_list ~compare:(fun (_, w1) (_, w2) -> Int.compare w1 w2) in
+  let res_opt = List.max_elt w_list ~compare:(custom_compare ~get_degree ~temp_weight) in
   match res_opt with
   | None -> raise (Failure "max should not be called on empty")
   | Some (vmax, _) -> vmax
 ;;
 
-let ordering (graph : t) : Vertex.t list =
+let ordering (graph : t) ~(temp_weight : Vertex.t -> int option) : Vertex.t list =
   let n = Vertex.Map.length graph in
   let weights = initial_weight graph in
-  (* let () = print_weights weights in  *)
   let wkset = Vertex.Map.key_set graph in
+  let get_degree (v : Vertex.t) = Vertex.Map.find_exn graph v |> Vertex.Set.length in
   let rec aux wkset weights i =
     if i = 0
     then []
     else (
-      (* let (v_max, _) = Vertex.Map.max_elt_exn weights in  *)
-      let v_max = weights_max_vertex weights in
-      (* let () = print_string ("v_max: "^Vertex._to_string v_max ^ "\n") in *)
+      let v_max = weights_max_vertex ~get_degree ~temp_weight weights in
       let nbrs = Vertex.Map.find_exn graph v_max in
       let inter = Vertex.Set.inter nbrs wkset in
       let incr_fn ~key ~data = if Vertex.Set.mem inter key then data + 1 else data in
       let wkset' = Set.remove wkset v_max in
       let weights' = Vertex.Map.remove weights v_max in
       let weights'' = Vertex.Map.mapi weights' ~f:incr_fn in
-      (*_ new changes *)
-      (* let () = print_weights weights'' in *)
       v_max :: aux wkset' weights'' (i - 1))
   in
   aux wkset weights n
@@ -139,14 +155,12 @@ let ordering (graph : t) : Vertex.t list =
 
 let unused_color_in_nbrs (graph : t) (color_palette : color_palette_t) (v : Vertex.t) =
   let nbrs = Vertex.Map.find_exn graph v in
-  (* let () = print_vertex_set nbrs ("this is nbrs of v="^Vertex._to_string v) in *)
   let fold_f (acc : int list) v =
     match Vertex.Map.find_exn color_palette v with
     | None -> acc
     | Some c -> c :: acc
   in
   let used_colors = Vertex.Set.fold nbrs ~init:[] ~f:fold_f |> Set.of_list (module Int) in
-  (* let () = List.iter (Vertex.Set.fold nbrs ~init:[] ~f:fold_f) ~f:(fun c -> print_string (string_of_int c ^ ", ")) in *)
   let rec aux i_max i =
     if i = i_max
     then i_max
@@ -166,15 +180,53 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
     | Some c_old -> (v, c_old) :: coloring_aux graph color_palette vs
     | None ->
       let c_new = unused_color_in_nbrs graph color_palette v in
-      (* let () =  CustomDebug.print_with_name "\n >> color palette" [sexp_of_color_palette_t color_palette] in *)
-      (* let () = print_string ("\nc_new should be 1 but got: " ^ string_of_int (c_new)^"\n") in *)
       let color_palette' = Vertex.Map.update color_palette v ~f:(fun _ -> Some c_new) in
       (v, c_new) :: coloring_aux graph color_palette' vs)
 ;;
 
-let coloring (graph : t) =
-  let vertex_order = ordering graph in
+let coloring (graph : t) ~(temp_weight : Vertex.t -> int option) =
+  let vertex_order = ordering graph ~temp_weight in
   let color_palette = precolor graph in
   let v2c = coloring_aux graph color_palette vertex_order in
   Vertex.Map.of_alist_exn v2c
+;;
+
+module VertexTable = Hashtbl.Make (Vertex)
+
+type new_graph = Vertex.Set.t VertexTable.t
+
+let neigh_aux g new_v (a, b) v =
+  match VertexTable.find g v with
+  | None -> () (* vertex not in adjacency list, do nothing *)
+  | Some neighbors ->
+    (* replace v1 and v2 with the new vertex in the neighbor set *)
+    let new_neighbors =
+      let rest =
+        Vertex.Set.filter
+          ~f:(fun v' -> (not (Vertex.equal v' a)) && not (Vertex.equal v' b))
+          neighbors
+      in
+      Vertex.Set.add rest new_v
+    in
+    VertexTable.remove g v;
+    VertexTable.add_exn g ~key:v ~data:new_neighbors
+;;
+
+(*_ Requires can_coalesce (no interferene between edges and other heuristics) g a b  *)
+let coalesce (g : new_graph) ((a, b) : Vertex.t * Vertex.t) (new_v : Vertex.t) =
+  (* print_endline
+    (sprintf
+       "before coalesing %s %s -> %s"
+       (Vertex._to_string a)
+       (Vertex._to_string b)
+       (Vertex._to_string new_v));
+  print (Vertex.Map.of_hashtbl_exn g); *)
+  let a_set = VertexTable.find_exn g a in
+  let b_set = VertexTable.find_exn g b in
+  let u = Vertex.Set.union a_set b_set in
+  VertexTable.remove g a;
+  VertexTable.remove g b;
+  VertexTable.add_exn g ~key:new_v ~data:u;
+  Vertex.Set.iter ~f:(neigh_aux g new_v (a, b)) u;
+  u
 ;;

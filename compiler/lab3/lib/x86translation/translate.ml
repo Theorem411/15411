@@ -10,6 +10,7 @@ module Helper = New_helper
 (*_ DEBUGGING STAFF  *)
 
 let debug = false
+let stupid_tail_optimization_on = true
 let alloc = if not debug then Regalloc.reg_alloc else Stackalloc.stack_alloc
 
 type fspace = X86.instr list
@@ -30,6 +31,12 @@ let translate_pure get_final = function
       | _ -> false
     in
     (match d_final, is_too_big_imm rhs_final with
+    | _, true ->
+      [ X86.BinCommand { op = Mov; dest = X86.get_free size; src = rhs_final; size }
+      ; X86.BinCommand
+          { op = X86.pure_to_opr op; dest = X86.get_free size; src = lhs_final; size }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
+      ]
     | X86.Reg _, _ ->
       [ X86.BinCommand { op = Mov; dest = d_final; src = lhs_final; size }
       ; X86.BinCommand { op = X86.pure_to_opr op; dest = d_final; src = rhs_final; size }
@@ -40,17 +47,14 @@ let translate_pure get_final = function
           { op = X86.pure_to_opr op; dest = X86.get_free size; src = rhs_final; size }
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
       ]
-    | Stack _, true ->
-      [ X86.BinCommand { op = Mov; dest = X86.get_free size; src = rhs_final; size }
-      ; X86.BinCommand
-          { op = X86.pure_to_opr op; dest = X86.get_free size; src = lhs_final; size }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
-      ]
     | _ -> failwith "X86.Imm can not be a dest")
   | _ -> failwith "not a pure operation"
 ;;
 
-let translate_efkt (get_final : AS.operand * X86.size -> X86.operand) (errLabel : Label.t)
+let translate_efkt
+    ~(unsafe : bool)
+    (get_final : AS.operand * X86.size -> X86.operand)
+    (errLabel : Label.t)
   = function
   (* DIV / MOD *)
   | AS.EfktBinop { op = (Div | Mod) as op; dest = d; lhs; rhs } ->
@@ -99,33 +103,41 @@ let translate_efkt (get_final : AS.operand * X86.size -> X86.operand) (errLabel 
     let d_final = get_final (d, size) in
     let lhs_final = get_final (lhs, size) in
     let rhs_final = get_final (rhs, size) in
+    let chk =
+      if unsafe
+      then []
+      else
+        [ (* check for the shift >= 32 *)
+          X86.Cmp
+            { lhs = X86.Reg { reg = R.ECX; size = 4 }
+            ; rhs = Imm (Int64.of_int_exn 32)
+            ; size
+            }
+        ; X86.Jump { op = Some AS.Jge; label = errLabel }
+          (* pre check end *)
+          (* check for the shift < 32 *)
+        ; X86.Cmp
+            { lhs = X86.Reg { reg = R.ECX; size = 4 }
+            ; rhs = Imm (Int64.of_int_exn 0)
+            ; size
+            }
+        ; X86.Jump { op = Some AS.Jl; label = errLabel }
+        ]
+    in
     let right_commands =
-      [ X86.BinCommand { op = Mov; dest = X86.get_free size; src = lhs_final; size }
-      ; X86.BinCommand
-          { op = Mov; dest = X86.Reg { reg = R.ECX; size = 4 }; src = rhs_final; size }
-        (* check for the shift >= 32 *)
-      ; X86.Cmp
-          { lhs = X86.Reg { reg = R.ECX; size = 4 }
-          ; rhs = Imm (Int64.of_int_exn 32)
-          ; size
-          }
-      ; X86.Jump { op = Some AS.Jge; label = errLabel }
-        (* pre check end *)
-        (* check for the shift < 32 *)
-      ; X86.Cmp
-          { lhs = X86.Reg { reg = R.ECX; size = 4 }
-          ; rhs = Imm (Int64.of_int_exn 0)
-          ; size
-          }
-      ; X86.Jump { op = Some AS.Jl; label = errLabel }
-      ; X86.BinCommand
-          { op = X86.efkt_to_opr op
-          ; dest = X86.get_free size
-          ; src = X86.Reg { reg = R.ECX; size = 4 }
-          ; size
-          }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
-      ]
+      ([ X86.BinCommand { op = Mov; dest = X86.get_free size; src = lhs_final; size }
+       ; X86.BinCommand
+           { op = Mov; dest = X86.Reg { reg = R.ECX; size = 4 }; src = rhs_final; size }
+       ]
+      @ chk)
+      @ [ X86.BinCommand
+            { op = X86.efkt_to_opr op
+            ; dest = X86.get_free size
+            ; src = X86.Reg { reg = R.ECX; size = 4 }
+            ; size
+            }
+        ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_free size; size }
+        ]
     in
     right_commands
   | _ -> failwith "translate_efkt not implemented yet"
@@ -150,56 +162,77 @@ let translate_set get_final = function
   | _ -> failwith "Not a set operation on translate_set"
 ;;
 
-(* TODO could have an issue with ordering staff *)
+let get_call_stack_arg_moves
+    (get_final : AS.operand * X86.size -> X86.operand)
+    (jump_int : int)
+    (stack_args : (Temp.t * AS.size) list)
+    (offset : int)
+  =
+  let arg_moves =
+    List.concat_mapi
+      ~f:(fun i (t, sz) ->
+        let sz = X86.to_size sz in
+        let src = get_final (AS.Temp t, sz) in
+        let d = X86.Stack (i + offset) in
+        match src with
+        | X86.Stack mem_i ->
+          [ X86.BinCommand
+              { op = Mov
+              ; dest = X86.get_free sz
+              ; src = X86.Stack (mem_i + jump_int)
+              ; size = sz
+              }
+          ; X86.BinCommand { op = Mov; dest = d; src = X86.get_free sz; size = sz }
+          ]
+        | _ -> [ X86.BinCommand { op = Mov; dest = d; src; size = sz } ])
+      stack_args
+  in
+  arg_moves
+;;
+
 let translate_call
+    ((tail_call, bodyLabel, tail_offset, this_fun_name) : bool * Label.t * int * string)
     (get_final : AS.operand * X86.size -> X86.operand)
     (fname : string)
     (stack_args : (Temp.t * AS.size) list)
   =
-  let call = [ X86.Call fname ] in
+  let call, to_tail =
+    match stupid_tail_optimization_on, tail_call, String.equal this_fun_name fname with
+    | true, true, true -> [ X86.Jump { op = None; label = bodyLabel } ], true
+    | _ -> [ X86.Call fname ], false
+  in
   if List.length stack_args = 0
   then call
   else (
     let jump_int =
       let n = List.length stack_args in
-      if n % 2 = 0 then n * 8 else (n * 8) + 8
+      if n % 2 = 0 then n else n + 1
     in
-    let jump_size = Int64.of_int_exn jump_int in
-    let arg_moves =
-      List.concat_mapi
-        ~f:(fun i (t, sz) ->
-          let sz = X86.to_size sz in
-          let src = get_final (AS.Temp t, sz) in
-          let d = X86.Stack (i * 8) in
-          match src with
-          | Stack mem_i ->
-            [ X86.BinCommand
-                { op = Mov
-                ; dest = X86.get_free sz
-                ; src = X86.Stack (mem_i + jump_int)
-                ; size = sz
-                }
-            ; X86.BinCommand { op = Mov; dest = d; src = X86.get_free sz; size = sz }
-            ]
-          | _ -> [ X86.BinCommand { op = Mov; dest = d; src; size = sz } ])
-        stack_args
+    let jump_int = if to_tail then jump_int % 2 else jump_int in
+    let offset = if to_tail then tail_offset else 0 in
+    (* very very not sure, to test *)
+    let jump_size = Int64.of_int_exn (8 * jump_int) in
+    let arg_moves = get_call_stack_arg_moves get_final jump_int stack_args offset in
+    let jump_b, jump_e =
+      if Int64.equal jump_size Int64.zero
+      then [], []
+      else
+        ( [ X86.BinCommand
+              { op = X86.Add
+              ; dest = X86.Reg { reg = R.RSP; size = 8 }
+              ; src = X86.Imm jump_size
+              ; size = X86.Q
+              }
+          ]
+        , [ X86.BinCommand
+              { op = X86.Sub
+              ; dest = X86.Reg { reg = R.RSP; size = 8 }
+              ; src = X86.Imm jump_size
+              ; size = X86.Q
+              }
+          ] )
     in
-    [ X86.BinCommand
-        { op = X86.Add
-        ; dest = X86.Reg { reg = R.RSP; size = 8 }
-        ; src = X86.Imm jump_size
-        ; size = X86.Q
-        }
-    ]
-    @ call
-    @ List.rev arg_moves
-    @ [ X86.BinCommand
-          { op = X86.Sub
-          ; dest = X86.Reg { reg = R.RSP; size = 8 }
-          ; src = X86.Imm jump_size
-          ; size = X86.Q
-          }
-      ])
+    jump_b @ call @ List.rev arg_moves @ jump_e)
 ;;
 
 let translate_cmp get_final = function
@@ -258,6 +291,7 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
     let d_final = get_final (d, size) in
     let src_final = get_final (s, X86.Q) in
     (match src_final, d_final with
+    (* (mem) -> mem *)
     | Stack _, Stack _ ->
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
@@ -265,17 +299,15 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
       ]
     | Stack _, _ ->
-      (* mov (mem) -> sth *)
+      (* mov (mem) -> reg *)
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
       ; X86.MovFrom { dest = d_final; src = X86.get_free X86.Q; size }
       ]
     | _, Stack _ ->
       (* mov (reg) -> mem *)
-      [ X86.BinCommand
-          { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
-      ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free X86.Q; size }
-      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
+      [ X86.MovFrom { dest = X86.get_free size; src = src_final; size }
+      ; X86.BinCommand { op = Mov; src = X86.get_free size; dest = d_final; size }
       ]
     | Imm _, _ -> failwith "deref of an imm"
     | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
@@ -307,8 +339,11 @@ let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = functi
 ;;
 
 let translate_line
-    (retLabel, errLabel)
+    (retLabel, errLabel, bodyLabel)
+    ~(unsafe : bool)
+    (this_fun_name : string)
     (get_final : AS.operand * X86.size -> X86.operand)
+    ((stack_moves, stack_offset) : X86.instr list * int)
     (prev_lines : X86.instr list)
     (line : AS.instr)
     : X86.instr list
@@ -319,7 +354,8 @@ let translate_line
   (* Translating pure operations *)
   | AS.PureBinop _ -> List.rev_append (translate_pure get_final line) prev_lines
   (* Translating effectful operations *)
-  | AS.EfktBinop _ -> List.rev_append (translate_efkt get_final errLabel line) prev_lines
+  | AS.EfktBinop _ ->
+    List.rev_append (translate_efkt ~unsafe get_final errLabel line) prev_lines
   | Unop { op; dest } ->
     X86.UnCommand { op = X86.unary_to_opr op; src = get_final (dest, X86.L) }
     :: prev_lines
@@ -334,9 +370,15 @@ let translate_line
   | AS.Ret -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
   (* | AS.App _ -> failwith "app is not allowed :(" *)
   | AS.AssertFail -> [ X86.Call "abort@plt" ] @ prev_lines
-  | AS.Call { fname; args_overflow = stack_args; _ } ->
-    translate_call get_final (Symbol.name fname) stack_args @ prev_lines
-  | AS.LoadFromStack _ -> prev_lines
+  | AS.Call { fname; args_overflow = stack_args; tail_call; _ } ->
+    translate_call
+      (tail_call, bodyLabel, stack_offset, this_fun_name)
+      get_final
+      (Symbol.name fname)
+      stack_args
+    @ prev_lines
+  | AS.LoadFromStack _ ->
+    List.rev_append ([ X86.Comment "\tloading from stack..." ] @ stack_moves) prev_lines
   | AS.MovFrom _ -> List.rev_append (translate_mov_from get_final line) prev_lines
   | AS.MovTo _ -> List.rev_append (translate_mov_to get_final line) prev_lines
   | MovSxd _ -> List.rev_append (translate_movsxd get_final line) prev_lines
@@ -376,14 +418,17 @@ let get_memErrLabel_block memErrLabel =
 ;;
 
 (* maps reg_alloc results to  *)
-let get_final (reg_map : Regalloc.reg_or_spill TM.t) ((o, size) : AS.operand * X86.size)
+let get_final
+    (updater : Temp.t -> Regalloc.reg_or_spill)
+    ((o, size) : AS.operand * X86.size)
     : X86.operand
   =
   match o with
   | AS.Imm n -> X86.Imm n
   | AS.Reg r -> X86.Reg { reg = Regalloc.asr2renum r; size = X86.of_size size }
   | AS.Temp t ->
-    (match TM.find_exn reg_map t with
+    (* prerr_endline (sprintf "Checking if I have %s" (Temp.name t)); *)
+    (match updater t with
     | Spl i -> X86.Stack i
     | Reg reg -> X86.Reg { reg; size = X86.of_size size })
 ;;
@@ -401,46 +446,81 @@ let block_instrs (fspace : AS.fspace) : AS.instr list list =
         AS.Lab label :: block))
 ;;
 
-let translate_function (errLabel : Label.t) (fspace : AS.fspace) : X86.instr list =
-  match fspace with
-  | { fname; fdef_blocks; args = __args } ->
-    (* has to be changed to the global one *)
-    let reg_map : Regalloc.reg_or_spill TM.t = alloc fspace in
-    let stack_cells = Regalloc.mem_count reg_map in
-    let final = get_final reg_map in
-    (* gets prologue and epilogue of the function *)
-    let b, e, retLabel = Helper.get_function_be (fname, __args) reg_map stack_cells in
-    let translated instructions : X86.instr list =
-      List.fold instructions ~init:[] ~f:(translate_line (retLabel, errLabel) final)
-    in
-    let res = List.concat_map ~f:translated (block_instrs fspace) in
-    let x = (List.nth_exn fdef_blocks 0).block in
-    let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
-    let full_rev = List.rev_append e res in
-    b @ first_block_code @ List.rev full_rev
+let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace)
+    : X86.instr list
+  =
+  (* has to be changed to the global one *)
+  let ({ reg_spill_map = reg_map; updater } : Regalloc.t) = alloc fspace in
+  (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
+  let stack_cells = Regalloc.mem_count reg_map in
+  let final = get_final updater in
+  (* gets prologue and epilogue of the function *)
+  let b, e, (stack_moves, stack_offset), retLabel =
+    Helper.get_function_be (fspace.fname, fspace.args) (reg_map, updater) stack_cells
+  in
+  let fun_body_label = Label.create () in
+  let translated instructions : X86.instr list =
+    List.fold
+      instructions
+      ~init:[]
+      ~f:
+        (translate_line
+           ~unsafe
+           (retLabel, errLabel, fun_body_label)
+           (Symbol.name fspace.fname)
+           final
+           (stack_moves, stack_offset))
+  in
+  let res = List.concat_map ~f:translated (block_instrs fspace) in
+  let x = (List.nth_exn fspace.fdef_blocks 0).block in
+  let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
+  let full_rev = List.rev_append e res in
+  if not stupid_tail_optimization_on
+  then b @ first_block_code @ List.rev full_rev
+  else b @ [ X86.Lbl fun_body_label ] @ first_block_code @ List.rev full_rev
 ;;
 
-let translate (fs : AS.program) ~mfail =
+let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
   let arithErrLabel = Label.create () in
-  [ Custom.get_alloc_function mfail ]
-  @ [ Custom.get_arrayalloc_function mfail ]
-  @ [ get_memErrLabel_block mfail ]
+  (if unsafe then [] else [ get_memErrLabel_block mfail ])
+  @ [ Custom.get_alloc_function mfail ~unsafe ]
+  @ [ Custom.get_arrayalloc_function mfail ~unsafe ]
   @ [ get_error_block arithErrLabel ]
-  @ List.map ~f:(fun f -> translate_function arithErrLabel f) fs
+  @ List.map ~f:(fun f -> translate_function ~unsafe arithErrLabel f) fs
 ;;
 
 let speed_up (p : X86.instr list) : X86.instr list =
+  (* let rm i = X86.Comment (X86.format i) in  *)
+  (* let rm i prev = X86.Comment (X86.format i) :: prev in *)
+  let rm _ prev = prev in
   List.rev
     (List.fold ~init:[] p ~f:(fun prev i ->
-         match prev, i with
-         | ( X86.BinCommand ({ op = X86.Mov; _ } as m1) :: _
-           , X86.BinCommand ({ op = X86.Mov; _ } as m2) ) ->
-           if X86.equal_size m1.size m2.size
-              && X86.equal_operand m1.src m2.dest
-              && X86.equal_operand m2.src m1.dest
-           then X86.Comment (X86.format i) :: prev
-           else i :: prev
-         | _, _ -> i :: prev))
+         match i with
+         | X86.BinCommand ({ op = X86.Mov; _ } as m2) ->
+           if X86.equal_operand m2.src m2.dest
+           then rm i prev
+           else if match m2.src, m2.dest with
+                   | Imm n, X86.Reg _ -> Int64.equal n Int64.zero
+                   | _ -> false
+           then
+             X86.BinCommand
+               { op = X86.Xor; size = m2.size; src = m2.dest; dest = m2.dest }
+             :: prev
+           else (
+             match prev with
+             | X86.BinCommand ({ op = X86.Mov; _ } as m1) :: _ ->
+               if (X86.equal_size m1.size m2.size
+                  && X86.equal_operand m1.src m2.dest
+                  && X86.equal_operand m2.src m1.dest)
+                  || (X86.equal_size m1.size m2.size
+                     && X86.equal_operand m1.src m2.src
+                     && X86.equal_operand m1.dest m2.dest)
+               then rm i prev
+               else i :: prev
+             | _ -> i :: prev)
+         | X86.BinCommand { op = X86.Add | X86.Addq | X86.Sub | X86.Subq; src = Imm n; _ }
+           -> if Int64.equal n Int64.zero then rm i prev else i :: prev
+         | _ -> i :: prev))
 ;;
 
 let speed_up_off = false

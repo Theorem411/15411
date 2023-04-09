@@ -62,12 +62,14 @@ let update acc b ~(finisher : T.stm) ~(newlab : Label.t) =
 type tr_exp_t = T.mpexp * T.block list * block_tobe
 
 let rec tr_exp_rev
-  (env : Temp.t S.t)
-  (dep : int)
-  (exp : A.mexp)
-  (acc_rev : T.block list)
-  (block_rev : block_tobe)
-  : tr_exp_t
+    ?(returned = false)
+    (* for stupid tail call optimization *)
+      (env : Temp.t S.t)
+    (dep : int)
+    (exp : A.mexp)
+    (acc_rev : T.block list)
+    (block_rev : block_tobe)
+    : tr_exp_t
   =
   let e, esize = exp in
   match e with
@@ -144,7 +146,10 @@ let rec tr_exp_rev
     let es = List.rev es in
     let b =
       { b with
-        code = T.MovFuncApp { dest = Some (t, esize); fname = name; args = es } :: b.code
+        code =
+          T.MovFuncApp
+            { dest = Some (t, esize); fname = name; args = es; tail_call = returned }
+          :: b.code
       }
     in
     (T.Temp t, esize), acc, b
@@ -198,12 +203,12 @@ let rec tr_exp_rev
 type tr_stm_t = T.block list * block_tobe
 
 let rec tr_stm_rev
-  (env : Temp.t S.t)
-  (dep : int)
-  (stm : A.stm)
-  (acc_rev : T.block list)
-  (block_rev : block_tobe)
-  : tr_stm_t
+    (env : Temp.t S.t)
+    (dep : int)
+    (stm : A.stm)
+    (acc_rev : T.block list)
+    (block_rev : block_tobe)
+    : tr_stm_t
   =
   match stm with
   | Declare { var; assign = None; body; _ } ->
@@ -334,17 +339,17 @@ let rec tr_stm_rev
     let finisher = T.If { cond; lt = l1; lf = l2 } in
     let new_block = to_block b ~finisher in
     (*_ translate lb *)
-    let b = { l = Label.BlockLbl l1; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l1; code = []; depth = dep } in
     let acc = new_block :: acc in
     let acc, b = tr_stm_rev env dep lb acc b in
     let new_block = to_block b ~finisher:(T.Goto l3) in
     (*_ translate rb *)
-    let b = { l = Label.BlockLbl l2; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l2; code = []; depth = dep } in
     let acc = new_block :: acc in
     let acc, b = tr_stm_rev env dep rb acc b in
     let new_block = to_block b ~finisher:(T.Goto l3) in
     (*_ result*)
-    let b = { l = Label.BlockLbl l3; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l3; code = []; depth = dep } in
     let acc = new_block :: acc in
     acc, b
   | If { cond; lb; rb } ->
@@ -361,17 +366,17 @@ let rec tr_stm_rev
     let finisher = T.If { cond; lt = l1; lf = l2 } in
     let new_block = to_block b ~finisher in
     (*_ translate lb *)
-    let b = { l = Label.BlockLbl l1; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l1; code = []; depth = dep } in
     let acc = new_block :: acc in
     let acc, b = tr_stm_rev env dep lb acc b in
     let new_block = to_block b ~finisher:(T.Goto l3) in
     (*_ translate rb *)
-    let b = { l = Label.BlockLbl l2; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l2; code = []; depth = dep } in
     let acc = new_block :: acc in
     let acc, b = tr_stm_rev env dep rb acc b in
     let new_block = to_block b ~finisher:(T.Goto l3) in
     (*_ result*)
-    let b = { l = Label.BlockLbl l3; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l3; code = []; depth = dep } in
     let acc = new_block :: acc in
     acc, b
   | While { cond = A.True, _; body } ->
@@ -379,13 +384,13 @@ let rec tr_stm_rev
     let l2 = Label.create () in
     let new_block = to_block block_rev ~finisher:(T.Goto l1) in
     (*_ *)
-    let b = { l = Label.BlockLbl l1; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l1; code = []; depth = dep } in
     let acc = new_block :: acc_rev in
-    let acc, b = tr_stm_rev env (dep+1) body acc b in
+    let acc, b = tr_stm_rev env (dep + 1) body acc b in
     let new_block = to_block b ~finisher:(T.Goto l1) in
     (*_ res *)
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l2; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l2; code = []; depth = dep } in
     acc, b
   | While { cond = A.False, _; _ } ->
     acc_rev, block_rev (*while of false is equivalent of NOP*)
@@ -395,7 +400,7 @@ let rec tr_stm_rev
     let l3 = Label.create () in
     let new_block = to_block block_rev ~finisher:(T.Goto l1) in
     let acc = new_block :: acc_rev in
-    let b = { l = Label.BlockLbl l1; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l1; code = []; depth = dep } in
     (*_ tr cond *)
     let el, acc, b = tr_exp_rev env dep lhs acc b in
     let er, acc, b = tr_exp_rev env dep rhs acc b in
@@ -408,12 +413,12 @@ let rec tr_stm_rev
     let finisher = T.If { cond; lt = l2; lf = l3 } in
     let new_block = to_block b ~finisher in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l2; code = []; depth=dep+1 } in
+    let b = { l = Label.BlockLbl l2; code = []; depth = dep + 1 } in
     (*_ tr body *)
-    let acc, b = tr_stm_rev env (dep+1) body acc b in
+    let acc, b = tr_stm_rev env (dep + 1) body acc b in
     let new_block = to_block b ~finisher:(T.Goto l1) in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l3; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l3; code = []; depth = dep } in
     acc, b
   | While { cond; body } ->
     let l1 = Label.create () in
@@ -421,7 +426,7 @@ let rec tr_stm_rev
     let l3 = Label.create () in
     let new_block = to_block block_rev ~finisher:(T.Goto l1) in
     let acc = new_block :: acc_rev in
-    let b = { l = Label.BlockLbl l1; code = []; depth=dep} in
+    let b = { l = Label.BlockLbl l1; code = []; depth = dep } in
     (*_ tr cond *)
     let ec, acc, b = tr_exp_rev env dep cond acc b in
     let cond : T.cond =
@@ -433,23 +438,23 @@ let rec tr_stm_rev
     let finisher = T.If { cond; lt = l2; lf = l3 } in
     let new_block = to_block b ~finisher in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l2; code = []; depth=dep+1 } in
+    let b = { l = Label.BlockLbl l2; code = []; depth = dep + 1 } in
     (*_ tr body *)
-    let acc, b = tr_stm_rev env (dep+1) body acc b in
+    let acc, b = tr_stm_rev env (dep + 1) body acc b in
     let new_block = to_block b ~finisher:(T.Goto l1) in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl l3; code = []; depth=dep } in
+    let b = { l = Label.BlockLbl l3; code = []; depth = dep } in
     acc, b
   | Return None ->
     let new_block = to_block block_rev ~finisher:(T.Return None) in
     let acc = new_block :: acc_rev in
-    let b = { l = Label.BlockLbl (Label.create ()); code = []; depth=dep } in
+    let b = { l = Label.BlockLbl (Label.create ()); code = []; depth = dep } in
     acc, b
   | Return (Some exp) ->
-    let e, acc, b = tr_exp_rev env dep exp acc_rev block_rev in
+    let e, acc, b = tr_exp_rev env dep exp acc_rev block_rev ~returned:true in
     let new_block = to_block b ~finisher:(T.Return (Some e)) in
     let acc = new_block :: acc in
-    let b = { l = Label.BlockLbl (Label.create ()); code = []; depth=dep } in
+    let b = { l = Label.BlockLbl (Label.create ()); code = []; depth = dep } in
     acc, b
   | Nop -> acc_rev, block_rev
   | Seq (s1, s2) ->
@@ -472,13 +477,17 @@ let rec tr_stm_rev
     let es, acc, b = List.fold args ~init:([], acc_rev, block_rev) ~f:fold_f in
     let es = List.rev es in
     let b =
-      { b with code = T.MovFuncApp { dest = None; fname = name; args = es } :: b.code }
+      { b with
+        code =
+          T.MovFuncApp { dest = None; fname = name; args = es; tail_call = false }
+          :: b.code
+      }
     in
     acc, b
 ;;
 
 let tr_stm (env : Temp.t S.t) (dep : int) (stm : A.stm) (binit : block_tobe)
-  : T.block list
+    : T.block list
   =
   let acc_rev, bleft = tr_stm_rev env dep stm ([] : T.block list) binit in
   (*_ finish off any leftover block by adding a jret *)

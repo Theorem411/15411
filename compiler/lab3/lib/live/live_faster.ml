@@ -2,6 +2,7 @@ open Core
 module B = Block
 module V = Graph.Vertex
 module SP = Singlepass
+module VertexTable = Graph.VertexTable
 module L = Label
 
 module T = struct
@@ -37,7 +38,7 @@ let lab_to_block_init (fspace : B.fspace) : lab_to_block =
 
 let wq_init ({ fdef_blocks; _ } : B.fspace) = 
   let blst = List.rev fdef_blocks in
-  let blst = List.filter blst ~f:(fun b -> match b.jump with | B.JRet -> true | _ -> false) in
+  (* let blst = List.filter blst ~f:(fun b -> match b.jump with | B.JRet -> true | _ -> false) in testing idea *)
   (* let () = prerr_endline (sprintf "wqinit:%s\n" (List.map blst ~f:(fun b -> Label.name_bt b.label) |> String.concat ~sep:",\n")) in  *)
   let res = Queue.of_list blst in
   res
@@ -156,11 +157,10 @@ let mk_liveness_fspace (fspace : B.fspace) =
 ;;
 
 (*_ the final mk_graph_fspace function *)
-module VertexTable = Hashtbl.Make (V)
 
 let mk_graph_fspace (fspace : B.fspace) =
   let spt = mk_liveness_fspace fspace in
-  let () = prerr_endline "starts making graph!\n" in
+  (* let () = prerr_endline "starts making graph!\n" in *)
   let vertices, edges = SP.get_edges_vertices spt fspace in
   (*_ create a hashtable graph *)
   let graph' = VertexTable.create () in
@@ -169,16 +169,18 @@ let mk_graph_fspace (fspace : B.fspace) =
   in
   let () =
     List.iter edges ~f:(fun (a, b) ->
-      let a_set = VertexTable.find_exn graph' a in
-      let b_set = VertexTable.find_exn graph' b in
-      if not (V.equal a b)
-      then (
-        let () = VertexTable.set graph' ~key:b ~data:(V.Set.add b_set a) in
-        let () = VertexTable.set graph' ~key:a ~data:(V.Set.add a_set b) in
-        ())
-      else ())
+        let a_set = VertexTable.find_exn graph' a in
+        let b_set = VertexTable.find_exn graph' b in
+        if not (V.equal a b)
+        then (
+          let () = VertexTable.set graph' ~key:b ~data:(V.Set.add b_set a) in
+          let () = VertexTable.set graph' ~key:a ~data:(V.Set.add a_set b) in
+          ())
+        else ())
   in
-  let res = V.Map.of_hashtbl_exn graph' in
+  (* let res = V.Map.of_hashtbl_exn graph' in
   let () = prerr_endline "done!" in
-  res
+  res *)
+  (* Graph.print (V.Map.of_hashtbl_exn graph'); *)
+  graph', spt
 ;;

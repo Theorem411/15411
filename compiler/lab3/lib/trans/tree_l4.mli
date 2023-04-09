@@ -105,6 +105,7 @@ type stm =
       { dest : (Temp.t * int) option
       ; fname : Symbol.t
       ; args : mpexp list
+      ; tail_call: bool
       }
   | Alloc of
       { dest : Temp.t

@@ -9,7 +9,12 @@ type reg_or_spill =
   | Reg of R.reg_enum
   | Spl of int
 
-val reg_alloc : AS.fspace -> reg_or_spill TM.t
+type t =
+  { reg_spill_map : reg_or_spill TM.t
+  ; updater : Temp.t -> reg_or_spill
+  }
+
+val reg_alloc : AS.fspace -> t
 val mem_count : reg_or_spill TM.t -> int
 val caller_save : reg_or_spill TM.t -> R.reg_enum list
 val callee_save : reg_or_spill TM.t -> R.reg_enum list
