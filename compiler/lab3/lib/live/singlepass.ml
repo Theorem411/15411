@@ -304,9 +304,13 @@ let vset_uses_defs_block (b : B.block) =
     (* of load from stack add temp args to define *)
     let d =
       match instr with
-      | AS.LoadFromStack _ ->
-        let fargs_def = V.Set.of_list (List.map ~f:(fun t -> V.T t) fargs) in
-        V.Set.union fargs_def dx
+      | AS.LoadFromStack stack_raw ->
+        (* It should be the case, I think *)
+        (let stack_def = List.map ~f:(fun (t, _) -> t) stack_raw in
+        let fargs_def =
+          V.Set.of_list (List.map ~f:(fun t -> V.T t) (fargs @ stack_def))
+        in
+        V.Set.union fargs_def dx : V.Set.t)
       | _ -> dx
     in
     d, ux
