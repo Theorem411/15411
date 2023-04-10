@@ -8,12 +8,14 @@ type pbop =
   | BitAnd
   | BitOr
   | BitXor
+  [@@deriving equal]
 
 type ebop =
   | Div
   | Mod
   | ShftL
   | ShftR
+  [@@deriving equal]
 
 type ibop =
   | Pure of pbop
