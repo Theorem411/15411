@@ -33,6 +33,12 @@ int main() {
     return 0;
   }
   return 15411;
+  int *first = alloc(int);
+  int *second = alloc(int);
+  int *third = alloc(int);
+  *first = fun(second, third) == 1 ? fun(second, first) * fun(third, first) 
+    : fun(third, first) * fun(second, first);
+  return *stuff(stuff(first, second), stuff(second, stuff(first, third)));
 }
 
 void run(int* p, int n) { *p = main(); }
