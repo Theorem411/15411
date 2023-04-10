@@ -18,6 +18,8 @@ module Vertex : sig
   include Comparable.S with type t := t
 
   val op_to_vertex_opt : AS.operand -> t option
+  val op_set_to_vertex_set : AS.Set.t -> Set.t
+  val vertex_set_to_op_set : Set.t -> AS.Set.t
   val _to_string : t -> string
   val print : t -> unit
 end

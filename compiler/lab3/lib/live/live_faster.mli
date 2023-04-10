@@ -8,6 +8,7 @@ module L = Label
 module LComp : Comparable.S with type t := L.bt
 module LM = LComp.Map
 module LS = LComp.Set
+module LT : Hashtbl.S with type key := L.bt
 
 module OperS = AS.Set
 
@@ -17,6 +18,7 @@ type live_package_t =
   ; block_in : OperS.t LM.t
   ; block_out : OperS.t LM.t
   ; cfg_pred : LS.t LM.t
+  ; l2block : B.block LM.t
   }
 
 val mk_liveness_fspace : B.fspace -> live_package_t

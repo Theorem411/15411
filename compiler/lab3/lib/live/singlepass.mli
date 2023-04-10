@@ -12,6 +12,7 @@ val init_table : B.fspace -> t
    returns the live in of the first line *)
 val singlepass : t -> B.block -> V.Set.t -> V.Set.t
 
+val def_n_use : AS.instr -> V.Set.t * V.Set.t
 (* returns the vertex set and edge list of the given block *)
 val get_edges_vertices : t -> B.fspace -> V.Set.t * (V.t * V.t) list
 
