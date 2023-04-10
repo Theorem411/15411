@@ -167,7 +167,7 @@ let sr_stm (stm : T.stm) : T.stm =
         LCond { p1 = p1'; p2 = p2'; cmp }
       | SCond { p1; p2; cmp } ->
         let p1', p2' = sr_mpexp p1, sr_mpexp p2 in
-        LCond { p1 = p1'; p2 = p2'; cmp }
+        SCond { p1 = p1'; p2 = p2'; cmp }
     in
     If { ifz with cond = cond' }
   | MovEfktExp efkt ->
