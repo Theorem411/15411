@@ -92,10 +92,10 @@ let calc_weights (sptbl : Singlepass.t) (b : Block.fspace) =
   (* do a sinlge iteration *)
   List.iter b.fdef_blocks ~f:(fun b ->
       List.iter b.block ~f:(fun (l, instr) ->
-          (*  adding individual temp information *)
-          let used_in_line = Singlepass.get_uses_exn sptbl l in
+          (*  adding individual temp information (uses + defs) *)
+          let total_in_line = Singlepass.get_total_exn sptbl l in
           (* process only temps *)
-          V.Set.iter used_in_line ~f:(function
+          V.Set.iter total_in_line ~f:(function
               | V.T _ as v ->
                 add_weight uses v 1;
                 add_weight depths v (power 2 b.depth)

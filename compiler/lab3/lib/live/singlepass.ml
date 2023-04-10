@@ -334,7 +334,7 @@ let uses_defs_block (b : B.block) : OperS.t * OperS.t =
   of_vset u_v, of_vset d_v
 ;;
 
-let get_uses_exn (tbl : t) (line : int) : V.Set.t =
+let get_total_exn (tbl : t) (line : int) : V.Set.t =
   let entry = IntTable.find_exn tbl line in
-  entry.u
+  V.Set.union (entry.u) (entry.d)
 ;;
