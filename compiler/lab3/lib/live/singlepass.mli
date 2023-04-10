@@ -18,4 +18,4 @@ val get_edges_vertices : t -> B.fspace -> V.Set.t * (V.t * V.t) list
 
 (* gives back (block uses set, block defs set) *)
 val uses_defs_block: B.block -> OperS.t * OperS.t
-val get_uses_exn: t -> int -> V.Set.t
+val get_total_exn: t -> int -> V.Set.t
