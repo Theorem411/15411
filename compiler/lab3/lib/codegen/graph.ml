@@ -26,11 +26,26 @@ module Vertex = struct
     | _ -> None
   ;;
 
+  let op_set_to_vertex_set (operSet : AS.Set.t) : Set.t =
+    AS.Set.fold operSet ~init:Set.empty ~f:(fun acc op ->
+      match op_to_vertex_opt op with
+      | Some v -> Set.add acc v
+      | None -> acc)
+  ;;
+
   let _to_string = function
     | R r -> AS.format_reg r
     | T t -> Temp.name t
   ;;
 
+  let vertex_to_op = function 
+  | R r -> AS.Reg r
+  | T t -> AS.Temp t
+  let vertex_set_to_op_set (vset : Set.t) : AS.Set.t = 
+    let vlst = Set.to_list vset in
+    let vlst' = List.map vlst ~f:vertex_to_op in
+    AS.Set.of_list vlst'
+  ;;
   let print v = _to_string v |> print_string
 end
 
@@ -72,9 +87,9 @@ let precolor (graph : t) : color_palette_t =
   let vs = Vertex.Map.key_set graph in
   let fold_f acc v =
     Vertex.Map.update acc v ~f:(fun _ ->
-        match v with
-        | Vertex.R r -> Some (AS.reg_to_enum r)
-        | _ -> None)
+      match v with
+      | Vertex.R r -> Some (AS.reg_to_enum r)
+      | _ -> None)
   in
   Vertex.Set.fold vs ~init:Vertex.Map.empty ~f:fold_f
 ;;
@@ -100,10 +115,10 @@ let initial_weight (graph : t) : int Vertex.Map.t =
 ;;
 
 let custom_compare
-    ~(get_degree : Vertex.t -> int)
-    ~(temp_weight : Vertex.t -> int option)
-    ((v1, w1) : Vertex.t * int)
-    ((v2, w2) : Vertex.t * int)
+  ~(get_degree : Vertex.t -> int)
+  ~(temp_weight : Vertex.t -> int option)
+  ((v1, w1) : Vertex.t * int)
+  ((v2, w2) : Vertex.t * int)
   =
   let res = Int.compare w1 w2 in
   if res <> 0
@@ -121,9 +136,9 @@ let custom_compare
     maximum capacity searching 
   *)
 let weights_max_vertex
-    ~(get_degree : Vertex.t -> int)
-    ~(temp_weight : Vertex.t -> int option)
-    weights
+  ~(get_degree : Vertex.t -> int)
+  ~(temp_weight : Vertex.t -> int option)
+  weights
   =
   let w_list : (Vertex.t * int) list = Vertex.Map.to_alist weights in
   let res_opt = List.max_elt w_list ~compare:(custom_compare ~get_degree ~temp_weight) in
@@ -177,11 +192,11 @@ let rec coloring_aux (graph : t) (color_palette : color_palette_t) = function
   | [] -> []
   | v :: vs ->
     (match Vertex.Map.find_exn color_palette v with
-    | Some c_old -> (v, c_old) :: coloring_aux graph color_palette vs
-    | None ->
-      let c_new = unused_color_in_nbrs graph color_palette v in
-      let color_palette' = Vertex.Map.update color_palette v ~f:(fun _ -> Some c_new) in
-      (v, c_new) :: coloring_aux graph color_palette' vs)
+     | Some c_old -> (v, c_old) :: coloring_aux graph color_palette vs
+     | None ->
+       let c_new = unused_color_in_nbrs graph color_palette v in
+       let color_palette' = Vertex.Map.update color_palette v ~f:(fun _ -> Some c_new) in
+       (v, c_new) :: coloring_aux graph color_palette' vs)
 ;;
 
 let coloring (graph : t) ~(temp_weight : Vertex.t -> int option) =

@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module Tree = Tree_l4
 
 module T = struct
@@ -6,6 +6,7 @@ module T = struct
 end
 
 module LM = Map.Make (T)
+module LS = Set.Make (T)
 module LH = Hashtbl.Make (T)
 
 type entry =
@@ -21,6 +22,18 @@ let lh_init (fdef : Tree.block list) : entry LH.t =
   in
   let fdef' = List.mapi fdef ~f:mapf in
   LH.of_alist_exn fdef'
+;;
+
+let pred_init (fdef : Tree.block list) : LS.t LH.t =
+  let mapf ({ label; jump; _ } : Tree.block) : (Label.bt * Label.bt) list =
+    match jump with
+    | Tree.JCon { lt; lf } -> [ Label.bt lt, label; Label.bt lf, label ]
+    | Tree.JUncon l -> [ Label.bt l, label ]
+    | _ -> []
+  in
+  let elst = List.map fdef ~f:mapf |> List.concat in
+  let etbl = LH.of_alist_multi elst in
+  LH.map etbl ~f:LS.of_list
 ;;
 
 let update_juncon (binfo : entry LH.t) (bid : Label.bt) (new_lab : Label.t) : unit =
@@ -62,50 +75,129 @@ let update_jcon (binfo : entry LH.t) (bid : Label.bt) (nlt : Label.t) (nlf : Lab
   LH.update binfo bid ~f:(fun _ -> entry')
 ;;
 
-let entry_is_target ({ jtag; code; _ } : entry) : Label.t option =
+let entry_is_empty ({ jtag; code; _ } : entry) : bool =
+  (*_ whether entry is a blc that ends on a goto l, and with no code *)
+  match jtag with
+  | Tree.JUncon _ -> if List.length code = 1 then true else false
+  | _ -> false
+;;
+
+let entry_is_empty_opt ({ jtag; code; _ } : entry) : Label.t option =
+  (*_ return label of the sole successor *)
   match jtag, List.last_exn code with
   | Tree.JUncon l, Tree.Goto l' ->
     if Label.equal l l' then if List.length code = 1 then Some l else None else None
   | _ -> None
 ;;
 
-let run_till_none (fdef : Tree.block list) : entry LH.t =
-  let btbl = lh_init fdef in
-  let wq = Queue.of_list (List.map fdef ~f:(fun b -> b.label)) in
-  let rm_passing (lab : Label.bt) : unit =
-    let blc = LH.find_exn btbl lab in
-    match blc.jtag with
-    | Tree.JRet -> ()
-    | Tree.JCon { lt; lf } ->
-      let blc_t = LH.find_exn btbl (Label.bt lt) in
-      let blc_f = LH.find_exn btbl (Label.bt lf) in
-      (match entry_is_target blc_t, entry_is_target blc_f with
-       | Some newt, Some newf ->
-         update_jcon btbl lab newt newf;
-         Queue.enqueue wq lab
-       | None, Some newf ->
-         update_jcon btbl lab lt newf;
-         Queue.enqueue wq lab
-       | Some newt, None ->
-         update_jcon btbl lab newt lf;
-         Queue.enqueue wq lab
-       | None, None -> ())
-    | Tree.JUncon l ->
-      let blc_off = LH.find_exn btbl (Label.bt l) in
-      (match entry_is_target blc_off with
-       | Some newl ->
-         update_juncon btbl lab newl;
-         Queue.enqueue wq lab
-       | None -> ())
+let entry_is_single_pred (preds : LS.t LH.t) (l : Label.bt) : bool =
+  let pred_of_l = LH.find_exn preds l in
+  if LS.length pred_of_l = 1 then true else false
+;;
+
+let entry_is_single_pred_opt (preds : LS.t LH.t) (l : Label.bt) : Label.bt option =
+  let pred_of_l = LH.find_exn preds l in
+  if LS.length pred_of_l = 1
+  then (
+    let single_parent = LS.to_list pred_of_l |> List.hd_exn in
+    Some single_parent)
+  else None
+;;
+
+let rm_empty_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
+  let all_empty_blcs = LH.filter btbl ~f:entry_is_empty in
+  let iterf1 ~key:l ~data:entry =
+    (*_ 1. get all predecessors of l *)
+    let l_preds = LH.find_exn preds l in
+    (*_ 2. get the single chld of l *)
+    let l_chld =
+      match entry_is_empty_opt entry with
+      | Some l' -> l'
+      | None -> failwith "rmjmp: ur kidding right?"
+    in
+    (*_ 3. update l_chld's pred to l; pred(l_chld) = (pred(l_chld) - l) u l_preds *)
+    let update_f = function
+      | Some s -> LS.union (LS.remove s l) l_preds
+      | None -> failwith "rmjmp: ur joking"
+    in
+    let () = LH.update preds (Label.bt l_chld) ~f:update_f in
+    (*_ 4. for each lp \in l_preds, update their successor to l_chld *)
+    let iterf2 lp =
+      let { jtag; _ } = LH.find_exn btbl lp in
+      match jtag with
+      | Tree.JUncon _ -> update_juncon btbl lp l_chld
+      | Tree.JCon { lt; lf } ->
+        if Label.equal_bt (Label.bt lt) l
+        then update_jcon btbl lp l_chld lf
+        else if Label.equal_bt (Label.bt lf) l
+        then update_jcon btbl lp lt l_chld
+        else failwith "rmjmp: cond jtag don't have this successor?!"
+      | _ -> failwith "rmjmp: but u said u have successor!"
+    in
+    let () = LS.iter l_preds ~f:iterf2 in
+    (*_ 5. delete l from btbl *)
+    let () = LH.remove btbl l in 
+    ()
   in
+  LH.iteri all_empty_blcs ~f:iterf1
+;;
+
+let rm_single_pred_passing (ls : Label.bt list) (btbl : entry LH.t) (preds : LS.t LH.t)
+  : unit
+  =
+  failwith "no"
+;;
+
+let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
+  (*_ init wq with initially dead blocks *)
+  let wq_init = LH.filter preds ~f:(fun s -> LS.length s = 0) |> LH.keys in
+  let wq = Queue.of_list wq_init in
   let rec loop () =
     match Queue.dequeue wq with
-    | Some lab ->
-      rm_passing lab;
-      loop ()
+    | Some l ->
+      let l_preds = LH.find_exn preds l in
+      if LS.length l_preds = 0
+      then (
+        (*_ 1. find all of this dead block's children *)
+        let { jtag; _ } = LH.find_exn btbl l in
+        let chlds =
+          match jtag with
+          | Tree.JRet -> []
+          | Tree.JUncon l' -> [ l' ]
+          | Tree.JCon { lt; lf } -> [ lt; lf ]
+        in
+        let chlds = List.map chlds ~f:Label.bt in
+        (*_ 2. delete this block from table *)
+        let () = LH.remove btbl l in
+        (*_ 3. delete l from each chld's predecessor *)
+        let f (chld_l : Label.bt) =
+          let l_preds = LH.find_exn preds chld_l in
+          LH.update preds chld_l ~f:(fun _ -> LS.remove l_preds l)
+        in
+        let () = List.iter chlds ~f in
+        (*_ 4. add children back to wq *)
+        let () = Queue.enqueue_all wq chlds in
+        (*_ 5. loop on *)
+        loop ())
+      else loop ()
     | None -> ()
   in
-  let () = loop () in
+  loop ()
+;;
+
+let run_till_none (fdef : Tree.block list) : entry LH.t =
+  (*_ init tbl from label to entry *)
+  let btbl = lh_init fdef in
+  (*_ init tbl from label to predecessors *)
+  let preds = pred_init fdef in
+  (*_ label list *)
+  let labs = List.map fdef ~f:(fun blc -> blc.label) in
+  (*_ dead block eliminations *)
+  let () = rm_dead_blc_passing btbl preds in
+  (*_ empty block elimination *)
+  let () = rm_empty_blc_passing btbl preds in
+  (*_ single pred block elimination *)
+  let () = rm_single_pred_passing labs btbl preds in
   btbl
 ;;
 
@@ -126,4 +218,4 @@ let rmjmp_fspace (fspace : Tree.fspace_block) : Tree.fspace_block =
   { fspace with fdef }
 ;;
 
-let rmjmp = List.map ~f:rmjmp_fspace
+let rmjmp = List.map ~f:rmjmp_fspace *)

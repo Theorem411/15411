@@ -3,8 +3,9 @@ module B = Block
 module V = Graph.Vertex
 module AS = Assem_l4
 module IntTable = Hashtbl.Make (Int)
+module OperS = AS.Set
 
-let dump_liveness : bool ref = ref false
+(* let dump_liveness : bool ref = ref false *)
 (* let print_info f = if true then () else prerr_endline (f ()) *)
 
 type ht_entry =
@@ -291,7 +292,7 @@ let get_edges_vertices t (b : B.fspace) =
   v, e
 ;;
 
-let uses_defs_block (b : B.block) =
+let vset_uses_defs_block (b : B.block) =
   let fargs : Temp.t list =
     match b.label with
     | Label.BlockLbl _ -> []
@@ -303,9 +304,13 @@ let uses_defs_block (b : B.block) =
     (* of load from stack add temp args to define *)
     let d =
       match instr with
-      | AS.LoadFromStack _ ->
-        let fargs_def = V.Set.of_list (List.map ~f:(fun t -> V.T t) fargs) in
-        V.Set.union fargs_def dx
+      | AS.LoadFromStack stack_raw ->
+        (* It should be the case, I think *)
+        (let stack_def = List.map ~f:(fun (t, _) -> t) stack_raw in
+        let fargs_def =
+          V.Set.of_list (List.map ~f:(fun t -> V.T t) (fargs @ stack_def))
+        in
+        V.Set.union fargs_def dx : V.Set.t)
       | _ -> dx
     in
     d, ux
@@ -319,6 +324,17 @@ let uses_defs_block (b : B.block) =
   ufinal, dfinal
 ;;
 
+let uses_defs_block (b : B.block) : OperS.t * OperS.t =
+  let u_v, d_v = vset_uses_defs_block b in
+  let f = function
+    | V.T t -> AS.Temp t
+    | V.R r -> AS.Reg r
+  in
+  let of_vset s = OperS.of_list (List.( >>| ) (V.Set.to_list s) f) in
+  of_vset u_v, of_vset d_v
+;;
 
-let get_uses_exn (tbl: t) (line: int): V.Set.t = 
-  let entry = IntTable.find_exn tbl line in entry.u
+let get_uses_exn (tbl : t) (line : int) : V.Set.t =
+  let entry = IntTable.find_exn tbl line in
+  entry.u
+;;
