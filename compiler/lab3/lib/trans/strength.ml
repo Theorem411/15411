@@ -68,11 +68,11 @@ let fold_const (clst : Int32.t list) (op : T.pbop) : Int32.t option =
 ;;
 
 let sr_assoc_binop (const : Int32.t) (elst : T.mpexp list) (op : T.pbop) : T.mpexp =
-  prerr_endline
+  (* prerr_endline
     (sprintf
        "Called sr_assoc_binop with const=%d, elst = [%s] and some op"
        (Int.of_int32_exn const)
-       (String.concat ~sep:"," (List.map elst ~f:T.Print.pp_mpexp)));
+       (String.concat ~sep:"," (List.map elst ~f:T.Print.pp_mpexp))); *)
   let rhs = tr_assemble elst op in
   let zero = Int32.of_int_exn 0 in
   let minus = Int32.of_int_exn (-1) in
