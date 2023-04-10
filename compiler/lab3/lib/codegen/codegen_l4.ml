@@ -97,8 +97,6 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
         then
           [ A.MovFrom { dest; src = t2; size }
           ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
-            (* ; A.Cjmp { typ = A.Je; l = mfl } *)
-            (* ; A.Cmp { lhs = t1; rhs = zero8; size = A.L } *)
           ]
         else
           [ A.MovFrom { dest; src = t2; size }
