@@ -30,9 +30,9 @@ let const_sieve (exp_lst : T.mpexp list) : Int32.t list * T.mpexp list =
   let clst, elst = List.partition_tf exp_lst ~f in
   let clst' =
     List.map clst ~f:(fun (e, _) ->
-      match e with
-      | T.Const n -> n
-      | _ -> failwith "strength.ml: then why did u say ur constant???")
+        match e with
+        | T.Const n -> n
+        | _ -> failwith "strength.ml: then why did u say ur constant???")
   in
   clst', elst
 ;;
@@ -48,6 +48,7 @@ let pbop_int32op (op : T.pbop) =
 ;;
 
 let fold_const (clst : Int32.t list) (op : T.pbop) : Int32.t option =
+  (* Why not just use a reduce? *)
   (*_ Tricky! Check with init values for different op; and use fold_left!! *)
   let init =
     match op with
@@ -60,12 +61,18 @@ let fold_const (clst : Int32.t list) (op : T.pbop) : Int32.t option =
   in
   let init = Int32.of_int_exn init in
   let op' = pbop_int32op op in
+  (* List.reduce_balanced clst ~f:op' *)
   match clst with
   | [] -> None
   | _ -> Some (List.fold_left ~init clst ~f:op')
 ;;
 
 let sr_assoc_binop (const : Int32.t) (elst : T.mpexp list) (op : T.pbop) : T.mpexp =
+  prerr_endline
+    (sprintf
+       "Called sr_assoc_binop with const=%d, elst = [%s] and some op"
+       (Int.of_int32_exn const)
+       (String.concat ~sep:"," (List.map elst ~f:T.Print.pp_mpexp)));
   let rhs = tr_assemble elst op in
   let zero = Int32.of_int_exn 0 in
   let minus = Int32.of_int_exn (-1) in
@@ -80,58 +87,61 @@ let sr_assoc_binop (const : Int32.t) (elst : T.mpexp list) (op : T.pbop) : T.mpe
     then rhs
     else T.Binop { lhs = T.Const const, 4; rhs; op }, 4
   | T.BitAnd ->
-    if Int32.equal const minus then rhs
+    if Int32.equal const minus
+    then rhs
     else T.Binop { lhs = T.Const const, 4; rhs; op }, 4
-  | T.BitOr -> 
-    if Int32.equal const zero then rhs
-    else T.Binop { lhs = T.Const const, 4; rhs; op }, 4
+  | T.BitOr ->
+    if Int32.equal const zero then rhs else T.Binop { lhs = T.Const const, 4; rhs; op }, 4
   | T.BitXor ->
-    if Int32.equal const zero then rhs
-    else T.Binop { lhs = T.Const const, 4; rhs; op }, 4
+    if Int32.equal const zero then rhs else T.Binop { lhs = T.Const const, 4; rhs; op }, 4
   | T.Sub -> failwith "strength.ml: subtraction cannot apply associativity optimization"
 ;;
 
-let sr_cmpop (lhs : T.mpexp) (rhs : T.mpexp ) (op : T.cbop) : T.pexp = 
+let sr_cmpop (lhs : T.mpexp) (rhs : T.mpexp) (op : T.cbop) : T.pexp =
   let texp = T.Const (Int32.of_int_exn 1) in
   let fexp = T.Const (Int32.of_int_exn 0) in
-  match lhs, rhs with 
-  | (T.Const nl, _), (T.Const nr, _) -> 
-    (match op with 
+  match lhs, rhs with
+  | (T.Const nl, _), (T.Const nr, _) ->
+    (match op with
     | T.Eq -> if Int32.equal nl nr then texp else fexp
     | T.Neq -> if not (Int32.equal nl nr) then texp else fexp
-    | T.Geq -> if (Int32.(>=) nl nr) then texp else fexp
-    | T.Greater -> if (Int32.(>) nl nr) then texp else fexp
-    | T.Leq -> if (Int32.(<=) nl nr) then texp else fexp
-    | T.Less -> if (Int32.(<) nl nr) then texp else fexp)
-  | _ -> T.Cmpop {lhs; rhs; op; size=4}
+    | T.Geq -> if Int32.( >= ) nl nr then texp else fexp
+    | T.Greater -> if Int32.( > ) nl nr then texp else fexp
+    | T.Leq -> if Int32.( <= ) nl nr then texp else fexp
+    | T.Less -> if Int32.( < ) nl nr then texp else fexp)
+  | _ -> T.Cmpop { lhs; rhs; op; size = 4 }
 ;;
 
 let rec sr_mpexp (mexp : T.mpexp) : T.mpexp =
   let exp, esize = mexp in
   match exp with
-  | Binop { lhs; rhs; op = T.Sub } -> 
+  | Binop { lhs; rhs; op = T.Sub } ->
     let el, sl = sr_mpexp lhs in
     let er, sr = sr_mpexp rhs in
-    (match el, er with 
-    | T.Const nl, T.Const nr -> T.Const (Int32.(-) nl nr), esize
-    | _ -> T.Binop {lhs=el, sl; rhs=er, sr; op=T.Sub}, esize)
+    (match el, er with
+    | T.Const nl, T.Const nr -> T.Const (Int32.( - ) nl nr), esize
+    | _ -> T.Binop { lhs = el, sl; rhs = er, sr; op = T.Sub }, esize)
   | Binop { lhs; rhs; op } ->
     (*_ associativity optimizations *)
     let lhs' = sr_mpexp lhs in
     let rhs' = sr_mpexp rhs in
     let exp_lst = tr_traversal (T.Binop { lhs = lhs'; rhs = rhs'; op }, esize) op in
     let clst, elst = const_sieve exp_lst in
-    (match fold_const clst op with
-     | None -> T.Binop { lhs = lhs'; rhs = rhs'; op }, esize
-     | Some c -> sr_assoc_binop c elst op)
-  | Cmpop { lhs; rhs; op; size = 4} -> 
+    (match fold_const clst op, elst with
+    | None, _ -> T.Binop { lhs = lhs'; rhs = rhs'; op }, esize
+    | Some c, [] -> T.Const c, esize
+    | Some c, _ -> sr_assoc_binop c elst op)
+  | Cmpop { lhs; rhs; op; size = 4 } ->
     let lhs' = sr_mpexp lhs in
     let rhs' = sr_mpexp rhs in
     sr_cmpop lhs' rhs' op, esize
   | Unop { p; op } ->
-    let exp, esize = p in 
-    let bitnot = (match op with | T.BitNot -> Int32.bit_not) in
-    (match exp with 
+    let exp, esize = p in
+    let bitnot =
+      match op with
+      | T.BitNot -> Int32.bit_not
+    in
+    (match exp with
     | T.Const n -> T.Const (bitnot n), esize
     | _ -> mexp)
   | Mem (Ptr paddr) ->
