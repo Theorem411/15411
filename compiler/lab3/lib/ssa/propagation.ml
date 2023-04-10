@@ -1,4 +1,4 @@
 open Core
 module SSA = Ssa
 
-let propagate (prog : SSA.program) : SSA.program = failwith "no";;
+let propagate (_ : SSA.program) : SSA.program = failwith "no";;

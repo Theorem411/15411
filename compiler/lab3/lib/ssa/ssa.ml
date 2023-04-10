@@ -20,7 +20,7 @@ module IH = Hashtbl.Make (Int)
 
 (*_ for global renaming *)
 type lparams = TS.t LM.t (*_ map from bb lab to SOB parameters *)
-type lpreds = LS.t LM.t (*_ map from bb lab to pred bbs' labs *)
+(* type lpreds = LS.t LM.t _ map from bb lab to pred bbs' labs *)
 type params = Temp.t TM.t
 
 type jtag =
@@ -36,7 +36,7 @@ type jtag =
       ; fparams : params
       }
 
-type jparams = jtag LM.t (*_ map from bb lab to EOB jump_tag parameters *)
+(* type jparams = jtag LM.t _ map from bb lab to EOB jump_tag parameters *)
 type told2new = Temp.t TH.t
 
 (*_ for creating phi functions *)

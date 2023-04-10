@@ -46,5 +46,5 @@ type fspace =
 type program = fspace list
 
 val ssa : AS.program -> program
-val phi_opt : program -> program
+(* val phi_opt : program -> program *)
 val de_ssa : program -> AS.program
