@@ -166,14 +166,14 @@ let translate_set get_final = function
 let get_call_stack_arg_moves
     (get_final : AS.operand * X86.size -> X86.operand)
     (jump_int : int)
-    (stack_args : (Temp.t * AS.size) list)
+    (stack_args : (AS.operand * AS.size) list)
     (offset : int)
   =
   let arg_moves =
     List.concat_mapi
-      ~f:(fun i (t, sz) ->
+      ~f:(fun i (o, sz) ->
         let sz = X86.to_size sz in
-        let src = get_final (AS.Temp t, sz) in
+        let src = get_final (o, sz) in
         let d = X86.Stack (i + offset) in
         match src with
         | X86.Stack mem_i ->
@@ -195,7 +195,7 @@ let translate_call
     ((tail_call, bodyLabel, tail_offset, this_fun_name) : bool * Label.t * int * string)
     (get_final : AS.operand * X86.size -> X86.operand)
     (fname : string)
-    (stack_args : (Temp.t * AS.size) list)
+    (stack_args : (AS.operand * AS.size) list)
   =
   let call, to_tail =
     match stupid_tail_optimization_on, tail_call, String.equal this_fun_name fname with

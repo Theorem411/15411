@@ -403,7 +403,14 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     let args_in_regs = List.filter_mapi ops ~f:args_in_regs_f in
     let args_overflow_f i op = if i >= 6 then Some op else None in
     let args_overflow = List.filter_mapi ops ~f:args_overflow_f in
-    let call = A.Call { fname; args_in_regs; args_overflow; tail_call } in
+    let call =
+      A.Call
+        { fname
+        ; args_in_regs
+        ; args_overflow = List.map ~f:(fun (t, sz) -> A.Temp t, sz) args_overflow
+        ; tail_call
+        }
+    in
     (match dest with
     | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
     | Some (d, sz) ->
@@ -445,10 +452,10 @@ let munch_block
 
 let codegen (prog : T.program) ~(mfl : Label.t) ~(unsafe : bool) : A.program =
   let map_f ~(unsafe : bool) ({ fname; args; fdef } : T.fspace_block) : A.fspace =
-    let tmp_cnt_init = Temp.get_counter () in 
+    let tmp_cnt_init = Temp.get_counter () in
     let args = List.map args ~f:(fun (t, i) -> t, munch_size i) in
     let fdef_blocks = List.map fdef ~f:(fun b -> munch_block b ~unsafe ~mfl ~args) in
-    let tmp_cnt_final = Temp.get_counter () in 
+    let tmp_cnt_final = Temp.get_counter () in
     { fname; args; fdef_blocks; tmp_cnt = tmp_cnt_final - tmp_cnt_init }
   in
   List.map prog ~f:(map_f ~unsafe)
