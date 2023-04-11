@@ -8,23 +8,21 @@ module LT = Live.LT
 module TComp : Comparable.S with type t := Temp.t
 module TM = TComp.Map
 module TS = TComp.Set
-module IH : Hashtbl.S with type key := int
 module TH : Hashtbl.S with type key := Temp.t
+module IComp : Comparable.S with type t := int
+module IS = IComp.Set
+module IH : Hashtbl.S with type key := int
 
-type phi = AS.operand LM.t TM.t
-(*_ t <- \phi(l:t') *)
-
-type phi_use_site_t =
-  { which_blc : Label.bt
-  ; which_temp : Temp.t
-  ; which_pred : Label.bt
+type phi =
+  { self : Temp.t
+  (* ; size : AS.size *)
+  ; alt_selves : (Label.bt * AS.operand) list
   }
 
-type use_site_t =
-  | LN of int
-  | PhiId of phi_use_site_t
-
-type tuse_sites = use_site_t list
+type instr =
+  | ASInstr of AS.instr
+  | Phi of phi
+  | Nop
 
 type block =
   { label : Label.bt
@@ -33,18 +31,17 @@ type block =
   ; depth : int
   }
 
-
 type fspace =
   { fname : Symbol.t
   ; args : (Temp.t * AS.size) list
-  ; code : AS.instr IH.t
-  ; block_info : block LM.t
-  ; phies : phi LT.t
-  ; t2use : tuse_sites TH.t
+  ; code : instr IH.t
+  ; block_info : block list
+  ; tuse : IS.t TH.t
   }
 
 type program = fspace list
 
+(*_ going into ssa *)
 val ssa : AS.program -> program
-val phi_opt : program -> program
+(*_ going out of ssa *)
 val de_ssa : program -> AS.program
