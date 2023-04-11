@@ -160,7 +160,7 @@ let instr_rename (instr : AS.instr) (told2new : told2new) : AS.instr =
     LoadFromStack lstck'
   | Call call ->
     let args_overflow =
-      List.map call.args_overflow ~f:(fun (t, sz) -> temp_rename_use t told2new, sz)
+      List.map call.args_overflow ~f:(fun (t, sz) -> oper_rename_use t told2new, sz)
     in
     Call { call with args_overflow }
   | Jmp _ -> instr
