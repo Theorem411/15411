@@ -37,6 +37,7 @@ type fspace =
   ; code : instr IH.t
   ; block_info : block list
   ; tuse : IS.t TH.t
+  ; tmp_cnt : int
   }
 
 type program = fspace list
