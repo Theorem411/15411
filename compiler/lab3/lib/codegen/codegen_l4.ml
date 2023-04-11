@@ -445,9 +445,11 @@ let munch_block
 
 let codegen (prog : T.program) ~(mfl : Label.t) ~(unsafe : bool) : A.program =
   let map_f ~(unsafe : bool) ({ fname; args; fdef } : T.fspace_block) : A.fspace =
+    let tmp_cnt_init = Temp.get_counter () in 
     let args = List.map args ~f:(fun (t, i) -> t, munch_size i) in
     let fdef_blocks = List.map fdef ~f:(fun b -> munch_block b ~unsafe ~mfl ~args) in
-    { fname; args; fdef_blocks }
+    let tmp_cnt_final = Temp.get_counter () in 
+    { fname; args; fdef_blocks; tmp_cnt = tmp_cnt_final - tmp_cnt_init }
   in
   List.map prog ~f:(map_f ~unsafe)
 ;;

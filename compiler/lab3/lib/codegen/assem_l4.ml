@@ -201,6 +201,7 @@ type fspace =
   { fname : Symbol.t
   ; args : (Temp.t * size) list
   ; fdef_blocks : block list
+  ; tmp_cnt : int
   }
 [@@deriving equal, sexp, compare]
 
@@ -335,13 +336,14 @@ let format_block ({ label; block; jump; depth } : block) : string =
 ;;
 
 let format_program prog_block =
-  let format_fspace { fname; args; fdef_blocks } =
+  let format_fspace { fname; args; fdef_blocks; tmp_cnt } =
     sprintf
-      "%s(%s): \n%s"
+      "%s(%s): \n%s [uses %d temps]"
       (Symbol.name fname)
       (List.map args ~f:(fun (t, s) -> sprintf "%s%s" (Temp.name t) (format_size s))
       |> String.concat)
       (List.map fdef_blocks ~f:format_block |> String.concat)
+      tmp_cnt
   in
   List.map prog_block ~f:format_fspace |> String.concat
 ;;

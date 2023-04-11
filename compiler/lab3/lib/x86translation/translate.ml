@@ -11,6 +11,7 @@ module Helper = New_helper
 
 let debug = false
 let stupid_tail_optimization_on = true
+let tmp_magic = 1500
 let alloc = if not debug then Regalloc.reg_alloc else Stackalloc.stack_alloc
 
 type fspace = X86.instr list
@@ -485,6 +486,7 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
     : X86.instr list
   =
   (* has to be changed to the global one *)
+  let alloc = if fspace.tmp_cnt > tmp_magic then Stackalloc.stack_alloc else alloc in
   let ({ reg_spill_map = reg_map; updater } : Regalloc.t) = alloc fspace in
   (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
   let stack_cells = Regalloc.mem_count reg_map in

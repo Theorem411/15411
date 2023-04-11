@@ -20,6 +20,7 @@ module IH = Hashtbl.Make (Int)
 
 (*_ for global renaming *)
 type lparams = TS.t LM.t (*_ map from bb lab to SOB parameters *)
+
 (* type lpreds = LS.t LM.t _ map from bb lab to pred bbs' labs *)
 type params = Temp.t TM.t
 
@@ -289,10 +290,10 @@ let fspace_rename (fspace : AS.fspace) : fspace_phi =
     let preds_params =
       (*_ (tcur * label) -> tnew *)
       List.map preds_params ~f:(fun (l, params) ->
-        List.map (TM.to_alist params) ~f:(fun (told, tnew) ->
-          let tcur = TM.find_exn bparams told in
-          (*_ replace with latest temp in current params *)
-          ({ temp = tcur; pred = l } : node), tnew))
+          List.map (TM.to_alist params) ~f:(fun (told, tnew) ->
+              let tcur = TM.find_exn bparams told in
+              (*_ replace with latest temp in current params *)
+              ({ temp = tcur; pred = l } : node), tnew))
       |> List.concat
     in
     let phies =
@@ -302,7 +303,7 @@ let fspace_rename (fspace : AS.fspace) : fspace_phi =
     let phies : phi =
       TM.of_alist_multi phies
       |> TM.map ~f:(fun lst ->
-           LM.of_alist_exn (List.map lst ~f:(fun (l, t) -> l, AS.Temp t)))
+             LM.of_alist_exn (List.map lst ~f:(fun (l, t) -> l, AS.Temp t)))
     in
     { label = l; code; jump; depth; phies }
   in
@@ -345,9 +346,9 @@ let fspace_lining ({ fname; args; fdef } : fspace_phi) : fspace_lines =
   let lined_codes = IH.of_alist_exn [] in
   let glob_phies = LT.of_alist_exn [] in
   let to_blocks
-    ((blocks, acc) : block list * int)
-    ({ label; code; jump; depth; phies } : block_phi)
-    : block list * int
+      ((blocks, acc) : block list * int)
+      ({ label; code; jump; depth; phies } : block_phi)
+      : block list * int
     =
     (*_ annote this blocks' codes with line numbers *)
     let code_line = List.mapi code ~f:(fun idx instr -> idx + acc, instr) in
@@ -355,7 +356,7 @@ let fspace_lining ({ fname; args; fdef } : fspace_phi) : fspace_lines =
     (*_ update global line numbering *)
     let () =
       List.iter code_line ~f:(fun (i, instr) ->
-        IH.update lined_codes i ~f:(fun _ -> instr))
+          IH.update lined_codes i ~f:(fun _ -> instr))
     in
     let () = LT.update glob_phies label ~f:(fun _ -> phies) in
     { label; lines; jump; depth } :: blocks, acc + List.length lines
@@ -388,9 +389,9 @@ let instr_use (instr : AS.instr) : Temp.t list =
   let use =
     AS.Set.to_list use
     |> List.filter_map ~f:(fun op ->
-         match op with
-         | AS.Temp t -> Some t
-         | _ -> None)
+           match op with
+           | AS.Temp t -> Some t
+           | _ -> None)
   in
   use
 ;;
@@ -399,8 +400,8 @@ let phi_use (which_blc : Label.bt) (phi : phi) : (AS.operand * phi_use_site_t) l
   let phi = TM.to_alist phi in
   let phi =
     List.map phi ~f:(fun (which_temp, phi) ->
-      LM.to_alist phi
-      |> List.map ~f:(fun (which_pred, t) -> t, { which_blc; which_temp; which_pred }))
+        LM.to_alist phi
+        |> List.map ~f:(fun (which_pred, t) -> t, { which_blc; which_temp; which_pred }))
     |> List.concat
   in
   phi
@@ -430,7 +431,7 @@ let fspace_use ({ fname; args; code; block_info; phies } : fspace_lines) : fspac
       | _ -> failwith "ssa: phi should only have temp at this point"
     in
     List.iter t2phi ~f:(fun (t, phi_use) ->
-      TH.update t2use (temp_exn t) ~f:(update phi_use))
+        TH.update t2use (temp_exn t) ~f:(update phi_use))
   in
   let () = LT.iteri phies ~f:iterf in
   { fname; args; code; block_info; phies; t2use }
@@ -457,9 +458,9 @@ let fspace_back ({ fname; args; code; block_info; phies; _ } : fspace) : AS.fspa
     let movs = TM.to_alist phi in
     let movs =
       List.map movs ~f:(fun (t, l2o) ->
-        let l2o' = LM.to_alist l2o in
-        List.map l2o' ~f:(fun (l, o) ->
-          l, AS.Mov { dest = AS.Temp t; size = failwith "no"; src = o }))
+          let l2o' = LM.to_alist l2o in
+          List.map l2o' ~f:(fun (l, o) ->
+              l, AS.Mov { dest = AS.Temp t; size = failwith "no"; src = o }))
       |> List.concat
     in
     movs
@@ -468,8 +469,8 @@ let fspace_back ({ fname; args; code; block_info; phies; _ } : fspace) : AS.fspa
   let extra_moves = LM.of_alist_multi extra_moves in
   let fdef_blocks =
     LM.mapi fdef_blocks ~f:(fun ~key:lab ~data:movs ->
-      let extra = LM.find_exn extra_moves lab in
-      movs @ extra)
+        let extra = LM.find_exn extra_moves lab in
+        movs @ extra)
   in
   (*_ convert fdef_blocks into the correct type *)
   let fdef_blocks = LM.to_alist fdef_blocks in
@@ -478,7 +479,9 @@ let fspace_back ({ fname; args; code; block_info; phies; _ } : fspace) : AS.fspa
     { label; block; jump; depth }
   in
   let fdef_blocks = List.map fdef_blocks ~f:(fun (l, code) -> to_block l code) in
-  { fname; args; fdef_blocks }
+  (* we undermine tmp_cnt is ssa, because if we went 
+     to ssa then we are good enough and should ignore  tmp_count *)
+  { fname; args; fdef_blocks; tmp_cnt = -1 }
 ;;
 
 let de_ssa (prog : program) : AS.program = List.map prog ~f:fspace_back

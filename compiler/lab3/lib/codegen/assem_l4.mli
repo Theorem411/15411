@@ -183,6 +183,7 @@ type fspace =
   { fname : Symbol.t
   ; args : (Temp.t * size) list
   ; fdef_blocks : block list
+  ; tmp_cnt: int 
   }
 [@@deriving equal, sexp, compare]
 

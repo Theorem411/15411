@@ -78,7 +78,7 @@ let of_block ({ label; block; jump; depth } : AS.block) : block =
   { label; jump = to_bjump jump; block = numerate block; depth }
 ;;
 
-let of_fspace ({ fname; args; fdef_blocks } : AS.fspace) : fspace =
+let of_fspace ({ fname; args; fdef_blocks; _ } : AS.fspace) : fspace =
   let args = List.map ~f:(fun (t, _) -> t) args in
   { fname; args; fdef_blocks = List.map ~f:of_block fdef_blocks }
 ;;
