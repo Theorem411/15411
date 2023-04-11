@@ -328,7 +328,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
         if is_lea_scale typ_size
         then
           [ A.LeaArray
-              { dest = t1; base = th; index = ti'; scale = typ_size; offset = extra }
+              { dest = t; base = th; index = ti; scale = typ_size; offset = extra }
           ]
         else
           [ A.MovSxd { dest = ti'; src = ti }
