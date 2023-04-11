@@ -101,13 +101,28 @@ type instr =
       ; size : size
       ; src : operand
       }
-  | MovSxd of  (*_ sign extend temp/reg from 32->64 bit *)
-      { dest: operand
-      ; src : operand }
+  | MovSxd of
+      { (*_ sign extend temp/reg from 32->64 bit *)
+        dest : operand
+      ; src : operand
+      }
   | MovFrom of
       { dest : operand
       ; size : size
       ; src : operand
+      }
+  | LeaPointer of
+      { dest : operand
+      ; size : size
+      ; base : operand
+      ; offset : int
+      }
+  | LeaArray of
+      { dest : operand (* ; size : size not needed, as by default it 8 *)
+      ; base : operand
+      ; offset : int
+      ; index : operand
+      ; scale : int (* can be only 1,2,4,8 *)
       }
   | MovTo of
       { dest : operand
@@ -139,7 +154,7 @@ type instr =
       { fname : Symbol.t
       ; args_in_regs : (reg * size) list
       ; args_overflow : (Temp.t * size) list
-      ; tail_call: bool
+      ; tail_call : bool
       }
   (* Assembly directive. *)
   | Directive of string
@@ -154,7 +169,7 @@ type assem_jump_tag_t =
       ; jf : Label.t
       }
   | JUncon of Label.t
-  [@@deriving equal, sexp, compare, hash]
+[@@deriving equal, sexp, compare, hash]
 
 type block =
   { label : Label.bt
@@ -162,14 +177,14 @@ type block =
   ; jump : assem_jump_tag_t
   ; depth : int
   }
-  [@@deriving equal, sexp, compare, hash]
+[@@deriving equal, sexp, compare, hash]
 
 type fspace =
   { fname : Symbol.t
   ; args : (Temp.t * size) list
   ; fdef_blocks : block list
   }
-  [@@deriving equal, sexp, compare]
+[@@deriving equal, sexp, compare]
 
 type program = fspace list
 
@@ -181,4 +196,5 @@ val format_instr : instr -> string
 val format_program : program -> string
 val format_operand : operand -> string
 val arg_i_to_reg : int -> reg
+
 include Comparable.S with type t := operand

@@ -19,6 +19,8 @@ let get_temps_line instr : Temp.t list =
     | AS.MovFrom m -> [ m.dest; m.src ]
     | AS.MovTo m -> [ m.dest; m.src ]
     | AS.MovSxd m -> [ m.dest; m.src ]
+    | AS.LeaPointer m -> [ m.base; m.dest ]
+    | AS.LeaArray m -> [ m.base; m.dest; m.index ]
   in
   List.filter_map (all_ops instr) ~f:(fun i ->
       match i with
@@ -36,9 +38,10 @@ let get_all_temps (f : AS.fspace) =
   List.dedup_and_sort ~compare:Temp.compare all_temps
 ;;
 
-let stack_alloc : AS.fspace -> Regalloc.t  =
+let stack_alloc : AS.fspace -> Regalloc.t =
  fun (f : AS.fspace) ->
   let temps = get_all_temps f in
   let points = List.mapi temps ~f:(fun i t -> t, Regalloc.Spl i) in
-  let t2r  = TM.of_alist_exn points in 
-  { reg_spill_map = t2r; updater = TM.find_exn t2r };;;;
+  let t2r = TM.of_alist_exn points in
+  { reg_spill_map = t2r; updater = TM.find_exn t2r }
+;;

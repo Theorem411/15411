@@ -338,6 +338,38 @@ let translate_mov_to (get_final : AS.operand * X86.size -> X86.operand) = functi
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;
 
+let translate_lea_array (get_final : AS.operand * X86.size -> X86.operand) = function
+  | AS.LeaArray { dest = d; base; index; scale; offset } ->
+    (* let size = X86.Q in *)
+    let d_final = get_final (d, X86.Q) in
+    let b_final = get_final (base, X86.Q) in
+    let index_final = get_final (index, X86.L) in
+    let disp = if offset = 0 then None else Some offset in
+    let (i, pre_i) : R.reg * X86.instr list =
+      ( { reg = R.R11D; size = 8 }
+      , [ X86.Movsxd { dest = X86.get_free X86.Q; src = index_final } ] )
+    in
+    let (b, pre_b) : R.reg * X86.instr list =
+      match b_final with
+      | Stack _ ->
+        ( { reg = R.R10D; size = 8 }
+        , [ X86.BinCommand
+              { op = X86.Mov; dest = X86.get_memfree X86.Q; src = b_final; size = X86.Q }
+          ] )
+      | Reg r -> r, []
+      | _ -> failwith "lea can base can not be an int?"
+    in
+    pre_i
+    @ pre_b
+    @ [ X86.Lea
+          { dest = d_final
+          ; size = X86.Q
+          ; src = X86.Mem { disp; base_reg = b; idx_reg = Some i; scale = Some scale }
+          }
+      ]
+  | _ -> failwith "translate_mov_from is getting not mov_from"
+;;
+
 let translate_line
     (retLabel, errLabel, bodyLabel)
     ~(unsafe : bool)
@@ -382,6 +414,8 @@ let translate_line
   | AS.MovFrom _ -> List.rev_append (translate_mov_from get_final line) prev_lines
   | AS.MovTo _ -> List.rev_append (translate_mov_to get_final line) prev_lines
   | MovSxd _ -> List.rev_append (translate_movsxd get_final line) prev_lines
+  | AS.LeaArray _ -> List.rev_append (translate_lea_array get_final line) prev_lines
+  | AS.LeaPointer _ -> failwith "lea pointer is not implemented"
 ;;
 
 let get_error_block errLabel =

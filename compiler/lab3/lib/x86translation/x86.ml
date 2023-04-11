@@ -34,15 +34,6 @@ let format_operand = function
   | Stack n -> string_of_int (8 * n) ^ "(%rsp)"
 ;;
 
-type mem =
-  | Mem of
-      { disp : int option
-      ; base_reg : R.reg
-      ; idx_reg : R.reg option
-      ; scale : int option
-      }
-[@@deriving equal, compare, sexp]
-
 type operation =
   | Add
   | Addq
@@ -77,6 +68,15 @@ type operation =
 type size =
   | Q
   | L
+[@@deriving equal, compare, sexp]
+
+type mem =
+  | Mem of
+      { disp : int option
+      ; base_reg : R.reg
+      ; idx_reg : R.reg option
+      ; scale : int option
+      }
 [@@deriving equal, compare, sexp]
 
 let to_size = function
@@ -150,23 +150,14 @@ let format_mem = function
   | Mem { disp; base_reg; idx_reg; scale } ->
     (match idx_reg, scale, disp with
     | Some idx, Some sc, Some disp ->
-      let sign1, sc = integer_formatting sc in
       let sign2, disp = integer_formatting disp in
-      sprintf
-        "[%s %s %d*%s %s %d]"
-        (R.format_reg base_reg)
-        sign1
-        sc
-        (R.format_reg idx)
-        sign2
-        disp
+      sprintf "%s%d(%s,%s,%d)" sign2 disp (R.format_reg base_reg) (R.format_reg idx) sc
     | Some idx, Some sc, None ->
-      let sign1, sc = integer_formatting sc in
-      sprintf "[%s %s %d*%s]" (R.format_reg base_reg) sign1 sc (R.format_reg idx)
+      sprintf "(%s,%s,%d)" (R.format_reg base_reg) (R.format_reg idx) sc
     | Some _, None, _ -> failwith "no scale when idx is at memory"
     | None, Some _, _ -> failwith "no index register when given scale"
     | None, None, Some disp -> sprintf "%d(%s)" disp (R.format_reg base_reg)
-    | None, None, None -> sprintf "[%s]" (R.format_reg base_reg))
+    | None, None, None -> sprintf "(%s)" (R.format_reg base_reg))
 ;;
 
 type instr =
@@ -307,8 +298,6 @@ let unary_to_opr = function
   | AS.BitNot -> Not
 ;;
 
-
-
 let is_reg = function
   | Reg _ -> true
   | _ -> false
@@ -334,8 +323,8 @@ let get_memfree (sz : size) : operand =
     }
 ;;
 
-
-let of_size (size:size) =
+let of_size (size : size) =
   match size with
   | L -> 4
-  | Q -> 8;;
+  | Q -> 8
+;;

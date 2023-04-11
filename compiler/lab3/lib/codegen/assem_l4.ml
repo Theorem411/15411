@@ -119,6 +119,19 @@ type instr =
       ; size : size
       ; src : operand
       }
+  | LeaPointer of
+      { dest : operand
+      ; size : size
+      ; base : operand
+      ; offset : int
+      }
+  | LeaArray of
+      { dest : operand (* ; size : size not needed, as by default it 8 *)
+      ; base : operand
+      ; offset : int
+      ; index : operand
+      ; scale : int (* can be only 1,2,4,8 *)
+      }
   | MovTo of
       { dest : operand
       ; size : size
@@ -287,6 +300,21 @@ let format_instr' = function
     sprintf "%s <-%s- (%s)" (format_operand dest) (format_size size) (format_operand src)
   | MovTo { dest; size; src } ->
     sprintf "(%s) <-%s- %s" (format_operand dest) (format_size size) (format_operand src)
+  | LeaPointer { dest; base; offset; size } ->
+    sprintf
+      "%s <- lea: [%s] %s + %d"
+      (format_operand dest)
+      (format_size size)
+      (format_operand base)
+      offset
+  | LeaArray { dest; base; offset; index; scale } ->
+    sprintf
+      "%s <- lea: %s + %s * %d + %d"
+      (format_operand dest)
+      (format_operand base)
+      (format_operand index)
+      scale
+      offset
 ;;
 
 let format_instr i = format_instr' i ^ "\n"
