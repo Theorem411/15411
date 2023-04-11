@@ -461,13 +461,15 @@ let rec tr_stm_rev
     let acc, b = tr_stm_rev env dep s1 acc_rev block_rev in
     let acc, b = tr_stm_rev env dep s2 acc b in
     acc, b
-  | NakedExpr _ ->
-    (* let t = Temp.create () in
+  | NakedExpr (A.PureBinop _, _) ->
+    (* TRYING ignore Pure NakedExpr  *)
+    acc_rev, block_rev
+  | NakedExpr exp ->
+    let t = Temp.create () in
     let e, acc, b = tr_exp_rev env dep exp acc_rev block_rev in
     let b = { b with code = T.MovPureExp { dest = t; src = e } :: b.code } in
-    acc, b *)
-    (* TRYING NOP NakedExpr  *)
-    acc_rev, block_rev
+    acc, b
+    (* acc_rev, block_rev *)
   | AssertFail ->
     let b = { block_rev with code = T.AssertFail :: block_rev.code } in
     acc_rev, b
