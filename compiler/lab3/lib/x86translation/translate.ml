@@ -399,7 +399,7 @@ let translate_line
   | AS.Comment d -> Comment d :: prev_lines
   | AS.Directive d -> Directive d :: prev_lines
   | AS.Set s -> List.rev_append (translate_set get_final (AS.Set s)) prev_lines
-  | AS.Ret -> [ X86.Ret; X86.Jump { op = None; label = retLabel } ] @ prev_lines
+  | AS.Ret -> [ X86.Jump { op = None; label = retLabel } ] @ prev_lines
   (* | AS.App _ -> failwith "app is not allowed :(" *)
   | AS.AssertFail -> [ X86.Call "abort@plt" ] @ prev_lines
   | AS.Call { fname; args_overflow = stack_args; tail_call; _ } ->
@@ -478,6 +478,7 @@ let block_instrs (fspace : AS.fspace) : AS.instr list list =
           | FunName _ -> failwith "not first block has a functionname"
         in
         AS.Lab label :: block))
+  |> List.rev
 ;;
 
 let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace)
@@ -523,38 +524,61 @@ let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
   @ List.map ~f:(fun f -> translate_function ~unsafe arithErrLabel f) fs
 ;;
 
+let to_remove_cur (cur : X86.instr) (prec : X86.instr) : bool =
+  match cur with
+  | X86.BinCommand ({ op = X86.Mov; _ } as m2) ->
+    if X86.equal_operand m2.src m2.dest
+    then true
+    else (
+      match prec with
+      | X86.BinCommand ({ op = X86.Mov; _ } as m1) ->
+        (X86.equal_size m1.size m2.size
+        && X86.equal_operand m1.src m2.dest
+        && X86.equal_operand m2.src m1.dest)
+        || (X86.equal_size m1.size m2.size
+           && X86.equal_operand m1.src m2.src
+           && X86.equal_operand m1.dest m2.dest)
+      | _ -> false)
+  | X86.BinCommand { op = X86.Add | X86.Addq | X86.Sub | X86.Subq; src = Imm n; _ } ->
+    Int64.equal n Int64.zero
+  | _ -> false
+;;
+
+let replace_cur_with cur prec =
+  match cur, prec with
+  | X86.BinCommand ({ op = X86.Mov; src = Imm n; dest = X86.Reg _; _ } as m2), _ ->
+    if Int64.equal n Int64.zero
+    then
+      Some
+        (X86.BinCommand { op = X86.Xor; size = m2.size; src = m2.dest; dest = m2.dest })
+    else None
+  | _, _ -> None
+;;
+
+let to_remove_prec cur prec =
+  match prec, cur with
+  | X86.Jump { op = None; label = l1 }, X86.Lbl l2 -> Label.equal l1 l2
+  | _, _ -> false
+;;
+
+let speed_up_aux prev cur =
+  (* let rm i prev = X86.Comment (X86.format cur) :: prev in *)
+  match prev, cur with
+  | [], cur -> [ cur ]
+  | (prec :: prev_prev as prev), cur ->
+    if to_remove_cur cur prec
+    then prev
+    else if to_remove_prec cur prec
+    then cur :: prev_prev
+    else (
+      match replace_cur_with cur prec with
+      | None -> cur :: prev
+      | Some new_instr -> new_instr :: prev)
+;;
+
 let speed_up (p : X86.instr list) : X86.instr list =
   (* let rm i = X86.Comment (X86.format i) in  *)
-  (* let rm i prev = X86.Comment (X86.format i) :: prev in *)
-  let rm _ prev = prev in
-  List.rev
-    (List.fold ~init:[] p ~f:(fun prev i ->
-         match i with
-         | X86.BinCommand ({ op = X86.Mov; _ } as m2) ->
-           if X86.equal_operand m2.src m2.dest
-           then rm i prev
-           else if match m2.src, m2.dest with
-                   | Imm n, X86.Reg _ -> Int64.equal n Int64.zero
-                   | _ -> false
-           then
-             X86.BinCommand
-               { op = X86.Xor; size = m2.size; src = m2.dest; dest = m2.dest }
-             :: prev
-           else (
-             match prev with
-             | X86.BinCommand ({ op = X86.Mov; _ } as m1) :: _ ->
-               if (X86.equal_size m1.size m2.size
-                  && X86.equal_operand m1.src m2.dest
-                  && X86.equal_operand m2.src m1.dest)
-                  || (X86.equal_size m1.size m2.size
-                     && X86.equal_operand m1.src m2.src
-                     && X86.equal_operand m1.dest m2.dest)
-               then rm i prev
-               else i :: prev
-             | _ -> i :: prev)
-         | X86.BinCommand { op = X86.Add | X86.Addq | X86.Sub | X86.Subq; src = Imm n; _ }
-           -> if Int64.equal n Int64.zero then rm i prev else i :: prev
-         | _ -> i :: prev))
+  List.rev (List.fold ~init:[] p ~f:speed_up_aux)
 ;;
 
 let speed_up_off = false

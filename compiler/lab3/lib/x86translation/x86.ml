@@ -31,7 +31,7 @@ type operand =
 let format_operand = function
   | Imm n -> "$" ^ Int64.to_string n
   | Reg r -> R.format_reg r
-  | Stack n -> string_of_int (8 * n) ^ "(%rsp)"
+  | Stack n -> if n = 0 then "(%rsp)" else string_of_int (8 * n) ^ "(%rsp)"
 ;;
 
 type operation =

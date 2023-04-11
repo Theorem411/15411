@@ -108,7 +108,7 @@ let get_function_be
   in
   let ret_label = Label.create () in
   let exit =
-    [ X86.Comment ("\treturn label of " ^ Symbol.name fname); X86.Lbl ret_label ]
+    [ X86.Lbl ret_label ]
     @ sub_exit
     @ cee_finish
     @ [ X86.Ret ]
