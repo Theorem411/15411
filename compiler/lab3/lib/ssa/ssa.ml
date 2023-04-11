@@ -156,7 +156,7 @@ let instr_rename (instr : AS.instr) (told2new : told2new) : AS.instr =
     let rhs = oper_rename_use cmp.rhs told2new in
     Cmp { cmp with lhs; rhs }
   | LoadFromStack lstck ->
-    let lstck' = List.map lstck ~f:(fun (t, sz) -> temp_rename_use t told2new, sz) in
+    let lstck' = List.map lstck ~f:(fun (t, sz) -> temp_rename_def t told2new, sz) in
     LoadFromStack lstck'
   | Call call ->
     let args_overflow =
