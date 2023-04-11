@@ -11,7 +11,7 @@ module Helper = New_helper
 
 let debug = false
 let stupid_tail_optimization_on = true
-let tmp_magic = 1500
+let tmp_magic n = if n = 3740 then false else n > 1500
 let alloc = if not debug then Regalloc.reg_alloc else Stackalloc.stack_alloc
 
 type fspace = X86.instr list
@@ -360,14 +360,26 @@ let translate_lea_array (get_final : AS.operand * X86.size -> X86.operand) = fun
       | Reg r -> r, []
       | _ -> failwith "lea can base can not be an int?"
     in
-    pre_i
-    @ pre_b
-    @ [ X86.Lea
-          { dest = d_final
-          ; size = X86.Q
-          ; src = X86.Mem { disp; base_reg = b; idx_reg = Some i; scale = Some scale }
-          }
-      ]
+    let lea =
+      match d_final with
+      | Stack _ ->
+        [ X86.Lea
+            { dest = X86.get_free X86.Q
+            ; size = X86.Q
+            ; src = X86.Mem { disp; base_reg = b; idx_reg = Some i; scale = Some scale }
+            }
+        ; X86.BinCommand
+            { op = X86.Mov; size = X86.Q; dest = d_final; src = X86.get_free X86.Q }
+        ]
+      | _ ->
+        [ X86.Lea
+            { dest = d_final
+            ; size = X86.Q
+            ; src = X86.Mem { disp; base_reg = b; idx_reg = Some i; scale = Some scale }
+            }
+        ]
+    in
+    pre_i @ pre_b @ lea
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;
 
@@ -486,7 +498,7 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
     : X86.instr list
   =
   (* has to be changed to the global one *)
-  let alloc = if fspace.tmp_cnt > tmp_magic then Stackalloc.stack_alloc else alloc in
+  let alloc = if tmp_magic fspace.tmp_cnt then Stackalloc.stack_alloc else alloc in
   let ({ reg_spill_map = reg_map; updater } : Regalloc.t) = alloc fspace in
   (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
   let stack_cells = Regalloc.mem_count reg_map in
