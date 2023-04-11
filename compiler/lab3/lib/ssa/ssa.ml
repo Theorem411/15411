@@ -17,11 +17,11 @@ module TM = TComp.Map
 module TS = TComp.Set
 module TH = Hashtbl.Make (T)
 module IH = Hashtbl.Make (Int)
+module IComp = Comparable.Make (Int)
+module IS = IComp.Set
 
 (*_ for global renaming *)
 type lparams = TS.t LM.t (*_ map from bb lab to SOB parameters *)
-
-(* type lpreds = LS.t LM.t _ map from bb lab to pred bbs' labs *)
 type params = Temp.t TM.t
 
 type jtag =
@@ -37,18 +37,19 @@ type jtag =
       ; fparams : params
       }
 
-(* type jparams = jtag LM.t _ map from bb lab to EOB jump_tag parameters *)
 type told2new = Temp.t TH.t
 
 (*_ for creating phi functions *)
 
-type node =
-  { temp : Temp.t
-  ; pred : Label.bt
+type phi =
+  { self : Temp.t (* ; size : AS.size *)
+  ; alt_selves : (Label.bt * AS.operand) list
   }
 
-type phi = AS.operand LM.t TM.t
-(*_ t <- \phi(l:t') *)
+type instr =
+  | ASInstr of AS.instr
+  | Phi of phi
+  | Nop
 
 type block_ssa =
   { (*_ each block has a matrix of (orig)temp -> (pred) lab to *)
@@ -62,10 +63,9 @@ type block_ssa =
 
 type block_phi =
   { label : Label.bt
-  ; code : AS.instr list
+  ; code : instr list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
-  ; phies : phi
   }
 
 type fspace_phi =
@@ -75,21 +75,6 @@ type fspace_phi =
   }
 
 type program_phi = fspace_phi list
-
-(*_ program ssa : make public *)
-
-(*_ for phi-optimization and more *)
-type phi_use_site_t =
-  { which_blc : Label.bt
-  ; which_temp : Temp.t
-  ; which_pred : Label.bt
-  }
-
-type use_site_t =
-  | LN of int
-  | PhiId of phi_use_site_t
-
-type tuse_sites = use_site_t list
 
 (*_ ********************* Above: type names for sanity ********************** *)
 let temp_rename_use (t : Temp.t) (told2new : told2new) : Temp.t =
@@ -268,46 +253,62 @@ let fspace_rename (fspace : AS.fspace) : fspace_phi =
   let l2jtag =
     List.map l2blcssa ~f:(fun (l, (_, _, jtag)) -> l, jtag) |> LM.of_alist_exn
   in
-  (*_ 2. create phi functions: *)
-  let mapf ({ label = l; code; jump; depth; bparams; _ } : block_ssa) : block_phi =
+  (*_ 2. blcssa_2_blcphi:
+  create phi functions: each blcssa has this information that can construct 
+  this 2-d matrix below:
+                x:x1  y:y2  z:z1
+            L1 [x:x2  y:y2  z:z0]
+            L2 [x:x1  y:y1  z:z1]
+            L3 [x:x2  y:y3  z:z2]
+        The columns are phi functions 
+               x:x1  y:y2  z:z1
+            L1 |x2|  |y2|  |z0|
+            L2 |x1|  |y1|  |z1|
+            L3 |x2|  |y3|  |z2|
+  *)
+  let blcssa_2_blcphi ({ label = l; code; jump; depth; bparams; _ } : block_ssa)
+    : block_phi
+    =
     (*_ orig temp to fresh ones *)
     let preds = LM.find_exn cfg_pred l |> LS.to_list in
     (*_ for each predecessor block, find jtag and gather the their parameter *)
-    let preds_jtag = List.map preds ~f:(fun l -> LM.find_exn l2jtag l) in
-    let see_jtag = function
+    let preds_jtag = List.map preds ~f:(fun l -> l, LM.find_exn l2jtag l) in
+    let see_jtag (l, jtag) =
+      match jtag with
       | JRet -> None
       | JUncon { l = l'; params } ->
-        if not (Label.equal_bt l l') then failwith "ssa: renaming error" else Some params
+        if not (Label.equal_bt l l')
+        then failwith "ssa: renaming error"
+        else Some (l, params)
       | JCon { lt; tparams; lf; fparams } ->
         if Label.equal_bt l lt
-        then Some tparams
+        then Some (l, tparams)
         else if Label.equal_bt l lf
-        then Some fparams
+        then Some (l, fparams)
         else failwith "ssa: renaming error"
     in
     let preds_params = List.filter_map preds_jtag ~f:see_jtag in
-    let preds_params = List.zip_exn preds preds_params in
     let preds_params =
-      (*_ (tcur * label) -> tnew *)
+      (*_ tnew -> (tcur * label) *)
       List.map preds_params ~f:(fun (l, params) ->
-          List.map (TM.to_alist params) ~f:(fun (told, tnew) ->
-              let tcur = TM.find_exn bparams told in
-              (*_ replace with latest temp in current params *)
-              ({ temp = tcur; pred = l } : node), tnew))
+        List.map (TM.to_alist params) ~f:(fun (told, tnew) ->
+          let tcur = TM.find_exn bparams told in
+          (*_ replace with latest temp in current params *)
+          tnew, (l, tcur)))
       |> List.concat
     in
-    let phies =
-      (*_ tcur -> (label * tnew) *)
-      List.map preds_params ~f:(fun ({ temp = tcur; pred }, tnew) -> tcur, (pred, tnew))
+    let t2nodes = TM.of_alist_multi preds_params |> TM.to_alist in
+    let phies : phi list =
+      List.map t2nodes ~f:(fun (self, alt) ->
+        { self; alt_selves = List.map alt ~f:(fun (l, t) -> l, AS.Temp t) })
     in
-    let phies : phi =
-      TM.of_alist_multi phies
-      |> TM.map ~f:(fun lst ->
-             LM.of_alist_exn (List.map lst ~f:(fun (l, t) -> l, AS.Temp t)))
+    let code : instr list =
+      List.map phies ~f:(fun instr -> Phi instr)
+      @ List.map code ~f:(fun instr -> ASInstr instr)
     in
-    { label = l; code; jump; depth; phies }
+    { label = l; code; jump; depth }
   in
-  let fdef = List.map fdef_new ~f:mapf in
+  let fdef = List.map fdef_new ~f:blcssa_2_blcphi in
   (*_ 3. find the first block after rename and get the temps *)
   let fst_blc = List.hd_exn fdef_new in
   let fst_blc_params =
@@ -322,7 +323,7 @@ let fspace_rename (fspace : AS.fspace) : fspace_phi =
   { fname = fspace.fname; args = args_new; fdef }
 ;;
 
-let global_renaming (prog : AS.program) : program_phi = List.map prog ~f:fspace_rename
+let global_rename (prog : AS.program) : program_phi = List.map prog ~f:fspace_rename
 
 (*_ ********* Above: global renaming >>> Below: globaling lining ******* *)
 type block =
@@ -332,23 +333,47 @@ type block =
   ; depth : int
   }
 
-type fspace_lines =
+type fspace =
   { fname : Symbol.t
   ; args : (Temp.t * AS.size) list
-  ; code : AS.instr IH.t
-  ; block_info : block LM.t
-  ; phies : phi LT.t
+  ; code : instr IH.t
+  ; block_info : block list
+  ; tuse : IS.t TH.t
   }
 
-type program_lines = fspace_lines list
+type program = fspace list
 
-let fspace_lining ({ fname; args; fdef } : fspace_phi) : fspace_lines =
-  let lined_codes = IH.of_alist_exn [] in
-  let glob_phies = LT.of_alist_exn [] in
+let instr_use (instr : instr) : Temp.t list =
+  match instr with
+  | ASInstr instr ->
+    let use, _ = SP.def_n_use instr in
+    let use = V.vertex_set_to_op_set use in
+    let use =
+      AS.Set.to_list use
+      |> List.filter_map ~f:(fun op ->
+           match op with
+           | AS.Temp t -> Some t
+           | _ -> None)
+    in
+    use
+  | Phi { alt_selves; _ } ->
+    let ts =
+      List.filter_map alt_selves ~f:(fun (_, op) ->
+        match op with
+        | AS.Temp t -> Some t
+        | _ -> None)
+    in
+    ts
+  | Nop -> []
+;;
+
+let blocks_lining (fdef : block_phi list) : instr IH.t * block list =
+  (*_ produce code & block_info *)
+  let lined_codes : instr IH.t = IH.of_alist_exn [] in
   let to_blocks
-      ((blocks, acc) : block list * int)
-      ({ label; code; jump; depth; phies } : block_phi)
-      : block list * int
+    ((blocks, acc) : block list * int)
+    ({ label; code; jump; depth } : block_phi)
+    : block list * int
     =
     (*_ annote this blocks' codes with line numbers *)
     let code_line = List.mapi code ~f:(fun idx instr -> idx + acc, instr) in
@@ -358,130 +383,97 @@ let fspace_lining ({ fname; args; fdef } : fspace_phi) : fspace_lines =
       List.iter code_line ~f:(fun (i, instr) ->
           IH.update lined_codes i ~f:(fun _ -> instr))
     in
-    let () = LT.update glob_phies label ~f:(fun _ -> phies) in
     { label; lines; jump; depth } :: blocks, acc + List.length lines
   in
   let block_info, _ = List.fold_left fdef ~init:([], 0) ~f:to_blocks in
-  let block_info =
-    List.map block_info ~f:(fun blc -> blc.label, blc) |> LM.of_alist_exn
-  in
-  { fname; args; code = lined_codes; block_info; phies = glob_phies }
+  lined_codes, block_info
 ;;
 
-let global_lining (prog : program_phi) : program_lines = List.map prog ~f:fspace_lining
-
-(*_ ********* Above: global_lining >>> Below: build temp to use map ******* *)
-
-type fspace =
-  { fname : Symbol.t
-  ; args : (Temp.t * AS.size) list
-  ; code : AS.instr IH.t
-  ; block_info : block LM.t
-  ; phies : phi LT.t
-  ; t2use : tuse_sites TH.t
-  }
-
-type program = fspace list
-
-let instr_use (instr : AS.instr) : Temp.t list =
-  let use, _ = SP.def_n_use instr in
-  let use = V.vertex_set_to_op_set use in
-  let use =
-    AS.Set.to_list use
-    |> List.filter_map ~f:(fun op ->
-           match op with
-           | AS.Temp t -> Some t
-           | _ -> None)
-  in
-  use
-;;
-
-let phi_use (which_blc : Label.bt) (phi : phi) : (AS.operand * phi_use_site_t) list =
-  let phi = TM.to_alist phi in
-  let phi =
-    List.map phi ~f:(fun (which_temp, phi) ->
-        LM.to_alist phi
-        |> List.map ~f:(fun (which_pred, t) -> t, { which_blc; which_temp; which_pred }))
-    |> List.concat
-  in
-  phi
-;;
-
-let fspace_use ({ fname; args; code; block_info; phies } : fspace_lines) : fspace =
-  let t2use : tuse_sites TH.t = TH.of_alist_exn [] in
-  (*_ go over each line of fspace.code to find temp uses *)
+let fspace_use (fdef : instr IH.t) : IS.t TH.t =
+  let tuse : IS.t TH.t = TH.of_alist_exn [] in
   let iterf ~key:idx ~data:instr =
     let tuses = instr_use instr in
     let update = function
-      | None -> [ LN idx ]
-      | Some usesite -> LN idx :: usesite
+      | None -> IS.singleton idx
+      | Some usesite -> IS.add usesite idx
     in
-    List.iter tuses ~f:(fun t -> TH.update t2use t ~f:update)
+    List.iter tuses ~f:(fun t -> TH.update tuse t ~f:update)
   in
-  let () = IH.iteri code ~f:iterf in
-  (*_ go over each phi function *)
-  let iterf ~key:lab ~(data : phi) =
-    let t2phi = phi_use lab data in
-    let update phi_use = function
-      | None -> [ PhiId phi_use ]
-      | Some usesite -> PhiId phi_use :: usesite
-    in
-    let temp_exn = function
-      | AS.Temp t -> t
-      | _ -> failwith "ssa: phi should only have temp at this point"
-    in
-    List.iter t2phi ~f:(fun (t, phi_use) ->
-        TH.update t2use (temp_exn t) ~f:(update phi_use))
-  in
-  let () = LT.iteri phies ~f:iterf in
-  { fname; args; code; block_info; phies; t2use }
+  let () = IH.iteri fdef ~f:iterf in
+  tuse
 ;;
 
-let global_use (prog : program_lines) : program = List.map ~f:fspace_use prog
+let fspace_lining ({ fname; args; fdef } : fspace_phi) : fspace =
+  (*_ 0. produce code & block_info : instr IH.t, block LM.t *)
+  let code, block_info = blocks_lining fdef in
+  let tuse = fspace_use code in
+  { fname; args; code; block_info; tuse }
+;;
+
+let global_lining (prog : program_phi) : program = List.map prog ~f:fspace_lining
 
 (*_ **** ssa function **** *)
-let ssa (prog : AS.program) : program =
-  global_renaming prog |> global_lining |> global_use
-;;
+let ssa (prog : AS.program) : program = global_rename prog |> global_lining
 
 (*_ ***** de-ssa function ****** *)
-let fspace_back ({ fname; args; code; block_info; phies; _ } : fspace) : AS.fspace =
-  (*_ for each b in block_info, reconstruct AS.block *)
-  let assemble (lines : int list) : AS.instr list =
-    let lines = List.sort ~compare:Int.compare lines in
-    (*_ ensure instr is in the right order *)
-    List.map lines ~f:(fun i -> IH.find_exn code i)
+
+let reconstruct_blocks
+  (l2instrs : AS.instr list LT.t)
+  (phies : phi list)
+  (block_info : block list)
+  : AS.block list
+  =
+  (*_ for each phi t <- {l:op}, and for each l, append Mov {t, op} *)
+  let mapf ({ self; alt_selves } : phi) : (Label.bt * AS.instr) list =
+    List.map alt_selves ~f:(fun (lpred, op) ->
+      lpred, AS.Mov { dest = AS.Temp self; src = op; size = AS.S })
   in
-  let fdef_blocks = LM.map block_info ~f:(fun blc -> assemble blc.lines) in
-  (*_ for each phi function, append moves to the predecessors *)
-  let mapf ((_, phi) : Label.bt * phi) =
-    let movs = TM.to_alist phi in
-    let movs =
-      List.map movs ~f:(fun (t, l2o) ->
-          let l2o' = LM.to_alist l2o in
-          List.map l2o' ~f:(fun (l, o) ->
-              l, AS.Mov { dest = AS.Temp t; size = failwith "no"; src = o }))
-      |> List.concat
+  let extra_moves = List.map phies ~f:mapf |> List.concat |> LM.of_alist_multi in
+  (*_ feed extra moves to corresponding labels in l2instrs *)
+  let assemble ~key:l ~(data : AS.instr list) : unit =
+    let code_rev = LT.find_exn l2instrs l |> List.rev in
+    let jmp, rest_rev =
+      match code_rev with
+      | hd :: tl -> hd, tl
+      | _ -> failwith "ssa: de-ssa encounter abnormal block"
     in
-    movs
+    let code = jmp :: (data @ rest_rev) |> List.rev in
+    LT.update l2instrs l ~f:(fun _ -> code)
   in
-  let extra_moves = List.map ~f:mapf (LT.to_alist phies) |> List.concat in
-  let extra_moves = LM.of_alist_multi extra_moves in
-  let fdef_blocks =
-    LM.mapi fdef_blocks ~f:(fun ~key:lab ~data:movs ->
-        let extra = LM.find_exn extra_moves lab in
-        movs @ extra)
-  in
-  (*_ convert fdef_blocks into the correct type *)
-  let fdef_blocks = LM.to_alist fdef_blocks in
-  let to_block label block : AS.block =
-    let ({ jump; depth; _ } : block) = LM.find_exn block_info label in
-    { label; block; jump; depth }
-  in
-  let fdef_blocks = List.map fdef_blocks ~f:(fun (l, code) -> to_block l code) in
-  (* we undermine tmp_cnt is ssa, because if we went 
-     to ssa then we are good enough and should ignore  tmp_count *)
-  { fname; args; fdef_blocks; tmp_cnt = -1 }
+  let () = LM.iteri extra_moves ~f:assemble in
+  (*_ construct AS.block using l2instrs and block_info *)
+  List.map block_info ~f:(fun { label; jump; depth; _ } : AS.block ->
+    { label; block = LT.find_exn l2instrs label; jump; depth })
 ;;
 
-let de_ssa (prog : program) : AS.program = List.map prog ~f:fspace_back
+let reconstruct_fspace ({ fname; args; code; block_info; _ } : fspace) : AS.fspace =
+  (*_ for each b in block_info, reconstruct AS.block *)
+  let assemble (lines : int list) : AS.instr list * phi list =
+    let lines = List.sort ~compare:Int.compare lines in
+    (*_ ensure instr is in the right order *)
+    let codes = List.map lines ~f:(fun i -> IH.find_exn code i) in
+    let fltr_instr = function
+      | ASInstr instr -> Some instr
+      | _ -> None
+    in
+    let instr_lst = List.filter_map codes ~f:fltr_instr in
+    let fltr_phi = function
+      | Phi phi -> Some phi
+      | _ -> None
+    in
+    let phi_lst = List.filter_map codes ~f:fltr_phi in
+    instr_lst, phi_lst
+  in
+  let l2instrs, phies =
+    List.map block_info ~f:(fun blc -> blc.label, assemble blc.lines)
+    |> List.map ~f:(fun (l, (instrL, phiL)) -> (l, instrL), phiL)
+    |> List.unzip
+  in
+  let l2instrs = LT.of_alist_exn l2instrs in
+  let phies = List.concat phies in
+  (*_ for each predecessor blocks *)
+  let fdef_blocks = reconstruct_blocks l2instrs phies block_info in
+  { fname; args; fdef_blocks }
+;;
+
+let de_ssa (prog : program) : AS.program = List.map prog ~f:reconstruct_fspace
