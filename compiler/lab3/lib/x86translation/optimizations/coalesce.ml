@@ -17,18 +17,18 @@ let coalesce_regs = true
 module TT = Hashtbl.Make (Temp)
 module IntSet = Set.Make (Int)
 
-let rec find_mex (s : IntSet.t) (n : int) =
-  if not (IntSet.mem s n) then n else find_mex s (n + 1)
+let rec find_mex ?(ban = -1) (s : IntSet.t) (n : int) =
+  if not (ban = n || IntSet.mem s n) then n else find_mex ~ban s (n + 1)
 ;;
 
-let mex_color forest (v2c : color VT.t) (new_neigh : V.Set.t) : color =
-  let key_list = V.Set.to_list new_neigh in
+let mex_color ?(ban = -1) forest (v2c : color VT.t) (neigh : V.Set.t) : color =
+  let key_list = V.Set.to_list neigh in
   let updated_key_list = List.map key_list ~f:(UF.find forest) in
   let cols = List.map ~f:(VT.find_exn v2c) updated_key_list in
-  find_mex (IntSet.of_list cols) 0
+  find_mex ~ban (IntSet.of_list cols) 0
 ;;
 
-let can_coalesce ~(g : G.new_graph) ~(v2c : color VT.t) (a : V.t) (b : V.t) =
+let can_coalesce ~(g : G.new_graph) (a : V.t) (b : V.t) =
   if V.equal a b
   then false
   else (
@@ -38,17 +38,32 @@ let can_coalesce ~(g : G.new_graph) ~(v2c : color VT.t) (a : V.t) (b : V.t) =
     if V.Set.exists a_set ~f:(fun x -> V.equal x b)
     then false
     else (
-      let is_col_in_neigh_set reg_col neigh_set =
-        let t_neigh_colors =
-          IntSet.of_list (List.map ~f:(VT.find_exn v2c) (V.Set.to_list neigh_set))
-        in
-        not (IntSet.exists ~f:(equal reg_col) t_neigh_colors)
+      let hard_reg_aux (temp_set : V.Set.t) (reg_set : V.Set.t) =
+        let work_set = Set.diff temp_set reg_set in
+        Set.for_all work_set ~f:(fun v ->
+            V.Set.length (VT.find_exn g v) < AS.num_regs - 1)
       in
       match a, b with
       | T _, T _ -> V.Set.length (V.Set.union a_set b_set) < AS.num_regs
-      | R _, T _ -> is_col_in_neigh_set (VT.find_exn v2c a) b_set
-      | T _, R _ -> is_col_in_neigh_set (VT.find_exn v2c b) a_set
+      | R _, T _ -> hard_reg_aux b_set a_set
+      | T _, R _ -> hard_reg_aux a_set b_set
       | R _, R _ -> false))
+;;
+
+let recolor_from
+    ~forest
+    ~(g : G.new_graph)
+    ~(v2c : color VT.t)
+    (reg_col : color)
+    (v : V.t)
+  =
+  let neigh_set = VT.find_exn g v in
+  let old_col = VT.find_exn v2c v in
+  if not (old_col = reg_col)
+  then ()
+  else (
+    let new_col = mex_color forest v2c neigh_set ~ban:reg_col in
+    VT.change v2c v ~f:(fun _ -> Some new_col))
 ;;
 
 let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
@@ -92,11 +107,15 @@ let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
         (sprintf "Coalesing reg: %s and temp: %s." (V._to_string r) (V._to_string t)); *)
       (* if not same color then do:  *)
       (* - Colesce two vertices into t3 in graph *)
+      let temp_set, reg_set = VT.find_exn g t, VT.find_exn g r in
+      let recolor_set = Set.diff temp_set reg_set in
+      let reg_col = VT.find_exn v2c r in
       let (_ : V.Set.t) = Graph.coalesce g (r, t) r in
       (* - connect the temps in the forest *)
       UF.union_to_x forest ~x:r ~y:t;
       (* just remove the coloring of temp *)
       VT.remove v2c t;
+      V.Set.iter recolor_set ~f:(recolor_from ~forest ~g ~v2c reg_col);
       (* prerr_endline "coloring table:";
       prerr_endline
         (sprintf
@@ -109,15 +128,14 @@ let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
     in
     let process a b =
       let a, b = UF.find forest a, UF.find forest b in
-      if can_coalesce ~g ~v2c a b
+      if can_coalesce ~g a b
       then (
         match a, b with
         | V.T _, V.T _ -> process_t_t a b
         | V.R _, V.T _ -> if coalesce_regs then process_r_t a b else ()
         | V.T _, V.R _ -> if coalesce_regs then process_r_t b a else ()
         | _ -> failwith "coalseing two regs???")
-      else 
-        ()
+      else ()
       (* prerr_endline
           (sprintf "Can not coalesce %s and %s" (V._to_string a) (V._to_string b)) *)
     in

@@ -85,6 +85,9 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->
     V.Set.of_list (List.map ~f:(fun (t, _) -> V.T t) stack_args), V.Set.empty
+  | AS.LeaArray { dest; base; index; _ } ->
+    op_to_vset dest, V.Set.union_list [ op_to_vset base; op_to_vset index ]
+  | AS.LeaPointer { dest; base; _ } -> op_to_vset dest, op_to_vset base
 ;;
 
 (* let format_v_set s =
@@ -307,10 +310,11 @@ let vset_uses_defs_block (b : B.block) =
       | AS.LoadFromStack stack_raw ->
         (* It should be the case, I think *)
         (let stack_def = List.map ~f:(fun (t, _) -> t) stack_raw in
-        let fargs_def =
-          V.Set.of_list (List.map ~f:(fun t -> V.T t) (fargs @ stack_def))
-        in
-        V.Set.union fargs_def dx : V.Set.t)
+         let fargs_def =
+           V.Set.of_list (List.map ~f:(fun t -> V.T t) (fargs @ stack_def))
+         in
+         V.Set.union fargs_def dx
+          : V.Set.t)
       | _ -> dx
     in
     d, ux
@@ -334,7 +338,7 @@ let uses_defs_block (b : B.block) : OperS.t * OperS.t =
   of_vset u_v, of_vset d_v
 ;;
 
-let get_uses_exn (tbl : t) (line : int) : V.Set.t =
+let get_total_exn (tbl : t) (line : int) : V.Set.t =
   let entry = IntTable.find_exn tbl line in
-  entry.u
+  V.Set.union entry.u entry.d
 ;;

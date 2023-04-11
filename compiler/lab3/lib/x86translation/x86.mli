@@ -8,15 +8,6 @@ type operand =
   | Reg of R.reg
 [@@deriving equal, compare, sexp]
 
-type mem =
-  | Mem of
-      { disp : int option
-      ; base_reg : R.reg
-      ; idx_reg : R.reg option
-      ; scale : int option
-      }
-[@@deriving equal, compare, sexp]
-
 type operation =
   | Add
   | Addq
@@ -51,6 +42,15 @@ type operation =
 type size =
   | Q
   | L
+[@@deriving equal, compare, sexp]
+
+type mem =
+  | Mem of
+      { disp : int option
+      ; base_reg : R.reg
+      ; idx_reg : R.reg option
+      ; scale : int option
+      }
 [@@deriving equal, compare, sexp]
 
 val to_size : AS.size -> size

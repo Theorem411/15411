@@ -119,6 +119,19 @@ type instr =
       ; size : size
       ; src : operand
       }
+  | LeaPointer of
+      { dest : operand
+      ; size : size
+      ; base : operand
+      ; offset : int
+      }
+  | LeaArray of
+      { dest : operand (* ; size : size not needed, as by default it 8 *)
+      ; base : operand
+      ; offset : int
+      ; index : operand
+      ; scale : int (* can be only 1,2,4,8 *)
+      }
   | MovTo of
       { dest : operand
       ; size : size
@@ -188,6 +201,7 @@ type fspace =
   { fname : Symbol.t
   ; args : (Temp.t * size) list
   ; fdef_blocks : block list
+  ; tmp_cnt : int
   }
 [@@deriving equal, sexp, compare]
 
@@ -287,6 +301,21 @@ let format_instr' = function
     sprintf "%s <-%s- (%s)" (format_operand dest) (format_size size) (format_operand src)
   | MovTo { dest; size; src } ->
     sprintf "(%s) <-%s- %s" (format_operand dest) (format_size size) (format_operand src)
+  | LeaPointer { dest; base; offset; size } ->
+    sprintf
+      "%s <- lea: [%s] %s + %d"
+      (format_operand dest)
+      (format_size size)
+      (format_operand base)
+      offset
+  | LeaArray { dest; base; offset; index; scale } ->
+    sprintf
+      "%s <- lea: %s + %s * %d + %d"
+      (format_operand dest)
+      (format_operand base)
+      (format_operand index)
+      scale
+      offset
 ;;
 
 let format_instr i = format_instr' i ^ "\n"
@@ -307,13 +336,14 @@ let format_block ({ label; block; jump; depth } : block) : string =
 ;;
 
 let format_program prog_block =
-  let format_fspace { fname; args; fdef_blocks } =
+  let format_fspace { fname; args; fdef_blocks; tmp_cnt } =
     sprintf
-      "%s(%s): \n%s"
+      "%s(%s): \n%s [uses %d temps]"
       (Symbol.name fname)
       (List.map args ~f:(fun (t, s) -> sprintf "%s%s" (Temp.name t) (format_size s))
       |> String.concat)
       (List.map fdef_blocks ~f:format_block |> String.concat)
+      tmp_cnt
   in
   List.map prog_block ~f:format_fspace |> String.concat
 ;;

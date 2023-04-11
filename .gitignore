@@ -77,3 +77,4 @@ ulan-test-files/*
 *ulan.l3*
 
 *ulan*
+compiler/tests/testing.all

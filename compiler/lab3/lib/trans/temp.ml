@@ -21,5 +21,6 @@ let create () =
 ;;
 
 let name t = "%t" ^ string_of_int t
+let get_counter () = !counter
 
 include Comparable.Make (Int)

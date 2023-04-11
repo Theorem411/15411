@@ -11,6 +11,11 @@ let if_cond_to_rev_jump_t = function
   | T.Neq -> A.Je
 ;;
 
+let is_lea_scale = function
+  | 1 | 2 | 4 | 8 -> true
+  | _ -> false
+;;
+
 let arg_i_to_reg = function
   | 0 -> A.EDI
   | 1 -> A.ESI
@@ -56,8 +61,6 @@ let munch_size = function
   | _ -> A.L
 ;;
 
-(* | i -> failwith ("codegen: size is not 4 or 8. it is " ^ (Int.to_string i)) *)
-
 let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.t)
     : A.instr list
   =
@@ -90,15 +93,12 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
       let t2 = A.Temp (Temp.create ()) in
       let zero8 = A.Imm (Int64.of_int_exn 0) in
       let off8 = A.Imm (Int64.of_int_exn off) in
-      (* let size = munch_size off in *)
       let size = munch_size esize in
       let chck =
         if unsafe
         then
           [ A.MovFrom { dest; src = t2; size }
           ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
-            (* ; A.Cjmp { typ = A.Je; l = mfl } *)
-            (* ; A.Cmp { lhs = t1; rhs = zero8; size = A.L } *)
           ]
         else
           [ A.MovFrom { dest; src = t2; size }
@@ -140,26 +140,34 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
       let t1 = A.Temp (Temp.create ()) in
       let t2 = A.Temp (Temp.create ()) in
       let res_rev =
-        [ A.Mov { dest = t1; size = A.L; src = a }
-        ; A.MovSxd { dest = b; src = b }
-        ; A.PureBinop
-            { op = A.Mul
-            ; size = A.L
-            ; dest = t2
-            ; lhs = b
-            ; rhs = A.Imm (Int64.of_int_exn typ_size)
-            }
-        ; A.PureBinop { op = A.Add; size = A.L; dest = t1; lhs = t1; rhs = t2 }
-        ; A.PureBinop
-            { op = A.Add
-            ; size = A.L
-            ; dest = t1
-            ; lhs = t1
-            ; rhs = A.Imm (Int64.of_int_exn extra)
-            }
-        ; A.MovFrom { dest; size = munch_size esize; src = t1 }
-        ]
-        |> List.rev
+        if is_lea_scale typ_size
+        then
+          [ A.LeaArray
+              { dest = t1; base = a; index = b; scale = typ_size; offset = extra }
+          ; A.MovFrom { dest; size = munch_size esize; src = t1 }
+          ]
+          |> List.rev
+        else
+          [ A.Mov { dest = t1; size = A.L; src = a }
+          ; A.MovSxd { dest = b; src = b }
+          ; A.PureBinop
+              { op = A.Mul
+              ; size = A.L
+              ; dest = t2
+              ; lhs = b
+              ; rhs = A.Imm (Int64.of_int_exn typ_size)
+              }
+          ; A.PureBinop { op = A.Add; size = A.L; dest = t1; lhs = t1; rhs = t2 }
+          ; A.PureBinop
+              { op = A.Add
+              ; size = A.L
+              ; dest = t1
+              ; lhs = t1
+              ; rhs = A.Imm (Int64.of_int_exn extra)
+              }
+          ; A.MovFrom { dest; size = munch_size esize; src = t1 }
+          ]
+          |> List.rev
       in
       (*_ view in reverse order *)
       [ res_rev; checks; munch_exp_rev ~mfl b idx; munch_exp_rev ~mfl a head ]
@@ -176,26 +184,33 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
       let a = A.Temp (Temp.create ()) in
       let b = A.Temp (Temp.create ()) in
       let res =
-        [ A.MovSxd { dest = b; src = b }
-        ; A.PureBinop
-            { dest = t1
-            ; size = A.L
-            ; lhs = b
-            ; op = A.Mul
-            ; rhs = A.Imm (Int64.of_int_exn typ_size)
-            }
-        ; A.Mov { dest = t2; size = A.L; src = a }
-        ; A.PureBinop { dest = t2; size = A.L; lhs = t2; op = A.Add; rhs = t1 }
-        ; A.PureBinop
-            { dest = t2
-            ; size = A.L
-            ; lhs = t2
-            ; op = A.Add
-            ; rhs = A.Imm (Int64.of_int_exn extra)
-            }
-        ; A.Mov { dest; size = A.L; src = t2 }
-        ]
-        |> List.rev
+        if is_lea_scale typ_size
+        then
+          [ A.LeaArray
+              { dest = t1; base = a; index = b; scale = typ_size; offset = extra }
+          ]
+          |> List.rev
+        else
+          [ A.MovSxd { dest = b; src = b }
+          ; A.PureBinop
+              { dest = t1
+              ; size = A.L
+              ; lhs = b
+              ; op = A.Mul
+              ; rhs = A.Imm (Int64.of_int_exn typ_size)
+              }
+          ; A.Mov { dest = t2; size = A.L; src = a }
+          ; A.PureBinop { dest = t2; size = A.L; lhs = t2; op = A.Add; rhs = t1 }
+          ; A.PureBinop
+              { dest = t2
+              ; size = A.L
+              ; lhs = t2
+              ; op = A.Add
+              ; rhs = A.Imm (Int64.of_int_exn extra)
+              }
+          ; A.Mov { dest; size = A.L; src = t2 }
+          ]
+          |> List.rev
       in
       [ res; munch_exp_rev ~mfl b idx; munch_exp_rev ~mfl a head ] |> List.concat
   in
@@ -269,7 +284,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
       ]
     ]
     |> List.concat
-  | T.MovToMem { addr = T.Null; _ } -> [ A.Jmp mfl ]
+  | T.MovToMem { addr = T.Null; _ } -> if unsafe then [] else [ A.Jmp mfl ]
   | T.MovToMem { addr = T.Ptr { start; off }; src } ->
     let ts = A.Temp (Temp.create ()) in
     let codegen_start = munch_exp ~unsafe ts start ~mfl in
@@ -307,26 +322,32 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     let t = A.Temp (Temp.create ()) in
     let codegen_head = munch_exp ~unsafe th head ~mfl in
     let codegen_idx = munch_exp ~unsafe ti idx ~mfl in
-    let bound_chk =
+    let adrs_calc =
       if unsafe
       then
-        [ A.MovSxd { dest = ti'; src = ti }
-        ; A.PureBinop
-            { dest = t1
-            ; size = A.L
-            ; lhs = ti'
-            ; op = A.Mul
-            ; rhs = A.Imm (Int64.of_int_exn typ_size)
-            }
-        ; A.PureBinop
-            { dest = t2
-            ; size = A.L
-            ; lhs = t1
-            ; op = A.Add
-            ; rhs = A.Imm (Int64.of_int_exn extra)
-            }
-        ; A.PureBinop { dest = t; size = A.L; lhs = th; op = A.Add; rhs = t2 }
-        ]
+        if is_lea_scale typ_size
+        then
+          [ A.LeaArray
+              { dest = t; base = th; index = ti; scale = typ_size; offset = extra }
+          ]
+        else
+          [ A.MovSxd { dest = ti'; src = ti }
+          ; A.PureBinop
+              { dest = t1
+              ; size = A.L
+              ; lhs = ti'
+              ; op = A.Mul
+              ; rhs = A.Imm (Int64.of_int_exn typ_size)
+              }
+          ; A.PureBinop
+              { dest = t2
+              ; size = A.L
+              ; lhs = t1
+              ; op = A.Add
+              ; rhs = A.Imm (Int64.of_int_exn extra)
+              }
+          ; A.PureBinop { dest = t; size = A.L; lhs = th; op = A.Add; rhs = t2 }
+          ]
       else
         [ A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
         ; A.Cjmp { typ = A.Je; l = mfl }
@@ -362,30 +383,8 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     in
     let tr = A.Temp (Temp.create ()) in
     let codegen_src = munch_exp ~unsafe tr src ~mfl in
-    (* let mov =
-      match opopt with
-      | Some (T.Pure o) ->
-        let t' = A.Temp (Temp.create ()) in
-        let t'' = A.Temp (Temp.create ()) in
-        let sz = munch_size (T.size src) in
-        let op = munch_binary_op o in
-        [ A.MovFrom { dest = t'; size = sz; src = t }
-        ; A.PureBinop { dest = t''; size = sz; lhs = t'; op; rhs = tr }
-        ; A.MovTo { dest = t; size = sz; src = t'' }
-        ]
-      | Some (T.Efkt o) ->
-        let t' = A.Temp (Temp.create ()) in
-        let t'' = A.Temp (Temp.create ()) in
-        let sz = munch_size (T.size src) in
-        let op = munch_efkt_op o in
-        [ A.MovFrom { dest = t'; size = sz; src = t }
-        ; A.EfktBinop { dest = t''; lhs = t'; op; rhs = tr }
-        ; A.MovTo { dest = t; size = sz; src = t'' }
-        ]
-      | None -> [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ]
-    in *)
     let mov = [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ] in
-    [ codegen_head; codegen_idx; bound_chk; codegen_src; mov ] |> List.concat
+    [ codegen_head; codegen_idx; adrs_calc; codegen_src; mov ] |> List.concat
   | T.MovFuncApp { dest; fname; args; tail_call } ->
     let cogen_arg ~unsafe e =
       let t = Temp.create () in
@@ -446,9 +445,11 @@ let munch_block
 
 let codegen (prog : T.program) ~(mfl : Label.t) ~(unsafe : bool) : A.program =
   let map_f ~(unsafe : bool) ({ fname; args; fdef } : T.fspace_block) : A.fspace =
+    let tmp_cnt_init = Temp.get_counter () in 
     let args = List.map args ~f:(fun (t, i) -> t, munch_size i) in
     let fdef_blocks = List.map fdef ~f:(fun b -> munch_block b ~unsafe ~mfl ~args) in
-    { fname; args; fdef_blocks }
+    let tmp_cnt_final = Temp.get_counter () in 
+    { fname; args; fdef_blocks; tmp_cnt = tmp_cnt_final - tmp_cnt_init }
   in
   List.map prog ~f:(map_f ~unsafe)
 ;;
