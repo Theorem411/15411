@@ -49,9 +49,9 @@ let asinstr_prop (instr : AS.instr) (t : Temp.t) (sub : AS.operand) : AS.instr =
     let lhs' = op_prop lhs t sub in
     let rhs' = op_prop rhs t sub in
     Cmp { size; lhs = lhs'; rhs = rhs' }
-  | LoadFromStack t2sz ->
+  | LoadFromStack _ ->
     failwith "propagate: impossible, LoadFromStack temps never get propagated"
-  | Call call ->
+  | Call _ ->
     failwith
       "not implemented: have problem with 3-assem representation of loading on the stack \
        operands"

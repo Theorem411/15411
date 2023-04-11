@@ -473,7 +473,8 @@ let reconstruct_fspace ({ fname; args; code; block_info; _ } : fspace) : AS.fspa
   let phies = List.concat phies in
   (*_ for each predecessor blocks *)
   let fdef_blocks = reconstruct_blocks l2instrs phies block_info in
-  { fname; args; fdef_blocks }
+  (* tmp count is undermined as we are already in ssa, so we do not care about temp count *)
+  { fname; args; fdef_blocks; tmp_cnt = -1 }
 ;;
 
 let de_ssa (prog : program) : AS.program = List.map prog ~f:reconstruct_fspace
