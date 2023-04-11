@@ -15,7 +15,7 @@ let get_temps_line instr : Temp.t list =
     | LoadFromStack temps -> List.map temps ~f:(fun (t, _) -> AS.Temp t)
     | Cmp { lhs; rhs; _ } -> [ lhs; rhs ]
     | Set { src; _ } -> [ src; AS.Reg EAX ]
-    | Call { args_overflow; _ } -> List.map args_overflow ~f:(fun (t, _) -> AS.Temp t)
+    | Call { args_overflow; _ } -> List.map args_overflow ~f:(fun (t, _) -> t)
     | AS.MovFrom m -> [ m.dest; m.src ]
     | AS.MovTo m -> [ m.dest; m.src ]
     | AS.MovSxd m -> [ m.dest; m.src ]

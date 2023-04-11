@@ -81,7 +81,13 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
       (* @ List.map ~f:(fun (r, _) -> V.T r) args_overflow) *)
     , V.Set.of_list
         (List.map ~f:(fun (r, _) -> V.R r) args_in_regs
-        @ List.map ~f:(fun (r, _) -> V.T r) args_overflow) )
+        @ List.filter_map
+            ~f:(fun (r, _) ->
+              match r with
+              | AS.Reg x -> Some (V.R x)
+              | AS.Temp t -> Some (V.T t)
+              | _ -> None)
+            args_overflow) )
   | AS.Directive _ | Comment _ -> V.Set.empty, V.Set.empty
   | AS.LoadFromStack stack_args ->
     V.Set.of_list (List.map ~f:(fun (t, _) -> V.T t) stack_args), V.Set.empty
