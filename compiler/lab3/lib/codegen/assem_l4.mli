@@ -153,7 +153,7 @@ type instr =
   | Call of
       { fname : Symbol.t
       ; args_in_regs : (reg * size) list
-      ; args_overflow : (Temp.t * size) list
+      ; args_overflow : (operand * size) list
       ; tail_call : bool
       }
   (* Assembly directive. *)

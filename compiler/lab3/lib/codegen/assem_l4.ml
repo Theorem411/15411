@@ -161,7 +161,7 @@ type instr =
   | Call of
       { fname : Symbol.t
       ; args_in_regs : (reg * size) list
-      ; args_overflow : (Temp.t * size) list
+      ; args_overflow : (operand * size) list
       ; tail_call : bool
       }
   (* Assembly directive. *)
@@ -288,8 +288,8 @@ let format_instr' = function
       (List.map args_in_regs ~f:(fun (r, s) ->
            sprintf "%s%s" (format_reg r) (format_size s))
       |> String.concat ~sep:", ")
-      (List.map args_overflow ~f:(fun (t, s) ->
-           sprintf "%s%s" (Temp.name t) (format_size s))
+      (List.map args_overflow ~f:(fun (op, s) ->
+           sprintf "%s%s" (format_operand op) (format_size s))
       |> String.concat ~sep:", ")
       tail_call
   | LoadFromStack ts ->
