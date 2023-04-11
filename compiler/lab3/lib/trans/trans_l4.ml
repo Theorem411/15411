@@ -461,9 +461,7 @@ let rec tr_stm_rev
     let acc, b = tr_stm_rev env dep s1 acc_rev block_rev in
     let acc, b = tr_stm_rev env dep s2 acc b in
     acc, b
-  | NakedExpr (A.PureBinop _, _) ->
-    (* TRYING ignore Pure NakedExpr  *)
-    acc_rev, block_rev
+  | NakedExpr (Const _, _) -> acc_rev, block_rev
   | NakedExpr exp ->
     let t = Temp.create () in
     let e, acc, b = tr_exp_rev env dep exp acc_rev block_rev in
