@@ -10,7 +10,11 @@ type fspace_target =
   ; fdef : T.stm list
   ; return : T.mpexp option 
   }
-let split_program (program : T.program) : fspace_target SM.t * T.fspace_block SM.t = 
+
+let is_target (fspace : T.fspace_block) : fspace_target option = 
+  failwith "no"
+;;
+let split_program (program : T.program) : fspace_target SM.t * T.fspace_block list = 
   failwith "no"
 ;;
 
