@@ -5,7 +5,7 @@ module IH = SSA.IH
 module TH = SSA.TH
 module IS = SSA.IS
 
-let debug_mode = true
+let debug_mode = false
 let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
 
 let pp_IS (lset : IS.t) : string =
@@ -356,7 +356,7 @@ let propagate (prog : SSA.program) : SSA.program = List.map prog ~f:propagate_fs
    4) de_ssa *)
 
 let debug (prog : AS.program) : unit =
-  (* let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in *)
+  let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in
   let prog_ssa : SSA.program_ssa = SSA.global_rename prog in
   (* let () = printf "dumping prog after ssa...\n\n%s\n\n" (SSA.pp_program_ssa prog_ssa prog) in *)
   let prog_phi : SSA.program_phi = SSA.global_phi prog_ssa in
@@ -371,9 +371,9 @@ let debug (prog : AS.program) : unit =
   let () =
     printf "dumping prog after const/copy propagation...\n\n%s\n\n" (SSA.pp_program prog)
   in
-  let prog : AS.program = SSA.de_ssa prog in
-  let () =
+  let _ : AS.program = SSA.de_ssa prog in
+  (* let () =
     printf "dumping AS.program after de_ssa ... \n\n%s\n\n" (AS.format_program prog)
-  in
+  in *)
   ()
 ;;

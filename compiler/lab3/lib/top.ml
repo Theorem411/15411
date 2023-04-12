@@ -250,13 +250,16 @@ let compile (cmd : cmd_line_args) : unit =
       say_if cmd.verbose (fun () -> "Starting ssa...");
       let assem_ssa' = Ssa.ssa assem' in
       say_if cmd.verbose (fun () -> "Starting propogation ...");
-      let assem_ssa = Propagation.propagate assem_ssa' in
+      (* let assem_ssa = Propagation.propagate assem_ssa' in *)
       say_if cmd.verbose (fun () -> "Starting de-ssa ...");
-      let assem = Ssa.de_ssa assem_ssa in
+      let assem = Ssa.de_ssa assem_ssa' in
       say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
       let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem) () else () in
       assem)
   in
+
+  say_if cmd.dump_assem (fun () -> "SSAAAAAAAAAAAAAAA");
+  say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
   say_if cmd.verbose (fun () -> "Emitting...");
   match cmd.emit with
   (* Output: abstract 3-address assem *)

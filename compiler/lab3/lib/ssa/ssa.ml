@@ -308,12 +308,12 @@ let block_phi
             L3 |x2|  |y3|  |z2|
   *)
   (*_ orig temp to fresh ones *)
-  let () = printf "lcur is %s\n" (Label.name_bt lcur) in
+  (* let () = printf "lcur is %s\n" (Label.name_bt lcur) in *)
   let preds = LM.find_exn cfg_pred lcur |> LS.to_list in
   (*_ for each predecessor block, find jtag and gather the their parameter *)
   let preds_jtag =
     List.map preds ~f:(fun lpred ->
-        printf "lpred is %s\n" (Label.name_bt lpred);
+        (* printf "lpred is %s\n" (Label.name_bt lpred); *)
         lpred, LM.find_exn l2jtag lpred)
   in
   let see_jtag (lpred, jtag) =
