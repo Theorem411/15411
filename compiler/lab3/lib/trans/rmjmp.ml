@@ -9,7 +9,7 @@ module LM = Map.Make (T)
 module LS = Set.Make (T)
 module LH = Hashtbl.Make (T)
 
-let debug_mode = false
+let debug_mode = true
 let debug_print (err_msg : string) : unit= 
   if debug_mode then printf "%s" err_msg else ()
 

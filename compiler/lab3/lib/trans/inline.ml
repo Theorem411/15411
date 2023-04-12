@@ -2,7 +2,7 @@ open Core
 module T = Tree_l4
 module SM = Symbol.Map
 
-let debug_mode = false
+let debug_mode = true
 let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
 
 type fspace_target =
