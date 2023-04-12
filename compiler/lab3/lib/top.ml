@@ -134,13 +134,13 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   and dump_ir =
     let doc = "If present, print the translated ir ast." in
     flag (Arg.info [ "dump-ir" ] ~doc)
-  and inline = 
+  and inline =
     let doc = "If present, do function inlining on ir" in
     flag (Arg.info [ "inline" ] ~doc)
   and dump_assem =
     let doc = "If present, print the final assembly." in
     flag (Arg.info [ "dump-assem" ] ~doc)
-  and dump_ssa = 
+  and dump_ssa =
     let doc = "If present, print the program after ssa." in
     flag (Arg.info [ "dump-ssa" ] ~doc)
   and typecheck_only =
@@ -231,13 +231,12 @@ let compile (cmd : cmd_line_args) : unit =
   let ir = Strength.strength_reduction raw_ir in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (*_ opt: remove empty jmp blocks *)
-  say_if cmd.inline (fun () -> "Removing unncessary jumps...");
+  say_if cmd.verbose (fun () -> "Removing unncessary jumps...");
   let ir = Rmjmp.rmjmp ir in
   (*_ opt: function inline *)
-  say_if cmd.inline (fun () -> "Doing function inline...");
-  let ir = if cmd.inline then Inline.inline ir else ir in
+  say_if cmd.verbose (fun () -> "Doing function inline...");
+  let ir = Inline.inline ir in
   say_if cmd.inline (fun () -> TreeM.Print.pp_program ir);
-
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
   let mfail = Label.create () in
