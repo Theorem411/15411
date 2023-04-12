@@ -1,64 +1,18 @@
-//test return 37
+//test return 8
+/* gcd */
 
-// Don't go below 38 here.
-int size() { return 38; }
-
-struct data_s{
-  int result;
-  int[] a;
-  int[] b;
-};
-typedef struct data_s data_t;
-
-// Yeah man this is definitely the one
-int fibonacci(int num){
-  if (num > 8) { 
-    return fibonacci(num/2 - 1) + fibonacci(num/3 - 2);
+int gcd (int x, int y) {
+  /* x,y >= 0 */
+  int r;
+  while (y != 0) {
+    r = x%y;
+    x = y;
+    y = r;
   }
-  if (num == 0) return 0;
-  if (num == 1) return 1;
-  return fibonacci(num-1) + fibonacci(num-2);
+  return x;
 }
+  
 
-data_t* init(int _){
-  data_t* data = alloc(data_t);
-  data->a = alloc_array(int, 2*size());
-  data->b = alloc_array(int, size());
-  return data;
-}
-
-void prepare(data_t *data, int _) {
-  data->result = 0;
-  for(int i = 0; i < 2*size(); i++)
-    data->a[i] = 0;
-  for(int i = 0; i < size(); i++)
-    data->b[i] = 0;
-}
-
-int checksum(data_t *data, int _) { 
-  return data->result;
-}
-
-int sekret(int[] a, int[] b){
-  for(int i = 0; i < size () * 1541 / 5; i++){
-    b[37] = i * 37;
-    for(int j = size() - 1; j> 0; j--){
-      a[j] = b[j];
-      a[j] = fibonacci(a[j]);
-    }
-    a[50] = 37 * 42;
-  }
-  return a[50] / 42;
-}
-
-void run(data_t *data, int _){
-  data->result = sekret(data->a, data->b);
-}
-
-int main() {
-  int n = size();
-  data_t* data = init(n);
-  prepare(data,n);
-  run(data, n);
-  return checksum(data, n);
+int main () {
+  return gcd(24,56);
 }
