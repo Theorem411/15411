@@ -58,14 +58,37 @@ let wq_init ({ fdef_blocks; _ } : B.fspace) =
 ;;
 
 let cfg_pred_init ({ fdef_blocks; _ } : B.fspace) : cfg_pred =
-  let mapf ({ label; jump; _ } : B.block) =
+  let labs = List.map fdef_blocks ~f:(fun blc -> blc.label, []) in
+  let cfg_pred = LT.of_alist_exn labs in
+  let iterf ({ label; jump; _ } : B.block) =
     match jump with
-    | B.JCon { jt; jf } -> [ L.bt jt, label; L.bt jf, label ]
-    | B.JUncon l -> [ L.bt l, label ]
-    | _ -> []
+    | B.JCon { jt; jf } ->
+      let () =
+        LT.update cfg_pred (L.bt jt) ~f:(fun lstopt ->
+          match lstopt with
+          | None -> failwith "live: hmm?"
+          | Some lst -> label :: lst)
+      in
+      let () =
+        LT.update cfg_pred (L.bt jf) ~f:(fun lstopt ->
+          match lstopt with
+          | None -> failwith "live: hmm?"
+          | Some lst -> label :: lst)
+      in
+      ()
+    | B.JUncon l ->
+      let () =
+        LT.update cfg_pred (L.bt l) ~f:(fun lstopt ->
+          match lstopt with
+          | None -> failwith "live: hmm?"
+          | Some lst -> label :: lst)
+      in
+      ()
+    | _ -> ()
   in
-  let l2p = List.map fdef_blocks ~f:mapf |> List.concat in
-  LM.map ~f:LS.of_list (LM.of_alist_multi l2p)
+  let () = List.iter fdef_blocks ~f:iterf in
+  let cfg_pred = LM.of_hashtbl_exn cfg_pred in
+  LM.map cfg_pred ~f:LS.of_list
 ;;
 
 let block_def_use_init (fspace : B.fspace) : block_def_use =
@@ -170,7 +193,7 @@ let mk_graph_fspace (fspace : B.fspace) =
   let iterf ~key:l ~data:liveout =
     let b = LM.find_exn l2block l in
     let liveout = V.op_set_to_vertex_set liveout in
-    let _ : V.Set.t = SP.singlepass spt b liveout in
+    let (_ : V.Set.t) = SP.singlepass spt b liveout in
     ()
   in
   let () = LM.iteri block_out ~f:iterf in

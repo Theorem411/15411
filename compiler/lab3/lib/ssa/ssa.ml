@@ -240,10 +240,57 @@ let block_rename (block : AS.block) (told2new : told2new) (lparams : lparams) : 
   }
 ;;
 
+let fspace_rename (fspace : AS.fspace) : fspace_ssa =
+  let ({ block_in; cfg_pred; _ } : Live.live_package_t) =
+    Live.mk_liveness_fspace (Block.of_fspace fspace)
+  in
+  let op2temp = function
+    | AS.Temp t -> Some t
+    | _ -> None
+  in
+  let opset2tmpset (opset : AS.Set.t) =
+    let opset' = AS.Set.to_list opset in
+    let res = List.filter_map opset' ~f:op2temp in
+    TS.of_list res
+  in
+  let lparams : lparams = LM.map block_in ~f:opset2tmpset in
+  let told2new : told2new = TH.of_alist_exn [] in
+  (*_ 0. forcefully rename function args *)
+  let args = List.map fspace.args ~f:(fun (t, sz) -> temp_rename_def t told2new, sz) in
+  let hack_func_bt =
+    Label.FunName { fname = fspace.fname; args = List.map fspace.args ~f:fst }
+  in
+  let hack_fun_lset : LS.t = LM.find_exn cfg_pred hack_func_bt in
+  let hack_func_bt' =
+    Label.FunName { fname = fspace.fname; args = List.map args ~f:fst }
+  in
+  let cfg_pred =
+    LM.remove cfg_pred hack_func_bt |> LM.add_exn ~key:hack_func_bt' ~data:hack_fun_lset
+  in
+  (*_ 1. iterate over blocks to apply block_rename *)
+  let l2blcssa =
+    List.map fspace.fdef_blocks ~f:(fun blc -> block_rename blc told2new lparams)
+    |> List.map ~f:(fun blcssa -> blcssa.label, (blcssa, blcssa.bparams, blcssa.jtag))
+  in
+  let fdef_new = List.map l2blcssa ~f:(fun (_, (blc, _, _)) -> blc) in
+  let l2jtag =
+    List.map l2blcssa ~f:(fun (l, (_, _, jtag)) -> l, jtag) |> LM.of_alist_exn
+  in
+  { fname = fspace.fname
+  ; args
+  ; fdef = fdef_new
+  ; cfg_pred
+  ; l2jtag
+  ; tmp_cnt = fspace.tmp_cnt
+  }
+;;
+
+let global_rename (prog : AS.program) : program_ssa = List.map prog ~f:fspace_rename
+
 let block_phi
   (cfg_pred : LS.t LM.t)
   (l2jtag : jtag LM.t)
-  ({ label = l; code; jump; depth; bparams; _ } : block_ssa)
+  ({ label = lcur; code; jump; depth; bparams; _ } : block_ssa)
   : block_phi
   =
   (*_ block_phi:
@@ -260,21 +307,22 @@ let block_phi
             L3 |x2|  |y3|  |z2|
   *)
   (*_ orig temp to fresh ones *)
-  let preds = LM.find_exn cfg_pred l |> LS.to_list in
+  (* let () = printf "lcur is %s\n" (Label.name_bt lcur) in *)
+  let preds = LM.find_exn cfg_pred lcur |> LS.to_list in
   (*_ for each predecessor block, find jtag and gather the their parameter *)
-  let preds_jtag = List.map preds ~f:(fun l -> l, LM.find_exn l2jtag l) in
-  let see_jtag (l, jtag) =
+  let preds_jtag = List.map preds ~f:(fun lpred -> lpred, LM.find_exn l2jtag lpred) in
+  let see_jtag (lpred, jtag) =
     match jtag with
     | JRet -> None
-    | JUncon { l = l'; params } ->
-      if not (Label.equal_bt l l')
+    | JUncon { l; params } ->
+      if not (Label.equal_bt lcur l)
       then failwith "ssa: renaming error"
-      else Some (l, params)
+      else Some (lpred, params)
     | JCon { lt; tparams; lf; fparams } ->
-      if Label.equal_bt l lt
-      then Some (l, tparams)
-      else if Label.equal_bt l lf
-      then Some (l, fparams)
+      if Label.equal_bt lcur lt
+      then Some (lpred, tparams)
+      else if Label.equal_bt lcur lf
+      then Some (lpred, fparams)
       else failwith "ssa: renaming error"
   in
   let preds_params = List.filter_map preds_jtag ~f:see_jtag in
@@ -284,7 +332,7 @@ let block_phi
       List.map (TM.to_alist params) ~f:(fun (told, tnew) ->
         let tcur = TM.find_exn bparams told in
         (*_ replace with latest temp in current params *)
-        tnew, (l, tcur)))
+        tcur, (l, tnew)))
     |> List.concat
   in
   let t2nodes = TM.of_alist_multi preds_params |> TM.to_alist in
@@ -296,43 +344,8 @@ let block_phi
     List.map phies ~f:(fun instr -> Phi instr)
     @ List.map code ~f:(fun instr -> ASInstr instr)
   in
-  { label = l; code; jump; depth }
+  { label = lcur; code; jump; depth }
 ;;
-
-let fspace_rename (fspace : AS.fspace) : fspace_ssa =
-  let ({ block_in; cfg_pred; _ } : Live.live_package_t) =
-    Live.mk_liveness_fspace (Block.of_fspace fspace)
-  in
-  let op2temp = function
-    | AS.Temp t -> Some t
-    | _ -> None
-  in
-  let opset2tmpset (opset : AS.Set.t) =
-    let opset' = AS.Set.to_list opset in
-    let res = List.filter_map opset' ~f:op2temp in
-    TS.of_list res
-  in
-  let lparams : lparams = LM.map block_in ~f:opset2tmpset in
-  (*_ 1. iterate over blocks to apply block_rename *)
-  let told2new : told2new = TH.of_alist_exn [] in
-  let l2blcssa =
-    List.map fspace.fdef_blocks ~f:(fun blc -> block_rename blc told2new lparams)
-    |> List.map ~f:(fun blcssa -> blcssa.label, (blcssa, blcssa.bparams, blcssa.jtag))
-  in
-  let fdef_new = List.map l2blcssa ~f:(fun (_, (blc, _, _)) -> blc) in
-  let l2jtag =
-    List.map l2blcssa ~f:(fun (l, (_, _, jtag)) -> l, jtag) |> LM.of_alist_exn
-  in
-  { fname = fspace.fname
-  ; args = fspace.args
-  ; fdef = fdef_new
-  ; cfg_pred
-  ; l2jtag
-  ; tmp_cnt = fspace.tmp_cnt
-  }
-;;
-
-let global_rename (prog : AS.program) : program_ssa = List.map prog ~f:fspace_rename
 
 let fspace_phi ({ fname; args; fdef; cfg_pred; l2jtag; tmp_cnt } : fspace_ssa)
   : fspace_phi
@@ -376,7 +389,7 @@ type program = fspace list
 let instr_use (instr : instr) : Temp.t list =
   match instr with
   | ASInstr instr ->
-    let use, _ = SP.def_n_use instr in
+    let _, use = SP.def_n_use instr in
     let use = V.vertex_set_to_op_set use in
     let use =
       AS.Set.to_list use
@@ -416,6 +429,7 @@ let blocks_lining (fdef : block_phi list) : instr IH.t * block list =
     { label; lines; jump; depth } :: blocks, acc + List.length lines
   in
   let block_info, _ = List.fold_left fdef ~init:([], 0) ~f:to_blocks in
+  let block_info = List.rev block_info in
   lined_codes, block_info
 ;;
 
@@ -441,10 +455,9 @@ let fspace_lining ({ fname; args; fdef; tmp_cnt } : fspace_phi) : fspace =
 ;;
 
 let global_lining (prog : program_phi) : program = List.map prog ~f:fspace_lining
-;;
 
 (*_ **** ssa function **** *)
-let ssa (prog : AS.program) : program = 
+let ssa (prog : AS.program) : program =
   let prog_ssa = global_rename prog in
   let prog_phi = global_phi prog_ssa in
   let res = global_lining prog_phi in
@@ -513,3 +526,218 @@ let reconstruct_fspace ({ fname; args; code; block_info; _ } : fspace) : AS.fspa
 ;;
 
 let de_ssa (prog : program) : AS.program = List.map prog ~f:reconstruct_fspace
+
+(*_ debug functions *)
+let pp_args (args : (Temp.t * AS.size) list) : string =
+  List.map args ~f:(fun (t, sz) -> sprintf "%s:%s" (Temp.name t) (AS.format_size sz))
+  |> String.concat ~sep:", "
+;;
+
+let pp_params (params : params) : string =
+  let stuff = TM.to_alist params in
+  List.map stuff ~f:(fun (told, tnew) ->
+    sprintf "%s:%s" (Temp.name told) (Temp.name tnew))
+  |> String.concat ~sep:", "
+;;
+
+let pp_jtag (jtag : jtag) : string =
+  match jtag with
+  | JRet -> "jret"
+  | JUncon { l; params } -> sprintf "goto %s(%s)" (Label.name_bt l) (pp_params params)
+  | JCon { lt; tparams; lf; fparams } ->
+    sprintf
+      "if t:{%s(%s)} f:{%s(%s)}"
+      (Label.name_bt lt)
+      (pp_params tparams)
+      (Label.name_bt lf)
+      (pp_params fparams)
+;;
+
+let pp_block_ssa ({ label; code; bparams; jtag; _ } : block_ssa) ({ block; _ } : AS.block)
+  : string
+  =
+  sprintf
+    "----------------- blc %s(%s) ------------------\n\
+     %s\n\
+     -------------- jtag:%s -----------------\n"
+    (Label.name_bt label)
+    (pp_params bparams)
+    (List.map (List.zip_exn code block) ~f:(fun (instr, ref_instr) ->
+       AS.format_instr ref_instr ^ " ==> " ^ AS.format_instr instr)
+    |> String.concat ~sep:"\n")
+    (pp_jtag jtag)
+;;
+
+let pp_lset (lset : LS.t) : string =
+  let stuff = LS.to_list lset in
+  List.map stuff ~f:Label.name_bt |> String.concat ~sep:", "
+;;
+
+let pp_cfg_pred (cfg : LS.t LM.t) : string =
+  let stuff = LM.to_alist cfg in
+  sprintf
+    "{\n%s\n}"
+    (List.map stuff ~f:(fun (l, ls) -> sprintf "%s:%s" (Label.name_bt l) (pp_lset ls))
+    |> String.concat ~sep:"\n")
+;;
+
+let pp_l2jtag (l2jtag : jtag LM.t) : string =
+  let stuff = LM.to_alist l2jtag in
+  sprintf
+    "{\n%s\n}"
+    (List.map stuff ~f:(fun (l, jtag) -> sprintf "%s:%s" (Label.name_bt l) (pp_jtag jtag))
+    |> String.concat ~sep:"\n")
+;;
+
+let pp_fspace_ssa
+  ({ fname; args; fdef; cfg_pred; l2jtag; _ } : fspace_ssa)
+  ({ fdef_blocks; _ } : AS.fspace)
+  : string
+  =
+  sprintf
+    "==================================\n\
+     fspace_ssa %s(%s):\n\
+     %s\n\
+     cfg=%s\n\
+     l2jtag=%s\n\
+     ===================================\n"
+    (Symbol.name fname)
+    (pp_args args)
+    (List.map (List.zip_exn fdef fdef_blocks) ~f:(fun (b, bref) -> pp_block_ssa b bref)
+    |> String.concat ~sep:"\n")
+    (pp_cfg_pred cfg_pred)
+    (pp_l2jtag l2jtag)
+;;
+
+let pp_program_ssa (prog : program_ssa) (ref : AS.program) : string =
+  List.map (List.zip_exn prog ref) ~f:(fun (p, ref) -> pp_fspace_ssa p ref)
+  |> String.concat ~sep:"\n\n"
+;;
+
+let pp_phi ({ self; alt_selves } : phi) : string =
+  sprintf
+    "%s <-- @(%s)"
+    (Temp.name self)
+    (List.map alt_selves ~f:(fun (l, op) ->
+       sprintf "%s:%s" (Label.name_bt l) (AS.format_operand op))
+    |> String.concat ~sep:", ")
+;;
+
+let pp_block_phi
+  (({ label; code; _ }, { code = code'; bparams; jtag; _ }) : block_phi * block_ssa)
+  : string
+  =
+  let isphi = function
+    | Phi phi -> Some (pp_phi phi)
+    | _ -> None
+  in
+  let phies = List.filter_map code ~f:isphi in
+  let asinstr =
+    List.filter_map code ~f:(fun instr ->
+      match instr with
+      | ASInstr i -> Some i
+      | _ -> None)
+  in
+  sprintf
+    "----------------- blc %s (%s) ------------------\n\
+     %s\n\
+     %s\n\
+     -------------- jump:%s -----------------\n"
+    (Label.name_bt label)
+    (pp_params bparams)
+    (String.concat phies ~sep:"\n")
+    (List.map (List.zip_exn asinstr code') ~f:(fun (i1, i2) ->
+       sprintf "%s >>> %s" (AS.format_instr i1) (AS.format_instr i2))
+    |> String.concat ~sep:"\n")
+    (pp_jtag jtag)
+;;
+
+let pp_fspace_phi
+  (({ fname; args; fdef; _ }, { fdef = fdef_ssa; _ }) : fspace_phi * fspace_ssa)
+  : string
+  =
+  sprintf
+    "==================================\n\
+     fspace_phi %s(%s):\n\
+     %s\n\
+     ===================================\n"
+    (Symbol.name fname)
+    (pp_args args)
+    (List.map (List.zip_exn fdef fdef_ssa) ~f:pp_block_phi |> String.concat ~sep:"\n")
+;;
+
+let pp_program_phi (prog : program_phi) (ref : program_ssa) : string =
+  List.map (List.zip_exn prog ref) ~f:pp_fspace_phi |> String.concat ~sep:"\n\n"
+;;
+
+let pp_instr (l : int) (instr : instr) : string =
+  match instr with
+  | ASInstr instr -> Int.to_string l ^ " : " ^ AS.format_instr instr
+  | Phi phi -> Int.to_string l ^ " : " ^ pp_phi phi
+  | Nop -> Int.to_string l ^ " : nop"
+;;
+
+let pp_block ({ label; lines; jump; _ } : block) (code : instr IH.t) : string =
+  let l2code =
+    List.map lines ~f:(fun l ->
+      let instr = IH.find_exn code l in
+      pp_instr l instr)
+  in
+  sprintf
+    "----------------- blc %s. ------------------\n\
+     %s\n\
+     -------------- jump:%s -----------------\n"
+    (Label.name_bt label)
+    (String.concat l2code ~sep:"\n")
+    (AS.format_jump_tag jump)
+;;
+
+let pp_tuse (tuse : IS.t TH.t) : string =
+  let stuff = TH.to_alist tuse in
+  let stuff = List.map stuff ~f:(fun (t, lset) -> t, IS.to_list lset) in
+  List.map stuff ~f:(fun (t, ilst) ->
+    sprintf
+      "%s:%s"
+      (Temp.name t)
+      (List.map ilst ~f:Int.to_string |> String.concat ~sep:", "))
+  |> String.concat ~sep:"\n"
+;;
+
+let pp_fspace ({ fname; args; code; block_info; tuse; _ } : fspace) : string =
+  sprintf
+    "===================================\n\
+     fspace %s(%s):\n\
+     %s\n\
+     -----------------------------------\n\
+     tuse = {\n\
+     %s\n\
+     }\n\n\
+    \     ===================================\n"
+    (Symbol.name fname)
+    (pp_args args)
+    (List.map block_info ~f:(fun b -> pp_block b code) |> String.concat ~sep:"\n")
+    (pp_tuse tuse)
+;;
+
+let pp_program (prog : program) : string =
+  List.map prog ~f:pp_fspace |> String.concat ~sep:"\n\n"
+;;
+
+(* let ssa_debug (prog : AS.program) : unit =
+  (* let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in *)
+  let prog_ssa : program_ssa = global_rename prog in
+  (* let () = `printf "dumping prog after ssa...\n\n%s\n\n" (pp_program_ssa prog_ssa prog) in *)
+  let prog_phi : program_phi = global_phi prog_ssa in
+  (* let () =
+    printf
+      "dumping prog after phi transformation...\n\n%s\n\n"
+      (pp_program_phi prog_phi prog_ssa)
+  in *)
+  let prog : program = global_lining prog_phi in
+  let () = printf "dumping prog after lining...\n\n%s\n\n" (pp_program prog) in
+  let prog : program = Propagation.propagate prog in
+  let prog : AS.program = de_ssa prog in
+  let () = printf "dumping AS.program after de_ssa ... \n\n%s\n\n" (AS.format_program prog) in
+  ()
+;; *)
+

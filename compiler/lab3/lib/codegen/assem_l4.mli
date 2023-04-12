@@ -192,6 +192,8 @@ type program = fspace list
 val all_regs : reg list
 val num_regs : int
 val mem_fail_lab : Label.t
+val format_jump_tag : assem_jump_tag_t -> string
+val format_size : size -> string 
 val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program : program -> string

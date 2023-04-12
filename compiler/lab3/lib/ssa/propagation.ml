@@ -5,6 +5,14 @@ module IH = SSA.IH
 module TH = SSA.TH
 module IS = SSA.IS
 
+let debug_mode = true
+let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
+
+let pp_IS (lset : IS.t) : string =
+  let lset = IS.to_list lset in
+  List.map lset ~f:Int.to_string |> String.concat ~sep:", "
+;;
+
 module T = struct
   type t = Temp.t [@@deriving equal, compare, sexp, hash]
 end
@@ -51,10 +59,11 @@ let asinstr_prop (instr : AS.instr) (t : Temp.t) (sub : AS.operand) : AS.instr =
     Cmp { size; lhs = lhs'; rhs = rhs' }
   | LoadFromStack _ ->
     failwith "propagate: impossible, LoadFromStack temps never get propagated"
-  | Call _ ->
-    failwith
-      "not implemented: have problem with 3-assem representation of loading on the stack \
-       operands"
+  | Call call ->
+    let args_overflow =
+      List.map call.args_overflow ~f:(fun (op, sz) -> op_prop op t sub, sz)
+    in
+    Call { call with args_overflow }
   | _ -> instr
 ;;
 
@@ -68,7 +77,8 @@ let instr_prop (instr : SSA.instr) (t : Temp.t) (sub : AS.operand) : SSA.instr =
 ;;
 
 let update_tuse (ln : int) = function
-  | None -> failwith "propagate:  why isn't this temp documented in tuse?"
+  | None ->
+    failwith (sprintf "propagate on ln %i:  why isn't this temp documented in tuse?" ln)
   | Some use -> IS.remove use ln
 ;;
 
@@ -197,88 +207,173 @@ let phiopt (prog : SSA.program) : SSA.program = List.map prog ~f:fspace_phiopt
 
 (* copy and constant propagation all in one function *)
 
-let target (instr : AS.instr) : (Temp.t * AS.operand) option =
-  match instr with
+let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
+  | AS.Mov { dest = AS.Temp d; src = AS.Imm c; _ } -> Some (d, AS.Imm c)
   | AS.Mov { dest = AS.Temp t; src; _ } -> Some (t, src)
+  | AS.PureBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
+    let c =
+      match op with
+      | AS.Add -> Int64.( + ) c1 c2
+      | AS.Sub -> Int64.( - ) c1 c2
+      | AS.Mul -> Int64.( * ) c1 c2
+      | AS.BitAnd -> Int64.bit_and c1 c2
+      | AS.BitOr -> Int64.bit_or c1 c2
+      | AS.BitXor -> Int64.bit_xor c1 c2
+    in
+    Some (d, AS.Imm c)
+  | AS.EfktBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
+    (match op with
+     | AS.Div ->
+       if Int64.equal c2 Int64.zero
+       then None
+       else (
+         let c = Int64.( / ) c1 c2 in
+         Some (d, AS.Imm c))
+     | AS.Mod ->
+       if Int64.equal c2 Int64.zero
+       then None
+       else (
+         let c = Int64.( % ) c1 c2 in
+         Some (d, AS.Imm c))
+     | _ -> None)
   | _ -> None
 ;;
 
-let propagate_opt
-  (code : SSA.instr IH.t)
-  (tuse : IS.t TH.t)
-  (i2code : (int * AS.instr) list)
+let target (instr : SSA.instr) : (Temp.t * AS.operand) option =
+  match instr with
+  | SSA.ASInstr asinstr -> target_instr asinstr
+  | _ -> None
+;;
+
+let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t)
   : SSA.instr IH.t * IS.t TH.t
   =
-  let targets =
-    List.filter_map i2code ~f:(fun (i, code) ->
-      match target code with
-      | Some res -> Some (i, res)
-      | _ -> None)
-  in
-  let wq = Queue.of_list targets in
+  let targets_init = IH.keys code in
+  let wq = Queue.of_list targets_init in
   let rec loop () =
     match Queue.dequeue wq with
     | None -> ()
-    | Some (ln, (t, sub)) ->
-      (* replace code[ln] with Nop *)
-      let () = IH.update code ln ~f:(fun _ -> Nop) in
-      (*_ delete ln from tuse[t] and tuse[t'] *)
-      let () = TH.update tuse t ~f:(update_tuse ln) in
-      let () =
-        match sub with
-        | AS.Temp t' -> TH.update tuse t' ~f:(update_tuse ln)
-        | _ -> ()
-      in
-      (*_ get tuse[t] *)
-      let tlines = TH.find_exn tuse t in
-      (*_ for each t on line i: (before was i:t <- const/reg/t')
-       - for each ln in tuse[t], update code[ln] with instr_prop 
-       - collect ln's in tuse[t] that are asinstr *)
-      let instr_list =
-        List.filter_map (IS.to_list tlines) ~f:(fun ln ->
-          (*_ for each ln in tuse[t], update code[ln] with instr_prop *)
-          let lncode = IH.find_exn code ln in
-          let lncode' = instr_prop lncode t sub in
-          let () = IH.update code ln ~f:(fun _ -> lncode') in
-          (* filter those ln in tuse[t] that are asinstr *)
-          match lncode with
-          | SSA.ASInstr instr -> Some (ln, instr)
-          | _ -> None)
-      in
-      (*_ update tuse[t'] = tuse[t'] u tuse[t]*)
-      let () =
-        match sub with
-        | Temp t' ->
-          let tlines' = TH.find_exn tuse t' in
-          TH.update tuse t' ~f:(fun _ -> IS.union tlines tlines')
-        | _ -> ()
-      in
-      (*_ delete t from tuse *)
-      let () = TH.remove tuse t in
-      (*_ put all lines tuse[t] that are targets back onto the queue *)
-      let target' =
-        List.filter_map instr_list ~f:(fun (i, instr) ->
-          match target instr with
-          | Some res -> Some (i, res)
-          | _ -> None)
-      in
-      let () = Queue.enqueue_all wq target' in
-      loop ()
+    | Some ln ->
+      let instr_ssa = IH.find_exn code ln in
+      (match target instr_ssa with
+       | None -> loop ()
+       | Some (t, sub) ->
+         let () =
+           debug_print
+             (sprintf
+                "propagate %i : %s <- %s\n"
+                ln
+                (Temp.name t)
+                (AS.format_operand sub))
+         in
+         (* replace code[ln] with Nop *)
+         let () = IH.update code ln ~f:(fun _ -> Nop) in
+         let () =
+           debug_print
+             (sprintf "delete code: %s\n" (SSA.pp_instr ln (IH.find_exn code ln)))
+         in
+         (*_ delete ln from tuse[t'] *)
+         let () =
+           match sub with
+           | AS.Temp t' ->
+             TH.update tuse t' ~f:(update_tuse ln);
+             debug_print
+               (sprintf
+                  "check if %i is still in tuse[%s]={%s}\n"
+                  ln
+                  (Temp.name t')
+                  (pp_IS (TH.find_exn tuse t')))
+           | _ -> ()
+         in
+         (*_ get tuse[t] *)
+         let tlines =
+           match TH.find tuse t with
+           | Some lset -> lset
+           | None ->
+             failwith
+               (sprintf "propagate: tuse[%s] is gone before it was deleted" (Temp.name t))
+         in
+         (*_ for each t on line i: (before was i:t <- const/reg/t')
+     - for each ln in tuse[t], update code[ln] with instr_prop 
+     - collect ln's in tuse[t] that are asinstr *)
+         let instr_list =
+           List.map (IS.to_list tlines) ~f:(fun ln ->
+             (*_ for each ln in tuse[t], update code[ln] with instr_prop *)
+             let lncode = IH.find_exn code ln in
+             let lncode' = instr_prop lncode t sub in
+             let () = IH.update code ln ~f:(fun _ -> lncode') in
+             let () =
+               debug_print
+                 (sprintf
+                    ">>> %s ==> %s\n"
+                    (SSA.pp_instr ln lncode)
+                    (SSA.pp_instr ln lncode'))
+             in
+             (* filter those ln in tuse[t] that are asinstr *)
+             ln, lncode)
+         in
+         (*_ update tuse[t'] = tuse[t'] u tuse[t]*)
+         let () =
+           match sub with
+           | Temp t' ->
+             let tlines' = TH.find_exn tuse t' in
+             TH.update tuse t' ~f:(fun _ -> IS.union tlines tlines');
+             debug_print
+               (sprintf
+                  "tuse[%s] is now %s\n"
+                  (Temp.name t')
+                  (pp_IS (TH.find_exn tuse t')))
+           | _ -> ()
+         in
+         (*_ delete t from tuse *)
+         let () = TH.remove tuse t in
+         (*_ put all lines tuse[t] that are targets back onto the queue *)
+         let targets' =
+           List.filter_map instr_list ~f:(fun (i, instr) ->
+             match target instr with
+             | Some _ -> Some i
+             | _ -> None)
+         in
+         let () = Queue.enqueue_all wq targets' in
+         loop ())
   in
   let () = loop () in
   code, tuse
 ;;
 
 let propagate_fspace (fspace : SSA.fspace) : SSA.fspace =
-  let i2code =
-    IH.filter_map fspace.code ~f:(fun code ->
-      match code with
-      | SSA.ASInstr instr -> Some instr
-      | _ -> None)
-    |> IH.to_alist
-  in
-  let code, tuse = propagate_opt fspace.code fspace.tuse i2code in
+  let () = debug_print (sprintf "prop on fspace %s\n" (Symbol.name fspace.fname)) in
+  let code, tuse = propagate_opt fspace.code fspace.tuse in
   { fspace with code; tuse }
 ;;
 
 let propagate (prog : SSA.program) : SSA.program = List.map prog ~f:propagate_fspace
+
+(*_ debug section: recreate the entire process of 
+   1) going into ssa 
+   2) phi_opt 
+   3) propagate 
+   4) de_ssa *)
+
+let debug (prog : AS.program) : unit =
+  (* let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in *)
+  let prog_ssa : SSA.program_ssa = SSA.global_rename prog in
+  (* let () = printf "dumping prog after ssa...\n\n%s\n\n" (SSA.pp_program_ssa prog_ssa prog) in *)
+  let prog_phi : SSA.program_phi = SSA.global_phi prog_ssa in
+  (* let () =
+    printf
+      "dumping prog after phi transformation...\n\n%s\n\n"
+      (SSA.pp_program_phi prog_phi prog_ssa)
+  in *)
+  let prog : SSA.program = SSA.global_lining prog_phi in
+  let () = printf "dumping prog after lining...\n\n%s\n\n" (SSA.pp_program prog) in
+  let prog : SSA.program = propagate prog in
+  let () =
+    printf "dumping prog after const/copy propagation...\n\n%s\n\n" (SSA.pp_program prog)
+  in
+  let prog : AS.program = SSA.de_ssa prog in
+  let () =
+    printf "dumping AS.program after de_ssa ... \n\n%s\n\n" (AS.format_program prog)
+  in
+  ()
+;;

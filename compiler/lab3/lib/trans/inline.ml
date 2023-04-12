@@ -2,6 +2,9 @@ open Core
 module T = Tree_l4
 module SM = Symbol.Map
 
+let debug_mode = true
+let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
+
 type fspace_target =
   { fname : Symbol.t
   ; args : (Temp.t * int) list
@@ -9,28 +12,39 @@ type fspace_target =
   ; return : T.mpexp option
   }
 
+let is_lab1_stm = function 
+| T.MovFuncApp _ -> false
+| _ -> false
+;;
+
+let is_lab1_code (code : T.stm list) : bool = 
+  let booleans = List.map code ~f:(is_lab1_stm) in
+  List.fold booleans ~init:false ~f:(||)
+;;
+
 let is_target ({ fname; args; fdef } : T.fspace_block) : fspace_target option =
   if List.length fdef <> 1
   then None
   else (
     let block = List.hd_exn fdef in
     let code = block.block |> List.rev in
-    if List.length code <= 15
-    then (
+    if List.length code > 50 then None
+    else if is_lab1_code code then None
+    else (
       let return, rest =
         match code with
         | T.Return ret :: rest -> ret, rest
         | _ ->
           failwith
-            "inline: encounter basic block without a return at the end, what is trans \
+            "inline: encounter L1 func without a return at the end, what is trans \
              doing?"
       in
       let fdef = List.rev rest in
       Some { fname; args; fdef; return })
-    else None)
+    )
 ;;
 
-let split_program (program : T.program) : fspace_target SM.t * T.fspace_block list =
+let split_program (program : T.program) : fspace_target SM.t * T.program =
   let prog = List.filter_map program ~f:is_target in
   let res1 = List.map prog ~f:(fun fspace -> fspace.fname, fspace) |> SM.of_alist_exn in
   let res2 =

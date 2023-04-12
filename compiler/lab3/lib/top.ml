@@ -88,7 +88,9 @@ type cmd_line_args =
   ; dump_parsing : bool
   ; dump_ast : bool
   ; dump_ir : bool
+  ; inline : bool
   ; dump_assem : bool
+  ; dump_ssa : bool
   ; typecheck_only : bool
   ; regalloc_only : bool
   ; emit : Emit.t
@@ -132,9 +134,15 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   and dump_ir =
     let doc = "If present, print the translated ir ast." in
     flag (Arg.info [ "dump-ir" ] ~doc)
+  and inline = 
+    let doc = "If present, do function inlining on ir" in
+    flag (Arg.info [ "inline" ] ~doc)
   and dump_assem =
     let doc = "If present, print the final assembly." in
     flag (Arg.info [ "dump-assem" ] ~doc)
+  and dump_ssa = 
+    let doc = "If present, print the program after ssa." in
+    flag (Arg.info [ "dump-ssa" ] ~doc)
   and typecheck_only =
     let doc = "If present, exit after typechecking." in
     flag (Arg.info [ "t"; "typecheck-only" ] ~doc)
@@ -170,7 +178,9 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   ; dump_parsing
   ; dump_ast
   ; dump_ir
+  ; inline
   ; dump_assem
+  ; dump_ssa
   ; typecheck_only
   ; regalloc_only
   ; emit
@@ -223,13 +233,18 @@ let compile (cmd : cmd_line_args) : unit =
   (*_ opt: remove empty jmp blocks *)
   (* say_if cmd.verbose (fun () -> "Removing unncessary jumps..."); *)
   (* let ir = Rmjmp.rmjmp ir in *)
-  say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
+  say_if cmd.inline (fun () -> "Doing function inline...");
+  let ir = if cmd.inline then Inline.inline ir else ir in
+  say_if cmd.inline (fun () -> TreeM.Print.pp_program ir);
+
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
   let mfail = Label.create () in
   let assem = Codegen_l4.codegen ~mfl:mfail ~unsafe:cmd.unsafe ir in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
-  say_if cmd.dump_assem (fun () -> Block.pp_all_blocks (Block.blocks_former assem));
+  (* say_if cmd.dump_assem (fun () -> Block.pp_all_blocks (Block.blocks_former assem)); *)
+  say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
+  let () = if cmd.dump_ssa then Propagation.debug assem else () in
   say_if cmd.verbose (fun () -> "Emitting...");
   match cmd.emit with
   (* Output: abstract 3-address assem *)

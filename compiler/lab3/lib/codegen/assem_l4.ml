@@ -318,7 +318,7 @@ let format_instr' = function
       offset
 ;;
 
-let format_instr i = format_instr' i ^ "\n"
+let format_instr i = format_instr' i
 
 let format_jump_tag = function
   | JRet -> "ret"
@@ -328,10 +328,10 @@ let format_jump_tag = function
 
 let format_block ({ label; block; jump; depth } : block) : string =
   sprintf
-    "\n%s [at depth=%i]:\n%s\n%s\n"
+    "\n%s [at depth=%i]:\n%s\njump=%s\n"
     (Label.name_bt label)
     depth
-    (List.map block ~f:format_instr |> String.concat)
+    (List.map block ~f:format_instr |> String.concat ~sep:"\n")
     (format_jump_tag jump)
 ;;
 
