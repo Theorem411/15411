@@ -1,20 +1,18 @@
-//test return 0
-/* Simple function call to sum up numbers */
+//test return 8
+/* gcd */
 
-
-int sum(int i, int j) {
-  int sum = 0;
-  for (; i <= j; i+=1)
-    sum += i;
-  return sum;
+int gcd (int x, int y) {
+  /* x,y >= 0 */
+  int r;
+  while (y != 0) {
+    r = x%y;
+    x = y;
+    y = r;
+  }
+  return x;
 }
+  
 
 int main () {
-  int n;
-  int x;
-  int y;
-  n = 100;
-  x = sum(1,100);
-  y = n*(n+1)/2;
-  return x-y;
+  return gcd(24,56);
 }

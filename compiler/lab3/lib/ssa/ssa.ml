@@ -315,10 +315,11 @@ let fspace_rename (fspace : AS.fspace) : fspace_ssa =
     TS.of_list res
   in
   let lparams : lparams = LM.map block_in ~f:opset2tmpset in
-  let told2new : told2new = TH.of_alist_exn [] in
   (*_ 0. forcefully rename function args *)
   (* let args = List.map fspace.args ~f:(fun (t, sz) -> temp_rename_def t told2new, sz) in *)
   let args = fspace.args in
+  let arg_temps = List.map args ~f:(fun (t, _) -> t, t) in
+  let told2new : told2new = TH.of_alist_exn arg_temps in
   let hack_func_bt =
     Label.FunName { fname = fspace.fname; args = List.map fspace.args ~f:fst }
   in
@@ -369,12 +370,12 @@ let block_phi
             L3 |x2|  |y3|  |z2|
   *)
   (*_ orig temp to fresh ones *)
-  let () = printf "lcur is %s\n" (Label.name_bt lcur) in
+  (* let () = printf "lcur is %s\n" (Label.name_bt lcur) in *)
   let preds = LM.find_exn cfg_pred lcur |> LS.to_list in
   (*_ for each predecessor block, find jtag and gather the their parameter *)
   let preds_jtag =
     List.map preds ~f:(fun lpred ->
-        printf "lpred is %s\n" (Label.name_bt lpred);
+        (* printf "lpred is %s\n" (Label.name_bt lpred); *)
         lpred, LM.find_exn l2jtag lpred)
   in
   let see_jtag (lpred, jtag) =
