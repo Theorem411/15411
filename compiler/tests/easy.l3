@@ -1,17 +1,20 @@
-//test return 1
-/* using an int as a boolean */
+//test return 0
+/* Simple function call to sum up numbers */
 
-bool xor (bool b, bool c) {
-  return (b && !c) || (!b && c);
+
+int sum(int i, int j) {
+  int sum = 0;
+  for (; i <= j; i+=1)
+    sum += i;
+  return sum;
 }
 
 int main () {
-  bool t;
-  bool f;
-  t = true;
-  f = false;
-  if (!xor(t,t) && xor(t,f) && xor(f,t) && !xor(f,f))
-    return 1;
-  else
-    return 0;
+  int n;
+  int x;
+  int y;
+  n = 100;
+  x = sum(1,100);
+  y = n*(n+1)/2;
+  return x-y;
 }

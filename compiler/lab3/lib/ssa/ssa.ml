@@ -88,6 +88,67 @@ type fspace_phi =
 
 type program_phi = fspace_phi list
 
+(*_ some high level debug function *)
+let pp_args (args : (Temp.t * AS.size) list) : string =
+  List.map args ~f:(fun (t, sz) -> sprintf "%s:%s" (Temp.name t) (AS.format_size sz))
+  |> String.concat ~sep:", "
+;;
+
+let pp_params (params : params) : string =
+  let stuff = TM.to_alist params in
+  List.map stuff ~f:(fun (told, tnew) ->
+    sprintf "%s:%s" (Temp.name told) (Temp.name tnew))
+  |> String.concat ~sep:", "
+;;
+
+let pp_jtag (jtag : jtag) : string =
+  match jtag with
+  | JRet -> "jret"
+  | JUncon { l; params } -> sprintf "goto %s(%s)" (Label.name_bt l) (pp_params params)
+  | JCon { lt; tparams; lf; fparams } ->
+    sprintf
+      "if t:{%s(%s)} f:{%s(%s)}"
+      (Label.name_bt lt)
+      (pp_params tparams)
+      (Label.name_bt lf)
+      (pp_params fparams)
+;;
+
+let pp_block_ssa ({ label; code; bparams; jtag; _ } : block_ssa) ({ block; _ } : AS.block)
+  : string
+  =
+  sprintf
+    "----------------- blc %s(%s) ------------------\n\
+     %s\n\
+     -------------- jtag:%s -----------------\n"
+    (Label.name_bt label)
+    (pp_params bparams)
+    (List.map (List.zip_exn code block) ~f:(fun (instr, ref_instr) ->
+       AS.format_instr ref_instr ^ " ==> " ^ AS.format_instr instr)
+    |> String.concat ~sep:"\n")
+    (pp_jtag jtag)
+;;
+
+let pp_lset (lset : LS.t) : string =
+  let stuff = LS.to_list lset in
+  List.map stuff ~f:Label.name_bt |> String.concat ~sep:", "
+;;
+
+let pp_cfg_pred (cfg : LS.t LM.t) : string =
+  let stuff = LM.to_alist cfg in
+  sprintf
+    "{\n%s\n}"
+    (List.map stuff ~f:(fun (l, ls) -> sprintf "%s:%s" (Label.name_bt l) (pp_lset ls))
+    |> String.concat ~sep:"\n")
+;;
+
+let pp_l2jtag (l2jtag : jtag LM.t) : string =
+  let stuff = LM.to_alist l2jtag in
+  sprintf
+    "{\n%s\n}"
+    (List.map stuff ~f:(fun (l, jtag) -> sprintf "%s:%s" (Label.name_bt l) (pp_jtag jtag))
+    |> String.concat ~sep:"\n")
+;;
 (*_ ********************* Above: type names for sanity ********************** *)
 let temp_rename_use (t : Temp.t) (told2new : told2new) : Temp.t =
   (*_ rename temps if used: 
@@ -310,7 +371,10 @@ let block_phi
   (* let () = printf "lcur is %s\n" (Label.name_bt lcur) in *)
   let preds = LM.find_exn cfg_pred lcur |> LS.to_list in
   (*_ for each predecessor block, find jtag and gather the their parameter *)
-  let preds_jtag = List.map preds ~f:(fun lpred -> lpred, LM.find_exn l2jtag lpred) in
+  let () = printf "l2jtag: %s\n" (pp_l2jtag l2jtag) in
+  let () = printf "l2pred: %s\n" (pp_cfg_pred cfg_pred) in
+  let () = printf "preds = %s\n" (List.map preds ~f:Label.name_bt |> String.concat ~sep:", ") in
+  let preds_jtag = List.map preds ~f:(fun lpred -> let () = printf ">>> who fails %s?\n" (Label.name_bt lpred) in lpred, LM.find_exn l2jtag lpred) in
   let see_jtag (lpred, jtag) =
     match jtag with
     | JRet -> None
@@ -528,66 +592,6 @@ let reconstruct_fspace ({ fname; args; code; block_info; _ } : fspace) : AS.fspa
 let de_ssa (prog : program) : AS.program = List.map prog ~f:reconstruct_fspace
 
 (*_ debug functions *)
-let pp_args (args : (Temp.t * AS.size) list) : string =
-  List.map args ~f:(fun (t, sz) -> sprintf "%s:%s" (Temp.name t) (AS.format_size sz))
-  |> String.concat ~sep:", "
-;;
-
-let pp_params (params : params) : string =
-  let stuff = TM.to_alist params in
-  List.map stuff ~f:(fun (told, tnew) ->
-    sprintf "%s:%s" (Temp.name told) (Temp.name tnew))
-  |> String.concat ~sep:", "
-;;
-
-let pp_jtag (jtag : jtag) : string =
-  match jtag with
-  | JRet -> "jret"
-  | JUncon { l; params } -> sprintf "goto %s(%s)" (Label.name_bt l) (pp_params params)
-  | JCon { lt; tparams; lf; fparams } ->
-    sprintf
-      "if t:{%s(%s)} f:{%s(%s)}"
-      (Label.name_bt lt)
-      (pp_params tparams)
-      (Label.name_bt lf)
-      (pp_params fparams)
-;;
-
-let pp_block_ssa ({ label; code; bparams; jtag; _ } : block_ssa) ({ block; _ } : AS.block)
-  : string
-  =
-  sprintf
-    "----------------- blc %s(%s) ------------------\n\
-     %s\n\
-     -------------- jtag:%s -----------------\n"
-    (Label.name_bt label)
-    (pp_params bparams)
-    (List.map (List.zip_exn code block) ~f:(fun (instr, ref_instr) ->
-       AS.format_instr ref_instr ^ " ==> " ^ AS.format_instr instr)
-    |> String.concat ~sep:"\n")
-    (pp_jtag jtag)
-;;
-
-let pp_lset (lset : LS.t) : string =
-  let stuff = LS.to_list lset in
-  List.map stuff ~f:Label.name_bt |> String.concat ~sep:", "
-;;
-
-let pp_cfg_pred (cfg : LS.t LM.t) : string =
-  let stuff = LM.to_alist cfg in
-  sprintf
-    "{\n%s\n}"
-    (List.map stuff ~f:(fun (l, ls) -> sprintf "%s:%s" (Label.name_bt l) (pp_lset ls))
-    |> String.concat ~sep:"\n")
-;;
-
-let pp_l2jtag (l2jtag : jtag LM.t) : string =
-  let stuff = LM.to_alist l2jtag in
-  sprintf
-    "{\n%s\n}"
-    (List.map stuff ~f:(fun (l, jtag) -> sprintf "%s:%s" (Label.name_bt l) (pp_jtag jtag))
-    |> String.concat ~sep:"\n")
-;;
 
 let pp_fspace_ssa
   ({ fname; args; fdef; cfg_pred; l2jtag; _ } : fspace_ssa)

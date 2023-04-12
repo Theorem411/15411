@@ -302,13 +302,13 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t)
              let lncode = IH.find_exn code ln in
              let lncode' = instr_prop lncode t sub in
              let () = IH.update code ln ~f:(fun _ -> lncode') in
-             let () =
+             (* let () =
                debug_print
                  (sprintf
                     ">>> %s ==> %s\n"
                     (SSA.pp_instr ln lncode)
                     (SSA.pp_instr ln lncode'))
-             in
+             in *)
              (* filter those ln in tuse[t] that are asinstr *)
              ln, lncode)
          in
@@ -358,13 +358,13 @@ let propagate (prog : SSA.program) : SSA.program = List.map prog ~f:propagate_fs
 let debug (prog : AS.program) : unit =
   (* let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in *)
   let prog_ssa : SSA.program_ssa = SSA.global_rename prog in
-  (* let () = printf "dumping prog after ssa...\n\n%s\n\n" (SSA.pp_program_ssa prog_ssa prog) in *)
+  let () = printf "dumping prog after ssa...\n\n%s\n\n" (SSA.pp_program_ssa prog_ssa prog) in
   let prog_phi : SSA.program_phi = SSA.global_phi prog_ssa in
-  (* let () =
+  let () =
     printf
       "dumping prog after phi transformation...\n\n%s\n\n"
       (SSA.pp_program_phi prog_phi prog_ssa)
-  in *)
+  in
   let prog : SSA.program = SSA.global_lining prog_phi in
   let () = printf "dumping prog after lining...\n\n%s\n\n" (SSA.pp_program prog) in
   let prog : SSA.program = propagate prog in
