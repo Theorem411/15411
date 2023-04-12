@@ -153,5 +153,7 @@ module Print : sig
   val pp_pexp : pexp -> string
   val pp_mpexp : mpexp -> string
   val pp_stm : stm -> string
+  val pp_block : block -> string
+  val pp_fspace : fspace_block -> string
   val pp_program : program -> string
 end

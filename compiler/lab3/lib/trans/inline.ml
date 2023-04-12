@@ -2,7 +2,7 @@ open Core
 module T = Tree_l4
 module SM = Symbol.Map
 
-let debug_mode = true
+let debug_mode = false
 let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
 
 type fspace_target =
@@ -12,36 +12,67 @@ type fspace_target =
   ; return : T.mpexp option
   }
 
-let is_lab1_stm = function 
-| T.MovFuncApp _ -> false
-| _ -> false
+let pp_fspace_target { fname; args; fdef; return } : string =
+  sprintf
+    "------------ L1 blc: %s(%s) --------------\n  %s\n  ret: %s\n  "
+    (Symbol.name fname)
+    (List.map args ~f:(fun (t, sz) -> sprintf "%s:%i" (Temp.name t) sz)
+    |> String.concat ~sep:", ")
+    (List.map fdef ~f:T.Print.pp_stm |> String.concat ~sep:"\n")
+    (match return with
+     | None -> "-"
+     | Some e -> T.Print.pp_mpexp e)
 ;;
 
-let is_lab1_code (code : T.stm list) : bool = 
-  let booleans = List.map code ~f:(is_lab1_stm) in
-  List.fold booleans ~init:false ~f:(||)
+let pp_target (target : fspace_target SM.t) : string =
+  let target = SM.to_alist target in
+  let res =
+    List.map target ~f:(fun (_, fspace) -> pp_fspace_target fspace)
+    |> String.concat ~sep:"\n\n"
+  in
+  sprintf "targets: \n%s\n" res
+;;
+
+let is_lab1_stm = function
+  | T.MovFuncApp _ ->
+    (* let () = debug_print (sprintf "    this is the reason why! %s() \n" (Symbol.name fname)) in *)
+    false
+  | _ -> true
+;;
+
+let is_lab1_code (code : T.stm list) : bool =
+  (* let () = debug_print (sprintf "    is_lab1(%s)? %b\n" (List.map code ~f:T.Print.pp_stm |> String.concat ~sep:";") (is_lab1_code code)) in *)
+  let booleans = List.map code ~f:is_lab1_stm in
+  List.fold booleans ~init:true ~f:( && )
 ;;
 
 let is_target ({ fname; args; fdef } : T.fspace_block) : fspace_target option =
+  (* let () = debug_print (sprintf ">>> is %s target? fdef=%i\n" (Symbol.name fname) (List.length fdef)) in *)
   if List.length fdef <> 1
   then None
   else (
     let block = List.hd_exn fdef in
     let code = block.block |> List.rev in
-    if List.length code > 50 then None
-    else if is_lab1_code code then None
+    (* let () = debug_print (sprintf "    |code| = %i\n" (List.length code)) in *)
+    if List.length code > 50
+    then None
+    else if not (is_lab1_code code)
+    then None
     else (
       let return, rest =
         match code with
         | T.Return ret :: rest -> ret, rest
         | _ ->
           failwith
-            "inline: encounter L1 func without a return at the end, what is trans \
-             doing?"
+            (sprintf
+               "inline: encounter L1 func %s without a return at the end, what is trans \
+                doing?"
+               (Symbol.name fname))
       in
       let fdef = List.rev rest in
-      Some { fname; args; fdef; return })
-    )
+      let fspace_target = { fname; args; fdef; return } in
+      (* let () = debug_print (sprintf "    find target! %s\n" (pp_fspace_target fspace_target)) in *)
+      Some fspace_target))
 ;;
 
 let split_program (program : T.program) : fspace_target SM.t * T.program =
@@ -57,23 +88,28 @@ let split_program (program : T.program) : fspace_target SM.t * T.program =
 ;;
 
 let inline_block (targets : fspace_target SM.t) (block : T.block) : T.block =
-  let foldf acc = function
+  let foldf acc stm =
+    match stm with
     | T.MovFuncApp { dest; fname; args = es; _ } ->
-      let { args; fdef; return; _ } = SM.find_exn targets fname in
-      let mov_args =
-        List.zip_exn args es
-        |> List.map ~f:(fun ((dest, _), src) -> T.MovPureExp { dest; src })
-      in
-      let finisher =
-        match dest, return with
-        | Some (d, _), Some e -> [ T.MovPureExp { dest = d; src = e } ]
-        | Some _, None ->
-          failwith
-            "inline: impossible! encounter a target block with destination but no return!"
-        | _ -> []
-      in
-      let inline = List.concat [ mov_args; fdef; finisher ] |> List.rev in
-      inline @ acc
+      (* let () = debug_print (sprintf "fname=%s\n" (Symbol.name fname)) in *)
+      (match SM.find targets fname with
+       | None -> stm :: acc
+       | Some { args; fdef; return; _ } ->
+         let mov_args =
+           List.zip_exn args es
+           |> List.map ~f:(fun ((dest, _), src) -> T.MovPureExp { dest; src })
+         in
+         let finisher =
+           match dest, return with
+           | Some (d, _), Some e -> [ T.MovPureExp { dest = d; src = e } ]
+           | Some _, None ->
+             failwith
+               "inline: impossible! encounter a target block with destination but no \
+                return!"
+           | _ -> []
+         in
+         let inline = List.concat [ mov_args; fdef; finisher ] |> List.rev in
+         inline @ acc)
     | stm -> stm :: acc
   in
   let code : T.stm list = List.fold block.block ~init:[] ~f:foldf in
@@ -88,7 +124,10 @@ let inline_fspace (targets : fspace_target SM.t) ({ fname; args; fdef } : T.fspa
 ;;
 
 let inline (prog : T.program) : T.program =
+  let () = debug_print (sprintf "Before: \n%s\n\n" (T.Print.pp_program prog)) in
   let targets, prog = split_program prog in
+  let () = debug_print (pp_target targets) in
   let prog = List.map prog ~f:(inline_fspace targets) in
+  let () = debug_print (sprintf "After: \n%s\n\n" (T.Print.pp_program prog)) in
   prog
 ;;

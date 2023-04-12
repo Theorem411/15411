@@ -1,3 +1,3 @@
-(* module Tree = Tree_l4
+module Tree = Tree_l4
 
-val rmjmp : Tree.program -> Tree.program *)
+val rmjmp : Tree.program -> Tree.program

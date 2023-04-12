@@ -1,4 +1,4 @@
-(* open Core
+open Core
 module Tree = Tree_l4
 
 module T = struct
@@ -8,6 +8,10 @@ end
 module LM = Map.Make (T)
 module LS = Set.Make (T)
 module LH = Hashtbl.Make (T)
+
+let debug_mode = false
+let debug_print (err_msg : string) : unit= 
+  if debug_mode then printf "%s" err_msg else ()
 
 type entry =
   { code : Tree.stm list
@@ -25,18 +29,31 @@ let lh_init (fdef : Tree.block list) : entry LH.t =
 ;;
 
 let pred_init (fdef : Tree.block list) : LS.t LH.t =
-  let mapf ({ label; jump; _ } : Tree.block) : (Label.bt * Label.bt) list =
+  let pred_init = List.map fdef ~f:(fun blc -> blc.label, []) in
+  let predtbl = LH.of_alist_exn pred_init in
+  let iterf ({ label; jump; _ } : Tree.block) : unit =
     match jump with
-    | Tree.JCon { lt; lf } -> [ Label.bt lt, label; Label.bt lf, label ]
-    | Tree.JUncon l -> [ Label.bt l, label ]
-    | _ -> []
+    | Tree.JCon { lt; lf } ->
+      LH.update predtbl (Label.bt lt) ~f:(fun lstopt ->
+        match lstopt with
+        | None -> failwith "rmjmp: hmm?"
+        | Some lst -> label :: lst);
+      LH.update predtbl (Label.bt lf) ~f:(fun lstopt ->
+        match lstopt with
+        | None -> failwith "rmjmp: hmm?"
+        | Some lst -> label :: lst)
+    | Tree.JUncon l ->
+      LH.update predtbl (Label.bt l) ~f:(fun lstopt ->
+        match lstopt with
+        | None -> failwith "rmjmp: hmm?"
+        | Some lst -> label :: lst)
+    | _ -> ()
   in
-  let elst = List.map fdef ~f:mapf |> List.concat in
-  let etbl = LH.of_alist_multi elst in
-  LH.map etbl ~f:LS.of_list
+  let () = List.iter fdef ~f:iterf in
+  LH.map predtbl ~f:LS.of_list
 ;;
 
-let update_juncon (binfo : entry LH.t) (bid : Label.bt) (new_lab : Label.t) : unit =
+(* let update_juncon (binfo : entry LH.t) (bid : Label.bt) (new_lab : Label.t) : unit =
   let entry = LH.find_exn binfo bid in
   let tl = List.last_exn entry.code in
   let entry' =
@@ -88,9 +105,9 @@ let entry_is_empty_opt ({ jtag; code; _ } : entry) : Label.t option =
   | Tree.JUncon l, Tree.Goto l' ->
     if Label.equal l l' then if List.length code = 1 then Some l else None else None
   | _ -> None
-;;
+;; *)
 
-let entry_is_single_pred (preds : LS.t LH.t) (l : Label.bt) : bool =
+(* let entry_is_single_pred (preds : LS.t LH.t) (l : Label.bt) : bool =
   let pred_of_l = LH.find_exn preds l in
   if LS.length pred_of_l = 1 then true else false
 ;;
@@ -146,16 +163,28 @@ let rm_single_pred_passing (ls : Label.bt list) (btbl : entry LH.t) (preds : LS.
   : unit
   =
   failwith "no"
-;;
+;; *)
 
 let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
   (*_ init wq with initially dead blocks *)
-  let wq_init = LH.filter preds ~f:(fun s -> LS.length s = 0) |> LH.keys in
+  let wq_init =
+    LH.filteri preds ~f:(fun ~key:l ~data:s ->
+      match l with
+      | Label.FunName _ -> false
+      | _ -> LS.length s = 0)
+    |> LH.keys
+  in
   let wq = Queue.of_list wq_init in
   let rec loop () =
     match Queue.dequeue wq with
     | Some l ->
       let l_preds = LH.find_exn preds l in
+      let () =
+        debug_print
+          (sprintf ">>> label %s has preds = {%s}\n"
+          (Label.name_bt l)
+          (LS.to_list l_preds |> List.map ~f:Label.name_bt |> String.concat ~sep:", "))
+      in
       if LS.length l_preds = 0
       then (
         (*_ 1. find all of this dead block's children *)
@@ -190,14 +219,14 @@ let run_till_none (fdef : Tree.block list) : entry LH.t =
   let btbl = lh_init fdef in
   (*_ init tbl from label to predecessors *)
   let preds = pred_init fdef in
-  (*_ label list *)
-  let labs = List.map fdef ~f:(fun blc -> blc.label) in
   (*_ dead block eliminations *)
   let () = rm_dead_blc_passing btbl preds in
+  (*_ label list *)
+  (* let labs = List.map fdef ~f:(fun blc -> blc.label) in *)
   (*_ empty block elimination *)
-  let () = rm_empty_blc_passing btbl preds in
+  (* let () = rm_empty_blc_passing btbl preds in *)
   (*_ single pred block elimination *)
-  let () = rm_single_pred_passing labs btbl preds in
+  (* let () = rm_single_pred_passing labs btbl preds in *)
   btbl
 ;;
 
@@ -207,15 +236,19 @@ let tbl_to_blc_lst (tbl : entry LH.t) : Tree.block list =
     idx, { label; block = code; jump = jtag; loop_depth = depth }
   in
   let lst' = List.map lst ~f:mapf in
+  let () = debug_print (sprintf "tbl_to_blc_lst: {\n%s\n}\n" (List.map lst' ~f:(fun (i, blc) -> sprintf "%i : %s" i (Tree.Print.pp_block blc)) |> String.concat ~sep:",\n")) in
   let compare (i1, _) (i2, _) = Int.compare i1 i2 in
   let lst_sort = List.sort lst' ~compare in
   List.map lst_sort ~f:snd
 ;;
 
 let rmjmp_fspace (fspace : Tree.fspace_block) : Tree.fspace_block =
+  let ()= debug_print (sprintf "perform rmjmp on fspace %s\n" (Symbol.name fspace.fname)) in
   let tbl = run_till_none fspace.fdef in
   let fdef = tbl_to_blc_lst tbl in
-  { fspace with fdef }
+  let res = { fspace with fdef } in
+  let () = debug_print (sprintf "final fspace: %s\n" (Tree.Print.pp_fspace res)) in
+  res
 ;;
 
-let rmjmp = List.map ~f:rmjmp_fspace *)
+let rmjmp = List.map ~f:rmjmp_fspace
