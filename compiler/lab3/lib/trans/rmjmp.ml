@@ -10,8 +10,7 @@ module LS = Set.Make (T)
 module LH = Hashtbl.Make (T)
 
 let debug_mode = false
-let debug_print (err_msg : string) : unit= 
-  if debug_mode then printf "%s" err_msg else ()
+let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
 
 type entry =
   { code : Tree.stm list
@@ -35,18 +34,18 @@ let pred_init (fdef : Tree.block list) : LS.t LH.t =
     match jump with
     | Tree.JCon { lt; lf } ->
       LH.update predtbl (Label.bt lt) ~f:(fun lstopt ->
-        match lstopt with
-        | None -> failwith "rmjmp: hmm?"
-        | Some lst -> label :: lst);
+          match lstopt with
+          | None -> failwith "rmjmp: hmm?"
+          | Some lst -> label :: lst);
       LH.update predtbl (Label.bt lf) ~f:(fun lstopt ->
-        match lstopt with
-        | None -> failwith "rmjmp: hmm?"
-        | Some lst -> label :: lst)
+          match lstopt with
+          | None -> failwith "rmjmp: hmm?"
+          | Some lst -> label :: lst)
     | Tree.JUncon l ->
       LH.update predtbl (Label.bt l) ~f:(fun lstopt ->
-        match lstopt with
-        | None -> failwith "rmjmp: hmm?"
-        | Some lst -> label :: lst)
+          match lstopt with
+          | None -> failwith "rmjmp: hmm?"
+          | Some lst -> label :: lst)
     | _ -> ()
   in
   let () = List.iter fdef ~f:iterf in
@@ -169,9 +168,9 @@ let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
   (*_ init wq with initially dead blocks *)
   let wq_init =
     LH.filteri preds ~f:(fun ~key:l ~data:s ->
-      match l with
-      | Label.FunName _ -> false
-      | _ -> LS.length s = 0)
+        match l with
+        | Label.FunName _ -> false
+        | _ -> LS.length s = 0)
     |> LH.keys
   in
   let wq = Queue.of_list wq_init in
@@ -181,32 +180,39 @@ let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
       let l_preds = LH.find_exn preds l in
       let () =
         debug_print
-          (sprintf ">>> label %s has preds = {%s}\n"
-          (Label.name_bt l)
-          (LS.to_list l_preds |> List.map ~f:Label.name_bt |> String.concat ~sep:", "))
+          (sprintf
+             ">>> label %s has preds = {%s}\n"
+             (Label.name_bt l)
+             (LS.to_list l_preds |> List.map ~f:Label.name_bt |> String.concat ~sep:", "))
       in
       if LS.length l_preds = 0
       then (
+        let () = prerr_endline (sprintf "started %s" (Label.format_bt l)) in
         (*_ 1. find all of this dead block's children *)
-        let { jtag; _ } = LH.find_exn btbl l in
-        let chlds =
-          match jtag with
-          | Tree.JRet -> []
-          | Tree.JUncon l' -> [ l' ]
-          | Tree.JCon { lt; lf } -> [ lt; lf ]
+        let () =
+          match LH.find btbl l with
+          | None -> ()
+          | Some { jtag; _ } ->
+            let chlds =
+              match jtag with
+              | Tree.JRet -> []
+              | Tree.JUncon l' -> [ l' ]
+              | Tree.JCon { lt; lf } -> [ lt; lf ]
+            in
+            let chlds = List.map chlds ~f:Label.bt in
+            (*_ 2. delete this block from table *)
+            let () = LH.remove btbl l in
+            let () = prerr_endline (sprintf "deleted %s" (Label.format_bt l)) in
+            (*_ 3. delete l from each chld's predecessor *)
+            let f (chld_l : Label.bt) =
+              let l_preds = LH.find_exn preds chld_l in
+              LH.update preds chld_l ~f:(fun _ -> LS.remove l_preds l)
+            in
+            let () = List.iter chlds ~f in
+            (*_ 4. add children back to wq *)
+            let () = Queue.enqueue_all wq chlds in
+            ()
         in
-        let chlds = List.map chlds ~f:Label.bt in
-        (*_ 2. delete this block from table *)
-        let () = LH.remove btbl l in
-        (*_ 3. delete l from each chld's predecessor *)
-        let f (chld_l : Label.bt) =
-          let l_preds = LH.find_exn preds chld_l in
-          LH.update preds chld_l ~f:(fun _ -> LS.remove l_preds l)
-        in
-        let () = List.iter chlds ~f in
-        (*_ 4. add children back to wq *)
-        let () = Queue.enqueue_all wq chlds in
-        (*_ 5. loop on *)
         loop ())
       else loop ()
     | None -> ()
@@ -236,14 +242,22 @@ let tbl_to_blc_lst (tbl : entry LH.t) : Tree.block list =
     idx, { label; block = code; jump = jtag; loop_depth = depth }
   in
   let lst' = List.map lst ~f:mapf in
-  let () = debug_print (sprintf "tbl_to_blc_lst: {\n%s\n}\n" (List.map lst' ~f:(fun (i, blc) -> sprintf "%i : %s" i (Tree.Print.pp_block blc)) |> String.concat ~sep:",\n")) in
+  let () =
+    debug_print
+      (sprintf
+         "tbl_to_blc_lst: {\n%s\n}\n"
+         (List.map lst' ~f:(fun (i, blc) -> sprintf "%i : %s" i (Tree.Print.pp_block blc))
+         |> String.concat ~sep:",\n"))
+  in
   let compare (i1, _) (i2, _) = Int.compare i1 i2 in
   let lst_sort = List.sort lst' ~compare in
   List.map lst_sort ~f:snd
 ;;
 
 let rmjmp_fspace (fspace : Tree.fspace_block) : Tree.fspace_block =
-  let ()= debug_print (sprintf "perform rmjmp on fspace %s\n" (Symbol.name fspace.fname)) in
+  let () =
+    debug_print (sprintf "perform rmjmp on fspace %s\n" (Symbol.name fspace.fname))
+  in
   let tbl = run_till_none fspace.fdef in
   let fdef = tbl_to_blc_lst tbl in
   let res = { fspace with fdef } in

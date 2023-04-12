@@ -227,7 +227,7 @@ let compile (cmd : cmd_line_args) : unit =
   (* Translate *)
   say_if cmd.verbose (fun () -> "Translating...");
   let raw_ir = TranslationM.translate elab in
-  say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program raw_ir);
+  (* say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program raw_ir); *)
   let ir = Strength.strength_reduction raw_ir in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (*_ opt: remove empty jmp blocks *)
