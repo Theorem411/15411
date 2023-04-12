@@ -187,7 +187,7 @@ let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
       in
       if LS.length l_preds = 0
       then (
-        let () = prerr_endline (sprintf "started %s" (Label.format_bt l)) in
+        (* let () = prerr_endline (sprintf "started %s" (Label.format_bt l)) in *)
         (*_ 1. find all of this dead block's children *)
         let () =
           match LH.find btbl l with
@@ -202,7 +202,7 @@ let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
             let chlds = List.map chlds ~f:Label.bt in
             (*_ 2. delete this block from table *)
             let () = LH.remove btbl l in
-            let () = prerr_endline (sprintf "deleted %s" (Label.format_bt l)) in
+            (* let () = prerr_endline (sprintf "deleted %s" (Label.format_bt l)) in *)
             (*_ 3. delete l from each chld's predecessor *)
             let f (chld_l : Label.bt) =
               let l_preds = LH.find_exn preds chld_l in
