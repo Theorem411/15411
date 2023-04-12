@@ -246,6 +246,10 @@ let translate_cmp get_final = function
       [ X86.BinCommand { op = Mov; src = lf; dest = X86.get_free size; size }
       ; X86.Cmp { lhs = X86.get_free size; rhs = rf; size }
       ]
+    | X86.Imm _, X86.Imm _ ->
+      [ X86.BinCommand { op = Mov; src = lf; dest = X86.get_free size; size }
+      ; X86.Cmp { lhs = X86.get_free size; rhs = rf; size }
+      ]
     | _, _ -> [ X86.Cmp { lhs = lf; rhs = rf; size } ])
   | _ -> failwith "Not a cmp operation on translate_cmp"
 ;;
