@@ -20,8 +20,8 @@ let pp_fspace_target { fname; args; fdef; return } : string =
     |> String.concat ~sep:", ")
     (List.map fdef ~f:T.Print.pp_stm |> String.concat ~sep:"\n")
     (match return with
-     | None -> "-"
-     | Some e -> T.Print.pp_mpexp e)
+    | None -> "-"
+    | Some e -> T.Print.pp_mpexp e)
 ;;
 
 let pp_target (target : fspace_target SM.t) : string =
@@ -48,7 +48,9 @@ let is_lab1_code (code : T.stm list) : bool =
 
 let is_target ({ fname; args; fdef } : T.fspace_block) : fspace_target option =
   (* let () = debug_print (sprintf ">>> is %s target? fdef=%i\n" (Symbol.name fname) (List.length fdef)) in *)
-  if List.length fdef <> 1
+  if String.equal fname.name "_c0_main"
+  then None
+  else if List.length fdef <> 1
   then None
   else (
     let block = List.hd_exn fdef in
@@ -80,9 +82,9 @@ let split_program (program : T.program) : fspace_target SM.t * T.program =
   let res1 = List.map prog ~f:(fun fspace -> fspace.fname, fspace) |> SM.of_alist_exn in
   let res2 =
     List.filter_map program ~f:(fun prog ->
-      match is_target prog with
-      | Some _ -> None
-      | None -> Some prog)
+        match is_target prog with
+        | Some _ -> None
+        | None -> Some prog)
   in
   res1, res2
 ;;
@@ -93,23 +95,23 @@ let inline_block (targets : fspace_target SM.t) (block : T.block) : T.block =
     | T.MovFuncApp { dest; fname; args = es; _ } ->
       (* let () = debug_print (sprintf "fname=%s\n" (Symbol.name fname)) in *)
       (match SM.find targets fname with
-       | None -> stm :: acc
-       | Some { args; fdef; return; _ } ->
-         let mov_args =
-           List.zip_exn args es
-           |> List.map ~f:(fun ((dest, _), src) -> T.MovPureExp { dest; src })
-         in
-         let finisher =
-           match dest, return with
-           | Some (d, _), Some e -> [ T.MovPureExp { dest = d; src = e } ]
-           | Some _, None ->
-             failwith
-               "inline: impossible! encounter a target block with destination but no \
-                return!"
-           | _ -> []
-         in
-         let inline = List.concat [ mov_args; fdef; finisher ] |> List.rev in
-         inline @ acc)
+      | None -> stm :: acc
+      | Some { args; fdef; return; _ } ->
+        let mov_args =
+          List.zip_exn args es
+          |> List.map ~f:(fun ((dest, _), src) -> T.MovPureExp { dest; src })
+        in
+        let finisher =
+          match dest, return with
+          | Some (d, _), Some e -> [ T.MovPureExp { dest = d; src = e } ]
+          | Some _, None ->
+            failwith
+              "inline: impossible! encounter a target block with destination but no \
+               return!"
+          | _ -> []
+        in
+        let inline = List.concat [ mov_args; fdef; finisher ] |> List.rev in
+        inline @ acc)
     | stm -> stm :: acc
   in
   let code : T.stm list = List.fold block.block ~init:[] ~f:foldf in
@@ -118,7 +120,7 @@ let inline_block (targets : fspace_target SM.t) (block : T.block) : T.block =
 ;;
 
 let inline_fspace (targets : fspace_target SM.t) ({ fname; args; fdef } : T.fspace_block)
-  : T.fspace_block
+    : T.fspace_block
   =
   { fname; args; fdef = List.map fdef ~f:(inline_block targets) }
 ;;

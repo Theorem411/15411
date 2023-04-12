@@ -134,13 +134,13 @@ let cmd_line_term : cmd_line_args Cmdliner.Term.t =
   and dump_ir =
     let doc = "If present, print the translated ir ast." in
     flag (Arg.info [ "dump-ir" ] ~doc)
-  and inline = 
+  and inline =
     let doc = "If present, do function inlining on ir" in
     flag (Arg.info [ "inline" ] ~doc)
   and dump_assem =
     let doc = "If present, print the final assembly." in
     flag (Arg.info [ "dump-assem" ] ~doc)
-  and dump_ssa = 
+  and dump_ssa =
     let doc = "If present, print the program after ssa." in
     flag (Arg.info [ "dump-ssa" ] ~doc)
   and typecheck_only =
@@ -227,23 +227,27 @@ let compile (cmd : cmd_line_args) : unit =
   (* Translate *)
   say_if cmd.verbose (fun () -> "Translating...");
   let raw_ir = TranslationM.translate elab in
-  say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program raw_ir);
+  (* say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program raw_ir); *)
   let ir = Strength.strength_reduction raw_ir in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (*_ opt: remove empty jmp blocks *)
-  say_if cmd.inline (fun () -> "Removing unncessary jumps...");
+  say_if cmd.verbose (fun () -> "Removing unncessary jumps...");
   let ir = Rmjmp.rmjmp ir in
   (*_ opt: function inline *)
-  say_if cmd.inline (fun () -> "Doing function inline...");
-  let ir = if cmd.inline then Inline.inline ir else ir in
+  say_if cmd.verbose (fun () -> "Doing function inline...");
+  let ir = Inline.inline ir in
   say_if cmd.inline (fun () -> TreeM.Print.pp_program ir);
-
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
   let mfail = Label.create () in
   let assem = Codegen_l4.codegen ~mfl:mfail ~unsafe:cmd.unsafe ir in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
-  (* say_if cmd.dump_assem (fun () -> Block.pp_all_blocks (Block.blocks_former assem)); *)
+  say_if cmd.verbose (fun () -> "Starting ssa...");
+  let assem_ssa' = Ssa.ssa assem in
+  say_if cmd.verbose (fun () -> "Starting propogation ...");
+  let assem_ssa = Propagation.propagate assem_ssa' in
+  say_if cmd.verbose (fun () -> "Starting de-ssa ...");
+  let assem = Ssa.de_ssa assem_ssa in
   say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
   let () = Propagation.debug assem in
   let assem = 
