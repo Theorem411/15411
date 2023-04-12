@@ -242,9 +242,14 @@ let compile (cmd : cmd_line_args) : unit =
   let mfail = Label.create () in
   let assem = Codegen_l4.codegen ~mfl:mfail ~unsafe:cmd.unsafe ir in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
-  (* say_if cmd.dump_assem (fun () -> Block.pp_all_blocks (Block.blocks_former assem)); *)
+  say_if cmd.verbose (fun () -> "Starting ssa...");
+  let assem_ssa' = Ssa.ssa assem in
+  say_if cmd.verbose (fun () -> "Starting propogation ...");
+  let assem_ssa = Propagation.propagate assem_ssa' in
+  say_if cmd.verbose (fun () -> "Starting de-ssa ...");
+  let assem = Ssa.de_ssa assem_ssa in
   say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
-  let () = if cmd.dump_ssa then Propagation.debug assem else () in
+  let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem) () else () in
   say_if cmd.verbose (fun () -> "Emitting...");
   match cmd.emit with
   (* Output: abstract 3-address assem *)
