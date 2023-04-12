@@ -245,14 +245,12 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
   (* say_if cmd.dump_assem (fun () -> Block.pp_all_blocks (Block.blocks_former assem)); *)
   say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
-  let () = if cmd.dump_ssa then Propagation.debug assem else () in
+  let () = Propagation.debug assem in
   let assem = 
-    if cmd.dump_ssa then 
-      let assem_ssa = Ssa.ssa assem in
-      let assem_ssa' = Propagation.propagate assem_ssa in
-      let assem = Ssa.de_ssa assem_ssa' in
-        assem 
-    else assem
+    let assem_ssa = Ssa.ssa assem in
+    let assem_ssa' = Propagation.propagate assem_ssa in
+    let assem = Ssa.de_ssa assem_ssa' in
+      assem 
   in
   say_if cmd.verbose (fun () -> "Emitting...");
   match cmd.emit with
