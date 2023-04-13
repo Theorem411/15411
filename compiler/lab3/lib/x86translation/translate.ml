@@ -246,10 +246,11 @@ let translate_cmp get_final = function
       [ X86.BinCommand { op = Mov; src = lf; dest = X86.get_free size; size }
       ; X86.Cmp { lhs = X86.get_free size; rhs = rf; size }
       ]
-    | X86.Imm _, X86.Imm _ ->
+    | _, X86.Imm _ ->
       [ X86.BinCommand { op = Mov; src = lf; dest = X86.get_free size; size }
       ; X86.Cmp { lhs = X86.get_free size; rhs = rf; size }
       ]
+    | X86.Imm _, _ -> [ X86.Cmp { lhs = rf; rhs = lf; size } ]
     | _, _ -> [ X86.Cmp { lhs = lf; rhs = rf; size } ])
   | _ -> failwith "Not a cmp operation on translate_cmp"
 ;;
@@ -279,14 +280,28 @@ let translate_movsxd (get_final : AS.operand * X86.size -> X86.operand) = functi
   | AS.MovSxd { dest = d; src = s } ->
     let d_final = get_final (d, X86.Q) in
     let src_final = get_final (s, X86.L) in
-    (match d_final with
-    | Stack _ ->
+    (match src_final, d_final with
+    | Imm _, Stack _ ->
+      (* mov mem, mem *)
+      [ X86.BinCommand
+          { op = Mov; dest = X86.get_memfree X86.L; src = src_final; size = X86.L }
+      ; X86.Movsxd { dest = X86.get_free X86.Q; src = X86.get_memfree X86.L }
+      ; X86.BinCommand
+          { op = Mov; dest = d_final; src = X86.get_free X86.Q; size = X86.Q }
+      ]
+    | _, Stack _ ->
       (* mov mem, mem *)
       [ X86.Movsxd { dest = X86.get_free X86.Q; src = src_final }
       ; X86.BinCommand
           { op = Mov; dest = d_final; src = X86.get_free X86.Q; size = X86.Q }
       ]
-    | _ -> [ X86.Movsxd { dest = d_final; src = src_final } ])
+    | Imm _, _ ->
+      (* mov mem, mem *)
+      [ X86.BinCommand
+          { op = Mov; src = src_final; dest = X86.get_free X86.L; size = X86.L }
+      ; X86.Movsxd { dest = d_final; src = X86.get_free X86.L }
+      ]
+    | _, _ -> [ X86.Movsxd { dest = d_final; src = src_final } ])
   | _ -> failwith "translate_movsxd is getting not movsxd "
 ;;
 
@@ -303,11 +318,11 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free X86.Q; size }
       ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
       ]
-    | Stack _, _ | Imm _, _ ->
-      (* mov imm / (mem) -> reg *)
+    | Imm _, _ | Stack _, _ ->
+      (* mov (mem) -> reg *)
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
-    ; X86.MovFrom { dest = d_final; src = X86.get_free X86.Q; size }
+      ; X86.MovFrom { dest = d_final; src = X86.get_free X86.Q; size }
       ]
     | _, Stack _ ->
       (* mov (reg) -> mem *)
