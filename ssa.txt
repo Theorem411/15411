@@ -1,3 +1,53 @@
+dumping 3-assem...
+_c0_gcd(%t1s%t2s): 
+
+._c0_gcd(%t1, %t2) [at depth=0]:
+loadfromstack {}
+%t15 <-s- ESI
+%t14 <-s- EDI
+jump.L2
+jump=.L2
+
+.L2 [at depth=0]:
+cmps %t15, $0
+Je .L4
+%t26 <-s- %t14
+%t19 <-s- %t15
+%t18 <-s- %t14
+jump.L3
+jump=if(.L3|.L4)
+
+.L3 [at depth=1]:
+%t22 <-- %t18 % %t19
+%t15 <-s- %t22
+%t14 <-s- %t19
+jump.L2
+jump=.L2
+
+.L4 [at depth=0]:
+EAX <-s- %t26
+ret
+jump=ret
+
+.L5 [at depth=0]:
+ret
+jump=ret
+ [uses -1 temps]_c0_main(): 
+
+._c0_main() [at depth=0]:
+loadfromstack {}
+EDI <-s- $24
+ESI <-s- $56
+call _c0_gcd(EDIs, ESIs|)[tail call - true]
+EAX <-s- EAX
+ret
+jump=ret
+
+.L6 [at depth=0]:
+ret
+jump=ret
+ [uses -1 temps]
+
 dumping prog after ssa...
 
 ==================================
@@ -227,107 +277,37 @@ tuse = {
      ===================================
 
 
-dumping prog after const/copy propagation...
-
-===================================
-fspace _c0_gcd(%t1:s, %t2:s):
------------------ blc ._c0_gcd(%t1, %t2). ------------------
-0 : loadfromstack {}
-1 : nop
-2 : nop
-3 : jump.L2
--------------- jump:.L2 -----------------
-
------------------ blc .L2. ------------------
-4 : %t32 <-- @(.L3:%t38, ._c0_gcd(%t1, %t2):EDI)
-5 : %t33 <-- @(.L3:%t39, ._c0_gcd(%t1, %t2):ESI)
-6 : cmps %t33, $0
-7 : Je .L4
-8 : nop
-9 : nop
-10 : nop
-11 : jump.L3
--------------- jump:if(.L3|.L4) -----------------
-
------------------ blc .L3. ------------------
-12 : %t37 <-- @(.L2:%t32)
-13 : %t38 <-- @(.L2:%t33)
-14 : %t39 <-- %t37 % %t38
-15 : nop
-16 : nop
-17 : jump.L2
--------------- jump:.L2 -----------------
-
------------------ blc .L4. ------------------
-18 : %t42 <-- @(.L2:%t32)
-19 : EAX <-s- %t42
-20 : ret
--------------- jump:ret -----------------
-
------------------ blc .L5. ------------------
-21 : ret
--------------- jump:ret -----------------
-
------------------------------------
-tuse = {
-%t37:14
-%t42:19
-%t38:4, 14
-%t33:6, 13
-%t39:5
-%t32:12, 18
-}
-
-     ===================================
-
-
-===================================
-fspace _c0_main():
------------------ blc ._c0_main(). ------------------
-0 : loadfromstack {}
-1 : EDI <-s- $24
-2 : ESI <-s- $56
-3 : call _c0_gcd(EDIs, ESIs|)[tail call - true]
-4 : EAX <-s- EAX
-5 : ret
--------------- jump:ret -----------------
-
------------------ blc .L6. ------------------
-6 : ret
--------------- jump:ret -----------------
-
------------------------------------
-tuse = {
-
-}
-
-     ===================================
-
-
 dumping AS.program after de_ssa ... 
 
 _c0_gcd(%t1s%t2s): 
 
 ._c0_gcd(%t1, %t2) [at depth=0]:
 loadfromstack {}
-%t33 <-s- ESI
-%t32 <-s- EDI
+%t30 <-s- ESI
+%t31 <-s- EDI
+%t33 <-s- %t30
+%t32 <-s- %t31
 jump.L2
 jump=.L2
 
 .L2 [at depth=0]:
 cmps %t33, $0
 Je .L4
-%t42 <-s- %t32
-%t38 <-s- %t33
-%t37 <-s- %t32
+%t34 <-s- %t32
+%t35 <-s- %t33
+%t36 <-s- %t32
+%t42 <-s- %t34
+%t38 <-s- %t35
+%t37 <-s- %t36
 jump.L3
 jump=if(.L3|.L4)
 
 .L3 [at depth=1]:
 %t39 <-- %t37 % %t38
-%t33 <-s- %t39
-%t32 <-s- %t38
+%t40 <-s- %t39
+%t41 <-s- %t38
+%t33 <-s- %t40
+%t32 <-s- %t41
 jump.L2
 jump=.L2
 

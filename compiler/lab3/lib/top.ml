@@ -249,7 +249,6 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.verbose (fun () -> "Starting de-ssa ...");
   let assem = Ssa.de_ssa assem_ssa in
   say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
-  let () = Propagation.debug assem in
   let assem = 
     let assem_ssa = Ssa.ssa assem in
     let assem_ssa' = Propagation.propagate assem_ssa in
