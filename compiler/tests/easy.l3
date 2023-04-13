@@ -1,26 +1,16 @@
-//test return 128
+//test memerror
+/* erstwhile of gorgonzola's test suite */
 
-// testing void return
-
-void nop() {
-}
-
-void raise() {
-  1/0;
-}
-
-void abort() {
-  assert(false);
-  return;
-}
-
-void okay() {
-  assert(true);
-  return;
-}
+struct s {
+  int a;
+};
 
 int main() {
-  nop();
-  if (true) okay();
-  return 128;
+    struct s* s;
+
+    s = NULL;
+    s->a;
+
+    return 0;
 }
+

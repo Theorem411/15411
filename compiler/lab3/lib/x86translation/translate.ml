@@ -314,7 +314,13 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       [ X86.MovFrom { dest = X86.get_free size; src = src_final; size }
       ; X86.BinCommand { op = Mov; src = X86.get_free size; dest = d_final; size }
       ]
-    | Imm _, _ -> failwith "deref of an imm"
+    | Imm c, _ -> 
+      if Int64.equal c Int64.zero then 
+        (*_ mov c -> r11d; mov (r11d) -> d_final *)
+      [ X86.MovFrom { dest = X86.get_free size; src = src_final; size }
+      ; X86.BinCommand { op = Mov; src = X86.get_free size; dest = d_final; size }
+      ]
+      else failwith "deref of an imm"
     | _ -> [ X86.MovFrom { dest = d_final; src = src_final; size } ])
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;
