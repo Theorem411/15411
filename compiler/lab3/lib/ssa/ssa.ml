@@ -469,6 +469,23 @@ type fspace =
 
 type program = fspace list
 
+
+let instr_def (instr : instr) : Temp.t list = 
+  match instr with 
+  | ASInstr instr ->
+    let def, _ = SP.def_n_use instr in
+    let def = V.vertex_set_to_op_set def in
+    let def =
+      AS.Set.to_list def
+      |> List.filter_map ~f:(fun op ->
+             match op with
+             | AS.Temp t -> Some t
+             | _ -> None)
+    in
+    def
+  | Phi { self; _ } -> [self]
+  | Nop -> []
+  ;;
 let instr_use (instr : instr) : Temp.t list =
   match instr with
   | ASInstr instr ->
@@ -518,6 +535,11 @@ let blocks_lining (fdef : block_phi list) : instr IH.t * block list =
 
 let fspace_use (fdef : instr IH.t) : IS.t TH.t =
   let tuse : IS.t TH.t = TH.of_alist_exn [] in
+  let iterf (instr : instr) : unit = 
+    let tdef = instr_def instr in
+    List.iter tdef ~f:(fun t -> TH.update tuse t ~f:(fun _ -> IS.empty))
+  in
+  let () = IH.iter fdef ~f:iterf in
   let iterf ~key:idx ~data:instr =
     let tuses = instr_use instr in
     let update = function

@@ -1,11 +1,26 @@
-//test return 75
-/* Testing external function calls to
- * floating point operations
- */
+//test return 128
 
-int main () {
-  fpt x = itof(10);
-  x = fmul(x,fdiv(fadd(x,itof(5)),itof(2)));
-  print_fpt(x);
-  return ftoi(x);
+// testing void return
+
+void nop() {
+}
+
+void raise() {
+  1/0;
+}
+
+void abort() {
+  assert(false);
+  return;
+}
+
+void okay() {
+  assert(true);
+  return;
+}
+
+int main() {
+  nop();
+  if (true) okay();
+  return 128;
 }

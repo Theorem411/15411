@@ -1,183 +1,199 @@
 after all ssa
 ===================================
-fspace _c0_main():
------------------ blc ._c0_main(). ------------------
+fspace _c0_nop():
+----------------- blc ._c0_nop(). ------------------
 0 : loadfromstack {}
-1 : %t20 <-s- $10
-2 : EDI <-s- %t20
-3 : call itof(EDIs|)[tail call - false]
-4 : %t21 <-s- EAX
-5 : %t22 <-s- %t21
-6 : %t23 <-s- $5
-7 : EDI <-s- %t23
-8 : call itof(EDIs|)[tail call - false]
-9 : %t24 <-s- EAX
-10 : %t25 <-s- %t22
-11 : %t26 <-s- %t24
-12 : EDI <-s- %t25
-13 : ESI <-s- %t26
-14 : call fadd(EDIs, ESIs|)[tail call - false]
-15 : %t27 <-s- EAX
-16 : %t28 <-s- $2
-17 : EDI <-s- %t28
-18 : call itof(EDIs|)[tail call - false]
-19 : %t29 <-s- EAX
-20 : %t30 <-s- %t27
-21 : %t31 <-s- %t29
-22 : EDI <-s- %t30
-23 : ESI <-s- %t31
-24 : call fdiv(EDIs, ESIs|)[tail call - false]
-25 : %t32 <-s- EAX
-26 : %t33 <-s- %t22
-27 : %t34 <-s- %t32
-28 : EDI <-s- %t33
-29 : ESI <-s- %t34
-30 : call fmul(EDIs, ESIs|)[tail call - false]
-31 : %t35 <-s- EAX
-32 : %t36 <-s- %t35
-33 : %t37 <-s- %t36
-34 : EDI <-s- %t37
-35 : call print_fpt(EDIs|)[tail call - false]
-36 : %t38 <-s- %t36
-37 : EDI <-s- %t38
-38 : call ftoi(EDIs|)[tail call - true]
-39 : %t39 <-s- EAX
-40 : EAX <-s- %t39
-41 : ret
--------------- jump:ret -----------------
-
------------------ blc .L2. ------------------
-42 : ret
+1 : ret
 -------------- jump:ret -----------------
 
 -----------------------------------
 tuse = {
-%t31:23
-%t26:13
-%t38:37
-%t36:33, 36
-%t27:20
-%t21:5
-%t34:29
-%t32:27
-%t22:10, 26
-%t23:7
-%t37:34
-%t28:17
-%t30:22
-%t24:11
-%t25:12
-%t33:28
-%t20:2
-%t35:32
-%t29:21
-%t39:40
+
 }
 
      ===================================
 
-prop on fspace _c0_main
-propagate 26 : %t33 <- %t22
-delete code: 26 : nop
-check if 26 is still in tuse[%t22]={10}
-tuse[%t22] is now 10, 28
-propagate 27 : %t34 <- %t32
-delete code: 27 : nop
-check if 27 is still in tuse[%t32]={}
-tuse[%t32] is now 29
-propagate 10 : %t25 <- %t22
-delete code: 10 : nop
-check if 10 is still in tuse[%t22]={28}
-tuse[%t22] is now 12, 28
-propagate 21 : %t31 <- %t29
-delete code: 21 : nop
-check if 21 is still in tuse[%t29]={}
-tuse[%t29] is now 23
-propagate 15 : %t27 <- EAX
-delete code: 15 : nop
-propagate 4 : %t21 <- EAX
-delete code: 4 : nop
-propagate 25 : %t32 <- EAX
-delete code: 25 : nop
-propagate 33 : %t37 <- %t36
-delete code: 33 : nop
-check if 33 is still in tuse[%t36]={36}
-tuse[%t36] is now 34, 36
-propagate 39 : %t39 <- EAX
-delete code: 39 : nop
-propagate 31 : %t35 <- EAX
-delete code: 31 : nop
-propagate 9 : %t24 <- EAX
-delete code: 9 : nop
-propagate 36 : %t38 <- %t36
-delete code: 36 : nop
-check if 36 is still in tuse[%t36]={34}
-tuse[%t36] is now 34, 37
-propagate 11 : %t26 <- EAX
-delete code: 11 : nop
-propagate 6 : %t23 <- $5
-delete code: 6 : nop
-propagate 32 : %t36 <- EAX
-delete code: 32 : nop
-propagate 19 : %t29 <- EAX
-delete code: 19 : nop
-propagate 1 : %t20 <- $10
-delete code: 1 : nop
-propagate 20 : %t30 <- EAX
-delete code: 20 : nop
-propagate 16 : %t28 <- $2
-delete code: 16 : nop
-propagate 5 : %t22 <- EAX
-delete code: 5 : nop
+
+===================================
+fspace _c0_raise():
+----------------- blc ._c0_raise(). ------------------
+0 : loadfromstack {}
+1 : %t5 <-s- $1
+2 : %t6 <-s- $0
+3 : %t7 <-- %t5 / %t6
+4 : %t8 <-s- %t7
+5 : ret
+-------------- jump:ret -----------------
+
+-----------------------------------
+tuse = {
+%t8:
+%t7:4
+%t6:3
+%t5:3
+}
+
+     ===================================
+
+
+===================================
+fspace _c0_abort():
+----------------- blc ._c0_abort(). ------------------
+0 : loadfromstack {}
+1 : call __assert_fail
+2 : ret
+-------------- jump:ret -----------------
+
+----------------- blc .L2. ------------------
+3 : ret
+-------------- jump:ret -----------------
+
+-----------------------------------
+tuse = {
+
+}
+
+     ===================================
+
+
+===================================
+fspace _c0_okay():
+----------------- blc ._c0_okay(). ------------------
+0 : loadfromstack {}
+1 : ret
+-------------- jump:ret -----------------
+
+----------------- blc .L3. ------------------
+2 : ret
+-------------- jump:ret -----------------
+
+-----------------------------------
+tuse = {
+
+}
+
+     ===================================
+
+
 ===================================
 fspace _c0_main():
 ----------------- blc ._c0_main(). ------------------
 0 : loadfromstack {}
+1 : call _c0_nop(|)[tail call - false]
+2 : call _c0_okay(|)[tail call - false]
+3 : EAX <-s- $128
+4 : ret
+-------------- jump:ret -----------------
+
+----------------- blc .L4. ------------------
+5 : ret
+-------------- jump:ret -----------------
+
+-----------------------------------
+tuse = {
+
+}
+
+     ===================================
+
+prop on fspace _c0_nop
+prop on fspace _c0_raise
+propagate 1 : %t5 <- $1
+delete code: 1 : nop
+propagate 2 : %t6 <- $0
+delete code: 2 : nop
+propagate 4 : %t8 <- %t7
+delete code: 4 : nop
+check if 4 is still in tuse[%t7]={}
+tuse[%t7] is now 
+prop on fspace _c0_abort
+prop on fspace _c0_okay
+prop on fspace _c0_main
+===================================
+fspace _c0_nop():
+----------------- blc ._c0_nop(). ------------------
+0 : loadfromstack {}
+1 : ret
+-------------- jump:ret -----------------
+
+-----------------------------------
+tuse = {
+
+}
+
+     ===================================
+
+
+===================================
+fspace _c0_raise():
+----------------- blc ._c0_raise(). ------------------
+0 : loadfromstack {}
 1 : nop
-2 : EDI <-s- $10
-3 : call itof(EDIs|)[tail call - false]
+2 : nop
+3 : %t7 <-- $1 / $0
 4 : nop
-5 : nop
-6 : nop
-7 : EDI <-s- $5
-8 : call itof(EDIs|)[tail call - false]
-9 : nop
-10 : nop
-11 : nop
-12 : EDI <-s- EAX
-13 : ESI <-s- EAX
-14 : call fadd(EDIs, ESIs|)[tail call - false]
-15 : nop
-16 : nop
-17 : EDI <-s- $2
-18 : call itof(EDIs|)[tail call - false]
-19 : nop
-20 : nop
-21 : nop
-22 : EDI <-s- EAX
-23 : ESI <-s- EAX
-24 : call fdiv(EDIs, ESIs|)[tail call - false]
-25 : nop
-26 : nop
-27 : nop
-28 : EDI <-s- EAX
-29 : ESI <-s- EAX
-30 : call fmul(EDIs, ESIs|)[tail call - false]
-31 : nop
-32 : nop
-33 : nop
-34 : EDI <-s- EAX
-35 : call print_fpt(EDIs|)[tail call - false]
-36 : nop
-37 : EDI <-s- EAX
-38 : call ftoi(EDIs|)[tail call - true]
-39 : nop
-40 : EAX <-s- EAX
-41 : ret
+5 : ret
+-------------- jump:ret -----------------
+
+-----------------------------------
+tuse = {
+%t7:
+}
+
+     ===================================
+
+
+===================================
+fspace _c0_abort():
+----------------- blc ._c0_abort(). ------------------
+0 : loadfromstack {}
+1 : call __assert_fail
+2 : ret
 -------------- jump:ret -----------------
 
 ----------------- blc .L2. ------------------
-42 : ret
+3 : ret
+-------------- jump:ret -----------------
+
+-----------------------------------
+tuse = {
+
+}
+
+     ===================================
+
+
+===================================
+fspace _c0_okay():
+----------------- blc ._c0_okay(). ------------------
+0 : loadfromstack {}
+1 : ret
+-------------- jump:ret -----------------
+
+----------------- blc .L3. ------------------
+2 : ret
+-------------- jump:ret -----------------
+
+-----------------------------------
+tuse = {
+
+}
+
+     ===================================
+
+
+===================================
+fspace _c0_main():
+----------------- blc ._c0_main(). ------------------
+0 : loadfromstack {}
+1 : call _c0_nop(|)[tail call - false]
+2 : call _c0_okay(|)[tail call - false]
+3 : EAX <-s- $128
+4 : ret
+-------------- jump:ret -----------------
+
+----------------- blc .L4. ------------------
+5 : ret
 -------------- jump:ret -----------------
 
 -----------------------------------
