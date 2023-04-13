@@ -97,7 +97,7 @@ let pp_args (args : (Temp.t * AS.size) list) : string =
 let pp_params (params : params) : string =
   let stuff = TM.to_alist params in
   List.map stuff ~f:(fun (told, tnew) ->
-    sprintf "%s:%s" (Temp.name told) (Temp.name tnew))
+      sprintf "%s:%s" (Temp.name told) (Temp.name tnew))
   |> String.concat ~sep:", "
 ;;
 
@@ -115,7 +115,7 @@ let pp_jtag (jtag : jtag) : string =
 ;;
 
 let pp_block_ssa ({ label; code; bparams; jtag; _ } : block_ssa) ({ block; _ } : AS.block)
-  : string
+    : string
   =
   sprintf
     "----------------- blc %s(%s) ------------------\n\
@@ -124,7 +124,7 @@ let pp_block_ssa ({ label; code; bparams; jtag; _ } : block_ssa) ({ block; _ } :
     (Label.name_bt label)
     (pp_params bparams)
     (List.map (List.zip_exn code block) ~f:(fun (instr, ref_instr) ->
-       AS.format_instr ref_instr ^ " ==> " ^ AS.format_instr instr)
+         AS.format_instr ref_instr ^ " ==> " ^ AS.format_instr instr)
     |> String.concat ~sep:"\n")
     (pp_jtag jtag)
 ;;
@@ -149,6 +149,7 @@ let pp_l2jtag (l2jtag : jtag LM.t) : string =
     (List.map stuff ~f:(fun (l, jtag) -> sprintf "%s:%s" (Label.name_bt l) (pp_jtag jtag))
     |> String.concat ~sep:"\n")
 ;;
+
 (*_ ********************* Above: type names for sanity ********************** *)
 let temp_rename_use (t : Temp.t) (told2new : told2new) : Temp.t =
   (*_ rename temps if used: 
@@ -241,6 +242,21 @@ let instr_rename (instr : AS.instr) (told2new : told2new) : AS.instr =
   | Ret -> instr
   | Lab _ -> instr
   | AssertFail -> instr
+  | LeaArray { dest; base; index; scale; offset } ->
+    LeaArray
+      { dest = oper_rename_def dest told2new
+      ; base = oper_rename_use base told2new
+      ; index = oper_rename_use index told2new
+      ; scale
+      ; offset
+      }
+  | LeaPointer { dest; size; base; offset } ->
+    LeaPointer
+      { dest = oper_rename_def dest told2new
+      ; base = oper_rename_use base told2new
+      ; size
+      ; offset
+      }
   | _ -> instr
 ;;
 
@@ -531,6 +547,14 @@ let ssa (prog : AS.program) : program =
   res
 ;;
 
+let split_jmp (code_rev : AS.instr list) =
+  match code_rev with
+  | AS.Ret :: rest -> [ AS.Ret ], rest
+  | AS.Jmp l1 :: AS.Cjmp l2 :: rest -> [ AS.Jmp l1; AS.Cjmp l2 ], rest
+  | AS.Jmp l1 :: rest -> [ AS.Jmp l1 ], rest
+  | _ -> failwith "fuck you"
+;;
+
 (*_ ***** de-ssa function ****** *)
 let reconstruct_blocks
     (l2instrs : AS.instr list LT.t)
@@ -547,12 +571,8 @@ let reconstruct_blocks
   (*_ feed extra moves to corresponding labels in l2instrs *)
   let assemble ~key:l ~(data : AS.instr list) : unit =
     let code_rev = LT.find_exn l2instrs l |> List.rev in
-    let jmp, rest_rev =
-      match code_rev with
-      | hd :: tl -> hd, tl
-      | _ -> failwith "ssa: de-ssa encounter abnormal block"
-    in
-    let code = jmp :: (data @ rest_rev) |> List.rev in
+    let jmp, rest_rev = split_jmp code_rev in
+    let code = jmp @ data @ rest_rev |> List.rev in
     LT.update l2instrs l ~f:(fun _ -> code)
   in
   let () = LM.iteri extra_moves ~f:assemble in
