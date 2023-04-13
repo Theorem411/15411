@@ -355,8 +355,8 @@ let propagate (prog : SSA.program) : SSA.program = List.map prog ~f:propagate_fs
    3) propagate 
    4) de_ssa *)
 
-let debug (prog : AS.program) : unit =
-  let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in
+let debug (_ : AS.program) : unit =
+  (* let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in
   let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in
   let prog_ssa : SSA.program_ssa = SSA.global_rename prog in
   let () = printf "dumping prog after ssa...\n\n%s\n\n" (SSA.pp_program_ssa prog_ssa prog) in
@@ -371,10 +371,10 @@ let debug (prog : AS.program) : unit =
   (* let prog : SSA.program = propagate prog in
   let () =
     printf "dumping prog after const/copy propagation...\n\n%s\n\n" (SSA.pp_program prog)
-  in *)
+  ``in *)
   let prog : AS.program = SSA.de_ssa prog in
   let () =
     printf "dumping AS.program after de_ssa ... \n\n%s\n\n" (AS.format_program prog)
-  in
+  in *)
   ()
 ;;

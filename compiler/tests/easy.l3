@@ -1,18 +1,14 @@
-//test return 8
-/* gcd */
+//test return 10
 
-int gcd (int x, int y) {
-  /* x,y >= 0 */
-  int r;
-  while (y != 0) {
-    r = x%y;
-    x = y;
-    y = r;
+int fib(int n) {
+  int[] f;
+  f = alloc_array(int, n);
+  for (int i = 0; i < n; i ++) {
+    f[i] = i;
   }
-  return x;
+  return f[n-1];
 }
-  
 
 int main () {
-  return gcd(24,56);
+  return fib(10);
 }
