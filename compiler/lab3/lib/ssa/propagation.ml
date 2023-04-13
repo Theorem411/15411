@@ -357,6 +357,7 @@ let propagate (prog : SSA.program) : SSA.program = List.map prog ~f:propagate_fs
 
 let debug (prog : AS.program) : unit =
   let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in
+  let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in
   let prog_ssa : SSA.program_ssa = SSA.global_rename prog in
   let () = printf "dumping prog after ssa...\n\n%s\n\n" (SSA.pp_program_ssa prog_ssa prog) in
   let prog_phi : SSA.program_phi = SSA.global_phi prog_ssa in
