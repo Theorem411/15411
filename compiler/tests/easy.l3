@@ -1,13 +1,17 @@
-//test div-by-zero
-// division error due to overflow
-int main()
+//test return 2147483647
+
+int main ()
 {
-  int TMIN;
-  int overflow;
+  int x;
 
-  TMIN = -2147483648;
-  overflow = TMIN / -1;
-  return overflow;
+  x = 1;  // 1
+  x <<= x; // 2
+  x <<= 33 % 32; // 4
+  x >>= 1; // 2
+  x = ~x; // -3
+  x >>= 33 % 32; // -2
+  x |= 1; // -1
+  x &= 1 << 31; // -2^31
+  x ^= 1 << 31 >> 31; // 2^31-1
+  return x;
 }
-
-  

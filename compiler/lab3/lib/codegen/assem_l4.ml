@@ -262,8 +262,7 @@ let format_instr' = function
       (format_operand binop.rhs)
   | Unop unop ->
     sprintf
-      "%s <-- %s%s"
-      (format_operand unop.dest)
+      "%s%s"
       (format_unop unop.op)
       (format_operand unop.dest)
   | Mov { dest; src; size } ->
