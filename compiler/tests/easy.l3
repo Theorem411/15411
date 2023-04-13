@@ -1,14 +1,13 @@
-//test return 10
+//test div-by-zero
+// division error due to overflow
+int main()
+{
+  int TMIN;
+  int overflow;
 
-int fib(int n) {
-  int[] f;
-  f = alloc_array(int, n);
-  for (int i = 0; i < n; i ++) {
-    f[i] = i;
-  }
-  return f[n-1];
+  TMIN = -2147483648;
+  overflow = TMIN / -1;
+  return overflow;
 }
 
-int main () {
-  return fib(10);
-}
+  

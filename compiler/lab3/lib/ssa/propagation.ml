@@ -221,7 +221,7 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
       | AS.BitXor -> Int64.bit_xor c1 c2
     in
     Some (d, AS.Imm c)
-  | AS.EfktBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
+  (* | AS.EfktBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
     (match op with
      | AS.Div ->
        if Int64.equal c2 Int64.zero
@@ -235,7 +235,7 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
        else (
          let c = Int64.( % ) c1 c2 in
          Some (d, AS.Imm c))
-     | _ -> None)
+     | _ -> None) *)
   | _ -> None
 ;;
 
