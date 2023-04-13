@@ -1,16 +1,20 @@
-//test memerror
-/* erstwhile of gorgonzola's test suite */
+//test return 1
 
-struct s {
-  int a;
-};
+int makeInt(int n, int* ref){
+    (*ref)++;
+    return n;
+}
 
-int main() {
-    struct s* s;
-
-    s = NULL;
-    s->a;
-
-    return 0;
+int main(){
+    int * ref = alloc(int);
+    *ref = 0;
+    int[] A = alloc_array(int,4);
+    A[makeInt(2, ref)]++;
+    if (*ref == 1){
+        return 1;
+    }
+    else{
+        return 0;
+    }
 }
 
