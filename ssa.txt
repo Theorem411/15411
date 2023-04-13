@@ -3,271 +3,186 @@ after all ssa
 fspace _c0_main():
 ----------------- blc ._c0_main(). ------------------
 0 : loadfromstack {}
-1 : %t35 <-s- $1
-2 : %t36 <-s- %t35
-3 : %t37 <-s- %t35
-4 : %t38 <-- %t36 << %t37
-5 : %t39 <-s- %t38
-6 : %t40 <-s- $33
-7 : %t41 <-s- $32
-8 : %t42 <-- %t40 % %t41
-9 : %t43 <-s- %t39
-10 : %t44 <-s- %t42
-11 : %t45 <-- %t43 << %t44
-12 : %t46 <-s- %t45
-13 : %t47 <-s- %t46
-14 : %t48 <-s- $1
-15 : %t49 <-- %t47 >> %t48
-16 : %t50 <-s- %t49
-17 : %t51 <-s- %t50
-18 : ~%t51
-19 : %t52 <-s- $33
-20 : %t53 <-s- $32
-21 : %t54 <-- %t52 % %t53
-22 : %t55 <-s- %t51
-23 : %t56 <-s- %t54
-24 : %t57 <-- %t55 >> %t56
-25 : %t58 <-s- %t57
-26 : %t59 <-s- $1
-27 : %t60 <-s- %t58
-28 : %t61 <-s- %t59 | %t60
-29 : %t62 <-s- $1
-30 : %t63 <-s- $31
-31 : %t64 <-- %t62 << %t63
-32 : %t65 <-s- %t61
-33 : %t66 <-s- %t64
-34 : %t67 <-s- %t65 & %t66
-35 : %t68 <-s- $1
-36 : %t69 <-s- $31
-37 : %t70 <-- %t68 << %t69
-38 : %t71 <-s- %t70
-39 : %t72 <-s- $31
-40 : %t73 <-- %t71 >> %t72
-41 : %t74 <-s- %t67
-42 : %t75 <-s- %t73
-43 : %t76 <-s- %t74 ^ %t75
-44 : EAX <-s- %t76
-45 : ret
+1 : %t20 <-s- $10
+2 : EDI <-s- %t20
+3 : call itof(EDIs|)[tail call - false]
+4 : %t21 <-s- EAX
+5 : %t22 <-s- %t21
+6 : %t23 <-s- $5
+7 : EDI <-s- %t23
+8 : call itof(EDIs|)[tail call - false]
+9 : %t24 <-s- EAX
+10 : %t25 <-s- %t22
+11 : %t26 <-s- %t24
+12 : EDI <-s- %t25
+13 : ESI <-s- %t26
+14 : call fadd(EDIs, ESIs|)[tail call - false]
+15 : %t27 <-s- EAX
+16 : %t28 <-s- $2
+17 : EDI <-s- %t28
+18 : call itof(EDIs|)[tail call - false]
+19 : %t29 <-s- EAX
+20 : %t30 <-s- %t27
+21 : %t31 <-s- %t29
+22 : EDI <-s- %t30
+23 : ESI <-s- %t31
+24 : call fdiv(EDIs, ESIs|)[tail call - false]
+25 : %t32 <-s- EAX
+26 : %t33 <-s- %t22
+27 : %t34 <-s- %t32
+28 : EDI <-s- %t33
+29 : ESI <-s- %t34
+30 : call fmul(EDIs, ESIs|)[tail call - false]
+31 : %t35 <-s- EAX
+32 : %t36 <-s- %t35
+33 : %t37 <-s- %t36
+34 : EDI <-s- %t37
+35 : call print_fpt(EDIs|)[tail call - false]
+36 : %t38 <-s- %t36
+37 : EDI <-s- %t38
+38 : call ftoi(EDIs|)[tail call - true]
+39 : %t39 <-s- EAX
+40 : EAX <-s- %t39
+41 : ret
 -------------- jump:ret -----------------
 
 ----------------- blc .L2. ------------------
-46 : ret
+42 : ret
 -------------- jump:ret -----------------
 
 -----------------------------------
 tuse = {
-%t62:31
-%t42:10
-%t38:5
-%t63:31
-%t54:23
-%t65:34
-%t50:17
-%t70:38
-%t59:28
-%t48:15
-%t40:8
-%t57:25
-%t76:44
-%t66:34
-%t71:40
-%t46:13
-%t61:32
-%t64:33
-%t51:18, 22
-%t39:9
-%t74:43
-%t73:42
-%t68:37
-%t44:11
-%t36:4
-%t69:37
-%t45:12
-%t67:41
-%t43:11
-%t41:8
-%t49:16
-%t47:15
-%t53:21
-%t37:4
-%t75:43
-%t72:40
-%t60:28
-%t52:21
-%t58:27
-%t55:24
-%t35:2, 3
-%t56:24
+%t31:23
+%t26:13
+%t38:37
+%t36:33, 36
+%t27:20
+%t21:5
+%t34:29
+%t32:27
+%t22:10, 26
+%t23:7
+%t37:34
+%t28:17
+%t30:22
+%t24:11
+%t25:12
+%t33:28
+%t20:2
+%t35:32
+%t29:21
+%t39:40
 }
 
      ===================================
 
 prop on fspace _c0_main
-propagate 42 : %t75 <- %t73
-delete code: 42 : nop
-check if 42 is still in tuse[%t73]={}
-tuse[%t73] is now 43
-propagate 26 : %t59 <- $1
+propagate 26 : %t33 <- %t22
 delete code: 26 : nop
-propagate 38 : %t71 <- %t70
-delete code: 38 : nop
-check if 38 is still in tuse[%t70]={}
-tuse[%t70] is now 40
-propagate 27 : %t60 <- %t58
+check if 26 is still in tuse[%t22]={10}
+tuse[%t22] is now 10, 28
+propagate 27 : %t34 <- %t32
 delete code: 27 : nop
-check if 27 is still in tuse[%t58]={}
-tuse[%t58] is now 28
-propagate 10 : %t44 <- %t42
+check if 27 is still in tuse[%t32]={}
+tuse[%t32] is now 29
+propagate 10 : %t25 <- %t22
 delete code: 10 : nop
-check if 10 is still in tuse[%t42]={}
-tuse[%t42] is now 11
-propagate 2 : %t36 <- %t35
-delete code: 2 : nop
-check if 2 is still in tuse[%t35]={3}
-tuse[%t35] is now 3, 4
-propagate 13 : %t47 <- %t46
-delete code: 13 : nop
-check if 13 is still in tuse[%t46]={}
-tuse[%t46] is now 15
-propagate 25 : %t58 <- %t57
+check if 10 is still in tuse[%t22]={28}
+tuse[%t22] is now 12, 28
+propagate 21 : %t31 <- %t29
+delete code: 21 : nop
+check if 21 is still in tuse[%t29]={}
+tuse[%t29] is now 23
+propagate 15 : %t27 <- EAX
+delete code: 15 : nop
+propagate 4 : %t21 <- EAX
+delete code: 4 : nop
+propagate 25 : %t32 <- EAX
 delete code: 25 : nop
-check if 25 is still in tuse[%t57]={}
-tuse[%t57] is now 28
-propagate 33 : %t66 <- %t64
+propagate 33 : %t37 <- %t36
 delete code: 33 : nop
-check if 33 is still in tuse[%t64]={}
-tuse[%t64] is now 34
-propagate 7 : %t41 <- $32
-delete code: 7 : nop
-propagate 29 : %t62 <- $1
-delete code: 29 : nop
-propagate 39 : %t72 <- $31
+check if 33 is still in tuse[%t36]={36}
+tuse[%t36] is now 34, 36
+propagate 39 : %t39 <- EAX
 delete code: 39 : nop
-propagate 3 : %t37 <- %t35
-delete code: 3 : nop
-check if 3 is still in tuse[%t35]={4}
-tuse[%t35] is now 4
-propagate 14 : %t48 <- $1
-delete code: 14 : nop
-propagate 9 : %t43 <- %t39
+propagate 31 : %t35 <- EAX
+delete code: 31 : nop
+propagate 9 : %t24 <- EAX
 delete code: 9 : nop
-check if 9 is still in tuse[%t39]={}
-tuse[%t39] is now 11
-propagate 36 : %t69 <- $31
+propagate 36 : %t38 <- %t36
 delete code: 36 : nop
-propagate 41 : %t74 <- %t67
-delete code: 41 : nop
-check if 41 is still in tuse[%t67]={}
-tuse[%t67] is now 43
-propagate 6 : %t40 <- $33
+check if 36 is still in tuse[%t36]={34}
+tuse[%t36] is now 34, 37
+propagate 11 : %t26 <- EAX
+delete code: 11 : nop
+propagate 6 : %t23 <- $5
 delete code: 6 : nop
-propagate 32 : %t65 <- %t61
+propagate 32 : %t36 <- EAX
 delete code: 32 : nop
-check if 32 is still in tuse[%t61]={}
-tuse[%t61] is now 34
-propagate 22 : %t55 <- %t51
-delete code: 22 : nop
-check if 22 is still in tuse[%t51]={18}
-tuse[%t51] is now 18, 24
-propagate 19 : %t52 <- $33
+propagate 19 : %t29 <- EAX
 delete code: 19 : nop
-propagate 23 : %t56 <- %t54
-delete code: 23 : nop
-check if 23 is still in tuse[%t54]={}
-tuse[%t54] is now 24
-propagate 1 : %t35 <- $1
+propagate 1 : %t20 <- $10
 delete code: 1 : nop
-propagate 17 : %t51 <- %t50
-delete code: 17 : nop
-check if 17 is still in tuse[%t50]={}
-tuse[%t50] is now 18, 24
-propagate 30 : %t63 <- $31
-delete code: 30 : nop
-propagate 12 : %t46 <- %t45
-delete code: 12 : nop
-check if 12 is still in tuse[%t45]={}
-tuse[%t45] is now 15
-propagate 20 : %t53 <- $32
+propagate 20 : %t30 <- EAX
 delete code: 20 : nop
-propagate 35 : %t68 <- $1
-delete code: 35 : nop
-propagate 16 : %t50 <- %t49
+propagate 16 : %t28 <- $2
 delete code: 16 : nop
-check if 16 is still in tuse[%t49]={}
-tuse[%t49] is now 18, 24
-propagate 5 : %t39 <- %t38
+propagate 5 : %t22 <- EAX
 delete code: 5 : nop
-check if 5 is still in tuse[%t38]={}
-tuse[%t38] is now 11
 ===================================
 fspace _c0_main():
 ----------------- blc ._c0_main(). ------------------
 0 : loadfromstack {}
 1 : nop
-2 : nop
-3 : nop
-4 : %t38 <-- $1 << $1
+2 : EDI <-s- $10
+3 : call itof(EDIs|)[tail call - false]
+4 : nop
 5 : nop
 6 : nop
-7 : nop
-8 : %t42 <-- $33 % $32
+7 : EDI <-s- $5
+8 : call itof(EDIs|)[tail call - false]
 9 : nop
 10 : nop
-11 : %t45 <-- %t38 << %t42
-12 : nop
-13 : nop
-14 : nop
-15 : %t49 <-- %t45 >> $1
+11 : nop
+12 : EDI <-s- EAX
+13 : ESI <-s- EAX
+14 : call fadd(EDIs, ESIs|)[tail call - false]
+15 : nop
 16 : nop
-17 : nop
-18 : ~%t49
+17 : EDI <-s- $2
+18 : call itof(EDIs|)[tail call - false]
 19 : nop
 20 : nop
-21 : %t54 <-- $33 % $32
-22 : nop
-23 : nop
-24 : %t57 <-- %t49 >> %t54
+21 : nop
+22 : EDI <-s- EAX
+23 : ESI <-s- EAX
+24 : call fdiv(EDIs, ESIs|)[tail call - false]
 25 : nop
 26 : nop
 27 : nop
-28 : %t61 <-s- $1 | %t57
-29 : nop
-30 : nop
-31 : %t64 <-- $1 << $31
+28 : EDI <-s- EAX
+29 : ESI <-s- EAX
+30 : call fmul(EDIs, ESIs|)[tail call - false]
+31 : nop
 32 : nop
 33 : nop
-34 : %t67 <-s- %t61 & %t64
-35 : nop
+34 : EDI <-s- EAX
+35 : call print_fpt(EDIs|)[tail call - false]
 36 : nop
-37 : %t70 <-- $1 << $31
-38 : nop
+37 : EDI <-s- EAX
+38 : call ftoi(EDIs|)[tail call - true]
 39 : nop
-40 : %t73 <-- %t70 >> $31
-41 : nop
-42 : nop
-43 : %t76 <-s- %t67 ^ %t73
-44 : EAX <-s- %t76
-45 : ret
+40 : EAX <-s- EAX
+41 : ret
 -------------- jump:ret -----------------
 
 ----------------- blc .L2. ------------------
-46 : ret
+42 : ret
 -------------- jump:ret -----------------
 
 -----------------------------------
 tuse = {
-%t42:11
-%t38:11
-%t54:24
-%t70:40
-%t57:28
-%t76:44
-%t61:34
-%t64:34
-%t73:43
-%t45:15
-%t67:43
-%t49:18, 24
+
 }
 
      ===================================

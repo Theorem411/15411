@@ -209,7 +209,7 @@ let phiopt (prog : SSA.program) : SSA.program = List.map prog ~f:fspace_phiopt
 
 let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
   | AS.Mov { dest = AS.Temp d; src = AS.Imm c; _ } -> Some (d, AS.Imm c)
-  | AS.Mov { dest = AS.Temp t; src; _ } -> Some (t, src)
+  | AS.Mov { dest = AS.Temp d; src = AS.Temp t; _ } -> Some (d, AS.Temp t)
   | AS.PureBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
     let c =
       match op with
