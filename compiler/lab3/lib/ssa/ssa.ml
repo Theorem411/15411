@@ -565,7 +565,7 @@ let reconstruct_blocks
   (*_ for each phi t <- {l:op}, and for each l, append Mov {t, op} *)
   let mapf ({ self; alt_selves } : phi) : (Label.bt * AS.instr) list =
     List.map alt_selves ~f:(fun (lpred, op) ->
-        lpred, AS.Mov { dest = AS.Temp self; src = op; size = AS.S })
+        lpred, AS.Mov { dest = AS.Temp self; src = op; size = AS.L })
   in
   let extra_moves = List.map phies ~f:mapf |> List.concat |> LM.of_alist_multi in
   (*_ feed extra moves to corresponding labels in l2instrs *)
