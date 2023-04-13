@@ -242,6 +242,21 @@ let instr_rename (instr : AS.instr) (told2new : told2new) : AS.instr =
   | Ret -> instr
   | Lab _ -> instr
   | AssertFail -> instr
+  | LeaArray { dest; base; index; scale; offset } ->
+    LeaArray
+      { dest = oper_rename_def dest told2new
+      ; base = oper_rename_use base told2new
+      ; index = oper_rename_use index told2new
+      ; scale
+      ; offset
+      }
+  | LeaPointer { dest; size; base; offset } ->
+    LeaPointer
+      { dest = oper_rename_def dest told2new
+      ; base = oper_rename_use base told2new
+      ; size
+      ; offset
+      }
   | _ -> instr
 ;;
 
