@@ -94,6 +94,7 @@ type instr =
   | Unop of
       { op : unary_operation
       ; dest : operand
+      ; src : operand
       }
   (* dest <- src *)
   | Mov of
@@ -183,7 +184,7 @@ type fspace =
   { fname : Symbol.t
   ; args : (Temp.t * size) list
   ; fdef_blocks : block list
-  ; tmp_cnt: int 
+  ; tmp_cnt : int
   }
 [@@deriving equal, sexp, compare]
 
@@ -193,7 +194,7 @@ val all_regs : reg list
 val num_regs : int
 val mem_fail_lab : Label.t
 val format_jump_tag : assem_jump_tag_t -> string
-val format_size : size -> string 
+val format_size : size -> string
 val format_reg : reg -> string
 val format_instr : instr -> string
 val format_program : program -> string
