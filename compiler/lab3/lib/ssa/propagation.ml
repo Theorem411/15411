@@ -5,13 +5,13 @@ module IH = SSA.IH
 module TH = SSA.TH
 module IS = SSA.IS
 
-let debug_mode = false
+(* let debug_mode = true
 let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
 
 let pp_IS (lset : IS.t) : string =
   let lset = IS.to_list lset in
   List.map lset ~f:Int.to_string |> String.concat ~sep:", "
-;;
+;; *)
 
 module T = struct
   type t = Temp.t [@@deriving equal, compare, sexp, hash]
@@ -225,7 +225,7 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
       | AS.BitOr -> Int64.bit_or c1 c2
       | AS.BitXor -> Int64.bit_xor c1 c2
     in
-    let c = Int64.(%) c (Int64.(+) (Int64.of_int32 (Int32.max_value)) (Int64.one)) in
+    (* let c = Int64.(%) c (Int64.(+) (Int64.of_int32 (Int32.max_value)) (Int64.one)) in *)
     Some (d, AS.Imm c)
   (* | AS.EfktBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
     (match op with
@@ -264,31 +264,31 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t)
       (match target instr_ssa with
        | None -> loop ()
        | Some (t, sub) ->
-         let () =
+         (* let () =
            debug_print
              (sprintf
                 "propagate %i : %s <- %s\n"
                 ln
                 (Temp.name t)
                 (AS.format_operand sub))
-         in
+         in *)
          (* replace code[ln] with Nop *)
          let () = IH.update code ln ~f:(fun _ -> Nop) in
-         let () =
+         (* let () =
            debug_print
              (sprintf "delete code: %s\n" (SSA.pp_instr ln (IH.find_exn code ln)))
-         in
+         in *)
          (*_ delete ln from tuse[t'] *)
          let () =
            match sub with
            | AS.Temp t' ->
              TH.update tuse t' ~f:(update_tuse ln);
-             debug_print
+             (* debug_print
                (sprintf
                   "check if %i is still in tuse[%s]={%s}\n"
                   ln
                   (Temp.name t')
-                  (pp_IS (TH.find_exn tuse t')))
+                  (pp_IS (TH.find_exn tuse t'))) *)
            | _ -> ()
          in
          (*_ get tuse[t] *)
@@ -324,11 +324,11 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t)
            | Temp t' ->
              let tlines' = TH.find_exn tuse t' in
              TH.update tuse t' ~f:(fun _ -> IS.union tlines tlines');
-             debug_print
+             (* debug_print
                (sprintf
                   "tuse[%s] is now %s\n"
                   (Temp.name t')
-                  (pp_IS (TH.find_exn tuse t')))
+                  (pp_IS (TH.find_exn tuse t'))) *)
            | _ -> ()
          in
          (*_ delete t from tuse *)
@@ -348,7 +348,7 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t)
 ;;
 
 let propagate_fspace (fspace : SSA.fspace) : SSA.fspace =
-  let () = debug_print (sprintf "prop on fspace %s\n" (Symbol.name fspace.fname)) in
+  (* let () = debug_print (sprintf "prop on fspace %s\n" (Symbol.name fspace.fname)) in *)
   let code, tuse = propagate_opt fspace.code fspace.tuse in
   { fspace with code; tuse }
 ;;

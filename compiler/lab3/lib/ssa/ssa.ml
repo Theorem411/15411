@@ -742,7 +742,7 @@ let pp_block ({ label; lines; jump; _ } : block) (code : instr IH.t) : string =
     (AS.format_jump_tag jump)
 ;;
 
-let pp_tuse (tuse : IS.t TH.t) : string =
+(* let pp_tuse (tuse : IS.t TH.t) : string =
   let stuff = TH.to_alist tuse in
   let stuff = List.map stuff ~f:(fun (t, lset) -> t, IS.to_list lset) in
   List.map stuff ~f:(fun (t, ilst) ->
@@ -751,42 +751,20 @@ let pp_tuse (tuse : IS.t TH.t) : string =
         (Temp.name t)
         (List.map ilst ~f:Int.to_string |> String.concat ~sep:", "))
   |> String.concat ~sep:"\n"
-;;
+;; *)
 
-let pp_fspace ({ fname; args; code; block_info; tuse; _ } : fspace) : string =
+let pp_fspace ({ fname; args; code; block_info; _ } : fspace) : string =
   sprintf
     "===================================\n\
      fspace %s(%s):\n\
      %s\n\
-     -----------------------------------\n\
-     tuse = {\n\
-     %s\n\
-     }\n\n\
     \     ===================================\n"
     (Symbol.name fname)
     (pp_args args)
     (List.map block_info ~f:(fun b -> pp_block b code) |> String.concat ~sep:"\n")
-    (pp_tuse tuse)
+    (* (pp_tuse tuse) *)
 ;;
 
 let pp_program (prog : program) : string =
   List.map prog ~f:pp_fspace |> String.concat ~sep:"\n\n"
 ;;
-
-(* let ssa_debug (prog : AS.program) : unit =
-  (* let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in *)
-  let prog_ssa : program_ssa = global_rename prog in
-  (* let () = `printf "dumping prog after ssa...\n\n%s\n\n" (pp_program_ssa prog_ssa prog) in *)
-  let prog_phi : program_phi = global_phi prog_ssa in
-  (* let () =
-    printf
-      "dumping prog after phi transformation...\n\n%s\n\n"
-      (pp_program_phi prog_phi prog_ssa)
-  in *)
-  let prog : program = global_lining prog_phi in
-  let () = printf "dumping prog after lining...\n\n%s\n\n" (pp_program prog) in
-  let prog : program = Propagation.propagate prog in
-  let prog : AS.program = de_ssa prog in
-  let () = printf "dumping AS.program after de_ssa ... \n\n%s\n\n" (AS.format_program prog) in
-  ()
-;; *)
