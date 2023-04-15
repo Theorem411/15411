@@ -30,11 +30,11 @@ let get_temps_line instr : Temp.t list =
 ;;
 
 let get_all_temps (f : AS.fspace) =
-  let argtemps = List.map f.args ~f:(fun (t, _) -> t) in
+  (* let argtemps = List.map f.args ~f:(fun (t, _) -> t) in *)
   let instrs =
     List.concat_map ~f:(fun (b : AS.block) : AS.instr list -> b.block) f.fdef_blocks
   in
-  let all_temps = List.concat (argtemps :: List.map instrs ~f:get_temps_line) in
+  let all_temps = List.concat (List.map instrs ~f:get_temps_line) in
   List.dedup_and_sort ~compare:Temp.compare all_temps
 ;;
 

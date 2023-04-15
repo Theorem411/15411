@@ -16,7 +16,7 @@ let do_stack_moves
     (args : (Temp.t * AS.size) list)
     offset
   =
-  let stack_args = List.drop args 6 in
+  let stack_args = args in
   let stack_refs =
     List.concat_mapi stack_args ~f:(fun i (t, sz) ->
         let d = updater t in

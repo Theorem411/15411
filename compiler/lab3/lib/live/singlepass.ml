@@ -129,15 +129,15 @@ let print_table (table : t) ~lines : string =
        keys)
 ;; *)
 
-let initialize_blocks table (fargs : Temp.t list) (x : B.block) =
+let initialize_blocks table (x : B.block) =
   let b = x.block in
   List.iter b ~f:(fun (i, instr) ->
       let d, u = def_n_use instr in
       (* of load from stack add temp args to define *)
       let d =
         match instr with
-        | AS.LoadFromStack _ ->
-          let fargs_def = V.Set.of_list (List.map ~f:(fun t -> V.T t) fargs) in
+        | AS.LoadFromStack args ->
+          let fargs_def = V.Set.of_list (List.map ~f:(fun (t, _) -> V.T t) args) in
           V.Set.union fargs_def d
         | _ -> d
       in
@@ -147,7 +147,7 @@ let initialize_blocks table (fargs : Temp.t list) (x : B.block) =
 
 let init_table (f : B.fspace) =
   let table : t = IntTable.create () in
-  let helper = initialize_blocks table f.args in
+  let helper = initialize_blocks table in
   List.iter f.fdef_blocks ~f:helper;
   table
 ;;
@@ -305,7 +305,7 @@ let vset_uses_defs_block (b : B.block) =
   let fargs : Temp.t list =
     match b.label with
     | Label.BlockLbl _ -> []
-    | Label.FunName f -> f.args
+    | Label.FunName _ -> []
   in
   (* basically (def,use) of a line, but adds function arguments into  *)
   let local_def_n_use instr =
