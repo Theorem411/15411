@@ -122,6 +122,11 @@ let second_phiopt_target ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand
   else None
 ;;
 
+(* let third_phiopt_target ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand) option = 
+  let opset = List.map alt_selves ~f:snd |> AS.Set.of_list in
+  failwith "No"
+;; *)
+
 let second_phiopt
   (code : SSA.instr IH.t)
   (tuse : IS.t TH.t)
