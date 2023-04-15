@@ -492,14 +492,18 @@ let get_final
     ((o, size) : AS.operand * X86.size)
     : X86.operand
   =
-  match o with
-  | AS.Imm n -> X86.Imm n
-  | AS.Reg r -> X86.Reg { reg = Regalloc.asr2renum r; size = X86.of_size size }
-  | AS.Temp t ->
-    (* prerr_endline (sprintf "Checking if I have %s" (Temp.name t)); *)
-    (match updater t with
-    | Spl i -> X86.Stack i
-    | Reg reg -> X86.Reg { reg; size = X86.of_size size })
+  let res =
+    match o with
+    | AS.Imm n -> X86.Imm n
+    | AS.Reg r -> X86.Reg { reg = Regalloc.asr2renum r; size = X86.of_size size }
+    | AS.Temp t ->
+      (match updater t with
+      | Spl i -> X86.Stack i
+      | Reg reg -> X86.Reg { reg; size = X86.of_size size })
+  in
+  (* prerr_endline
+    (sprintf "%s is mapped to %s" (AS.format_operand o) (X86.format_operand res)); *)
+  res
 ;;
 
 let block_instrs (fspace : AS.fspace) : AS.instr list list =
@@ -525,9 +529,18 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
   (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
   let stack_cells = Regalloc.mem_count reg_map in
   let final = get_final updater in
+  let first_block_instrs = (List.nth_exn fspace.fdef_blocks 0).block in
+  let load_from_stack_args =
+    List.find_map_exn first_block_instrs ~f:(function
+        | AS.LoadFromStack tmp_args -> Some tmp_args
+        | _ -> None)
+  in
   (* gets prologue and epilogue of the function *)
   let b, e, (stack_moves, stack_offset), retLabel =
-    Helper.get_function_be (fspace.fname, fspace.args) (reg_map, updater) stack_cells
+    Helper.get_function_be
+      (fspace.fname, load_from_stack_args)
+      (reg_map, updater)
+      stack_cells
   in
   let fun_body_label = Label.create () in
   let translated instructions : X86.instr list =
@@ -543,8 +556,9 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
            (stack_moves, stack_offset))
   in
   let res = List.concat_map ~f:translated (block_instrs fspace) in
-  let x = (List.nth_exn fspace.fdef_blocks 0).block in
-  let first_block_code = List.rev (List.nth_exn (List.map ~f:translated [ x ]) 0) in
+  let first_block_code =
+    List.rev (List.nth_exn (List.map ~f:translated [ first_block_instrs ]) 0)
+  in
   let full_rev = List.rev_append e res in
   if not stupid_tail_optimization_on
   then b @ first_block_code @ List.rev full_rev
