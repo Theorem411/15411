@@ -86,7 +86,8 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
       :: (munch_exp_rev ~mfl rhs e2 @ munch_exp_rev ~mfl lhs e1)
     | T.Unop { op; p } ->
       let op = munch_unary_op op in
-      A.Unop { op; dest } :: munch_exp_rev ~mfl dest p
+      let src = A.Temp (Temp.create ()) in
+      A.Unop { op; dest; src } :: munch_exp_rev ~mfl src p
     | T.Mem T.Null -> if unsafe then [] else [ A.Jmp mfl ]
     | T.Mem (T.Ptr { start; off }) ->
       let t1 = A.Temp (Temp.create ()) in

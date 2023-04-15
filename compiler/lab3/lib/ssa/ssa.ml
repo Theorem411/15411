@@ -203,8 +203,9 @@ let instr_rename (instr : AS.instr) (told2new : told2new) : AS.instr =
     EfktBinop { ebop with lhs; rhs; dest }
   | Unop uop ->
     (*_ careful of dest *)
-    let dest = oper_rename_use uop.dest told2new in
-    Unop { uop with dest }
+    let dest = oper_rename_def uop.dest told2new in
+    let src = oper_rename_use uop.src told2new in
+    Unop { uop with dest; src }
   | Mov mov ->
     (*_ careful of dest *)
     let src = oper_rename_use mov.src told2new in

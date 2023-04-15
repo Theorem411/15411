@@ -34,9 +34,9 @@ let asinstr_prop (instr : AS.instr) (t : Temp.t) (sub : AS.operand) : AS.instr =
     let lhs' = op_prop lhs t sub in
     let rhs' = op_prop rhs t sub in
     EfktBinop { op; dest; lhs = lhs'; rhs = rhs' }
-  | Unop { op; dest } ->
-    let dest' = op_prop dest t sub in
-    Unop { op; dest = dest' }
+  | Unop { op; dest; src } ->
+    let src' = op_prop src t sub in
+    Unop { op; dest; src = src' }
   | Mov { dest; size; src } ->
     let src' = op_prop src t sub in
     Mov { dest; size; src = src' }
