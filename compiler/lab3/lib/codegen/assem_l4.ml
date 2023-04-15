@@ -102,6 +102,7 @@ type instr =
   | Unop of
       { op : unary_operation
       ; dest : operand
+      ; src : operand
       }
   (* dest <- src *)
   | Mov of
@@ -260,11 +261,7 @@ let format_instr' = function
       (format_operand binop.lhs)
       (format_efkt_operation binop.op)
       (format_operand binop.rhs)
-  | Unop unop ->
-    sprintf
-      "%s%s"
-      (format_unop unop.op)
-      (format_operand unop.dest)
+  | Unop unop -> sprintf "%s%s" (format_unop unop.op) (format_operand unop.dest)
   | Mov { dest; src; size } ->
     sprintf "%s <-%s- %s" (format_operand dest) (format_size size) (format_operand src)
   | MovSxd { dest; src } ->
