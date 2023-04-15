@@ -1,415 +1,396 @@
 after all ssa
 ===================================
-fspace _c0_makeInt(%t1:s, %t2:l):
------------------ blc ._c0_makeInt(%t1, %t2). ------------------
-0 : %t45 <-s- EDI
-1 : %t46 <-l- ESI
-2 : loadfromstack {}
-3 : %t47 <-l- %t46
-4 : cmpl %t47, $0
-5 : Je .L8
-6 : %t48 <-l- %t47 + $0
-7 : %t49 <-s- (%t48)
-8 : %t50 <-l- %t46
-9 : cmpl %t50, $0
-10 : Je .L8
-11 : %t51 <-l- %t50 + $0
-12 : %t52 <-s- $1
-13 : %t53 <-s- %t49
-14 : %t54 <-s- %t52 + %t53
-15 : (%t51) <-s- %t54
-16 : EAX <-s- %t45
-17 : ret
--------------- jump:ret -----------------
-
------------------ blc .L2. ------------------
-18 : ret
--------------- jump:ret -----------------
-
------------------------------------
-tuse = {
-%t53:14
-%t48:7
-%t46:3, 8
-%t52:14
-%t45:16
-%t54:15
-%t50:9, 11
-%t49:13
-%t47:4, 6
-%t51:15
-}
-
-     ===================================
-
-
-===================================
 fspace _c0_main():
 ----------------- blc ._c0_main(). ------------------
 0 : loadfromstack {}
-1 : EDI <-s- $4
-2 : call ____calloc_javaway(EDIs|)[tail call - false]
-3 : %t55 <-l- EAX
-4 : %t56 <-l- %t55
-5 : %t57 <-l- %t56
-6 : cmpl %t57, $0
-7 : Je .L8
-8 : %t58 <-l- %t57 + $0
-9 : %t59 <-s- $0
-10 : (%t58) <-s- %t59
-11 : %t60 <-s- $4
-12 : EDI <-s- $4
-13 : ESI <-s- %t60
-14 : call ____allocarray_javaway(EDIs, ESIs|)[tail call - false]
-15 : %t61 <-l- EAX
-16 : %t62 <-l- %t61
-17 : %t63 <-s- $2
-18 : %t64 <-l- %t56
-19 : EDI <-s- %t63
-20 : ESI <-l- %t64
-21 : call _c0_makeInt(EDIs, ESIl|)[tail call - false]
-22 : %t65 <-s- EAX
-23 : %t66 <-l- %t62
-24 : %t67 <-s- %t65
-25 : cmpl %t66, $0
-26 : Je .L8
-27 : cmps %t67, $0
-28 : Jl .L8
-29 : %t68 <-l- %t66 - $8
-30 : %t69 <-s- (%t68)
-31 : cmps %t67, %t69
-32 : Jge .L8
-33 : %t70 <-l- %t66
-34 : movsxd %t71 <-- %t67
-35 : %t72 <-l- %t71 * $4
-36 : %t73 <-l- %t70 + %t72
-37 : %t74 <-l- %t73 + $0
-38 : %t75 <-s- (%t74)
-39 : %t76 <-l- %t62
-40 : %t77 <-s- %t65
-41 : cmpl %t76, $0
-42 : Je .L8
-43 : movsxd %t78 <-- %t77
-44 : cmps %t77, $0
-45 : Jl .L8
-46 : %t79 <-l- %t76 - $8
-47 : %t80 <-s- (%t79)
-48 : cmps %t77, %t80
-49 : Jge .L8
-50 : %t81 <-l- %t78 * $4
-51 : %t82 <-l- %t81 + $0
-52 : %t83 <-l- %t76 + %t82
-53 : %t84 <-s- $1
-54 : %t85 <-s- %t75
-55 : %t86 <-s- %t84 + %t85
-56 : (%t83) <-s- %t86
-57 : %t87 <-l- %t56
-58 : cmpl %t87, $0
-59 : Je .L8
-60 : %t88 <-l- %t87 + $0
-61 : %t89 <-s- (%t88)
-62 : %t90 <-s- %t89
-63 : %t91 <-s- $1
-64 : cmps %t90, %t91
-65 : Jne .L4
-66 : jump.L3
+1 : %t42 <-s- $2000000
+2 : EDI <-s- %t42
+3 : call itod(EDIs|)[tail call - false]
+4 : %t43 <-l- EAX
+5 : %t44 <-s- $1
+6 : EDI <-s- %t44
+7 : call itod(EDIs|)[tail call - false]
+8 : %t45 <-l- EAX
+9 : %t46 <-s- $1000
+10 : EDI <-s- %t46
+11 : call itod(EDIs|)[tail call - false]
+12 : %t47 <-l- EAX
+13 : %t48 <-l- %t45
+14 : %t49 <-l- %t47
+15 : EDI <-l- %t48
+16 : ESI <-l- %t49
+17 : call ddiv(EDIl, ESIl|)[tail call - false]
+18 : %t50 <-l- EAX
+19 : %t51 <-l- %t43
+20 : %t52 <-l- %t50
+21 : EDI <-l- %t51
+22 : ESI <-l- %t52
+23 : call dadd(EDIl, ESIl|)[tail call - false]
+24 : %t53 <-l- EAX
+25 : %t54 <-l- %t53
+26 : %t55 <-l- $0
+27 : %t56 <-s- $0
+28 : jump.L2
+-------------- jump:.L2 -----------------
+
+----------------- blc .L2. ------------------
+29 : %t57 <-- @(.L3:%t62, ._c0_main():%t54)
+30 : %t58 <-- @(.L3:%t68, ._c0_main():%t55)
+31 : %t59 <-- @(.L3:%t71, ._c0_main():%t56)
+32 : %t60 <-s- %t59
+33 : %t61 <-s- $1000000
+34 : cmps %t60, %t61
+35 : Jge .L4
+36 : jump.L3
 -------------- jump:if(.L3|.L4) -----------------
 
 ----------------- blc .L3. ------------------
-67 : EAX <-s- $1
-68 : ret
--------------- jump:ret -----------------
-
------------------ blc .L6. ------------------
-69 : jump.L5
--------------- jump:.L5 -----------------
+37 : %t62 <-- @(.L2:%t57)
+38 : %t63 <-- @(.L2:%t58)
+39 : %t64 <-- @(.L2:%t59)
+40 : %t65 <-l- %t63
+41 : %t66 <-l- %t62
+42 : EDI <-l- %t65
+43 : ESI <-l- %t66
+44 : call dadd(EDIl, ESIl|)[tail call - false]
+45 : %t67 <-l- EAX
+46 : %t68 <-l- %t67
+47 : %t69 <-s- $1
+48 : %t70 <-s- %t64
+49 : %t71 <-s- %t69 + %t70
+50 : jump.L2
+-------------- jump:.L2 -----------------
 
 ----------------- blc .L4. ------------------
-70 : EAX <-s- $0
-71 : ret
+51 : %t72 <-- @(.L2:%t58)
+52 : %t73 <-s- $2000000
+53 : EDI <-s- %t73
+54 : call itod(EDIs|)[tail call - false]
+55 : %t74 <-l- EAX
+56 : %t75 <-s- $1000000
+57 : EDI <-s- %t75
+58 : call itod(EDIs|)[tail call - false]
+59 : %t76 <-l- EAX
+60 : %t77 <-l- %t74
+61 : %t78 <-l- %t76
+62 : EDI <-l- %t77
+63 : ESI <-l- %t78
+64 : call dmul(EDIl, ESIl|)[tail call - false]
+65 : %t79 <-l- EAX
+66 : %t80 <-l- %t72
+67 : %t81 <-l- %t79
+68 : EDI <-l- %t80
+69 : ESI <-l- %t81
+70 : call dsub(EDIl, ESIl|)[tail call - false]
+71 : %t82 <-l- EAX
+72 : %t83 <-l- %t82
+73 : %t84 <-s- $1000000
+74 : EDI <-s- %t84
+75 : call itod(EDIs|)[tail call - false]
+76 : %t85 <-l- EAX
+77 : %t86 <-l- %t83
+78 : %t87 <-l- %t85
+79 : EDI <-l- %t86
+80 : ESI <-l- %t87
+81 : call dmul(EDIl, ESIl|)[tail call - false]
+82 : %t88 <-l- EAX
+83 : %t89 <-l- %t88
+84 : %t90 <-l- %t89
+85 : EDI <-l- %t90
+86 : call dtoi(EDIl|)[tail call - true]
+87 : %t91 <-s- EAX
+88 : EAX <-s- %t91
+89 : ret
 -------------- jump:ret -----------------
 
------------------ blc .L7. ------------------
-72 : jump.L5
--------------- jump:.L5 -----------------
-
 ----------------- blc .L5. ------------------
-73 : ret
+90 : ret
 -------------- jump:ret -----------------
 
 -----------------------------------
 tuse = {
-%t87:58, 60
-%t62:23, 39
-%t91:64
-%t88:61
-%t86:56
-%t63:19
-%t65:24, 40
-%t70:36
-%t59:10
-%t57:6, 8
-%t76:41, 46, 52
-%t66:25, 29, 33
-%t90:64
-%t71:35
-%t77:43, 44, 48
-%t61:16
-%t84:55
-%t64:20
-%t80:48
-%t74:38
-%t89:62
-%t85:55
-%t82:52
-%t73:37
+%t87:80
+%t62:29, 41
+%t42:2
+%t91:88
+%t88:83
+%t86:79
+%t63:40
+%t54:29
+%t65:42
+%t50:20
+%t70:49
+%t59:32, 39
+%t48:15
+%t57:37
+%t76:61
+%t66:43
+%t90:85
+%t71:31
+%t46:10
+%t77:62
+%t61:34
+%t84:74
+%t64:48
+%t51:21
+%t80:68
+%t74:60
+%t89:84
+%t85:78
+%t82:72
+%t73:53
 %t68:30
-%t69:31
-%t67:27, 31, 34
-%t83:56
-%t75:54
-%t72:36
-%t60:13
-%t58:10
-%t81:51
-%t55:4
-%t79:47
-%t56:5, 18, 57
-%t78:50
+%t44:6
+%t69:49
+%t45:13
+%t67:46
+%t43:19
+%t49:16
+%t47:14
+%t83:77
+%t53:25
+%t75:57
+%t72:66
+%t60:34
+%t52:22
+%t58:38, 51
+%t81:69
+%t55:30
+%t79:67
+%t56:31
+%t78:63
 }
 
      ===================================
 
-prop on fspace _c0_makeInt
-propagate 3 : %t47 <- %t46
-delete code: 3 : nop
-check if 3 is still in tuse[%t46]={8}
-tuse[%t46] is now 4, 6, 8
-propagate 13 : %t53 <- %t49
-delete code: 13 : nop
-check if 13 is still in tuse[%t49]={}
-tuse[%t49] is now 14
-propagate 8 : %t50 <- %t46
-delete code: 8 : nop
-check if 8 is still in tuse[%t46]={4, 6}
-tuse[%t46] is now 4, 6, 9, 11
-propagate 12 : %t52 <- $1
-delete code: 12 : nop
 prop on fspace _c0_main
-propagate 18 : %t64 <- %t56
-delete code: 18 : nop
-check if 18 is still in tuse[%t56]={5, 57}
-tuse[%t56] is now 5, 20, 57
-propagate 40 : %t77 <- %t65
+propagate 26 : %t55 <- $0
+delete code: 26 : nop
+propagate 27 : %t56 <- $0
+delete code: 27 : nop
+propagate 48 : %t70 <- %t64
+delete code: 48 : nop
+check if 48 is still in tuse[%t64]={}
+tuse[%t64] is now 49
+propagate 40 : %t65 <- %t63
 delete code: 40 : nop
-check if 40 is still in tuse[%t65]={24}
-tuse[%t65] is now 24, 43, 44, 48
-propagate 33 : %t70 <- %t66
+check if 40 is still in tuse[%t63]={}
+tuse[%t63] is now 42
+propagate 66 : %t80 <- %t72
+delete code: 66 : nop
+check if 66 is still in tuse[%t72]={}
+tuse[%t72] is now 68
+propagate 25 : %t54 <- %t53
+delete code: 25 : nop
+check if 25 is still in tuse[%t53]={}
+tuse[%t53] is now 29
+propagate 33 : %t61 <- $1000000
 delete code: 33 : nop
-check if 33 is still in tuse[%t66]={25, 29}
-tuse[%t66] is now 25, 29, 36
-propagate 39 : %t76 <- %t62
-delete code: 39 : nop
-check if 39 is still in tuse[%t62]={23}
-tuse[%t62] is now 23, 41, 46, 52
-propagate 11 : %t60 <- $4
-delete code: 11 : nop
-propagate 53 : %t84 <- $1
-delete code: 53 : nop
-propagate 23 : %t66 <- %t62
-delete code: 23 : nop
-check if 23 is still in tuse[%t62]={41, 46, 52}
-tuse[%t62] is now 25, 29, 36, 41, 46, 52
-propagate 17 : %t63 <- $2
-delete code: 17 : nop
-propagate 24 : %t67 <- %t65
-delete code: 24 : nop
-check if 24 is still in tuse[%t65]={43, 44, 48}
-tuse[%t65] is now 27, 31, 34, 43, 44, 48
-propagate 62 : %t90 <- %t89
-delete code: 62 : nop
-check if 62 is still in tuse[%t89]={}
-tuse[%t89] is now 64
-propagate 63 : %t91 <- $1
-delete code: 63 : nop
-propagate 54 : %t85 <- %t75
-delete code: 54 : nop
-check if 54 is still in tuse[%t75]={}
-tuse[%t75] is now 55
-propagate 4 : %t56 <- %t55
-delete code: 4 : nop
-check if 4 is still in tuse[%t55]={}
-tuse[%t55] is now 5, 20, 57
-propagate 57 : %t87 <- %t55
-delete code: 57 : nop
-check if 57 is still in tuse[%t55]={5, 20}
-tuse[%t55] is now 5, 20, 58, 60
-propagate 9 : %t59 <- $0
+propagate 77 : %t86 <- %t83
+delete code: 77 : nop
+check if 77 is still in tuse[%t83]={}
+tuse[%t83] is now 79
+propagate 84 : %t90 <- %t89
+delete code: 84 : nop
+check if 84 is still in tuse[%t89]={}
+tuse[%t89] is now 85
+propagate 14 : %t49 <- %t47
+delete code: 14 : nop
+check if 14 is still in tuse[%t47]={}
+tuse[%t47] is now 16
+propagate 41 : %t66 <- %t62
+delete code: 41 : nop
+check if 41 is still in tuse[%t62]={29}
+tuse[%t62] is now 29, 43
+propagate 47 : %t69 <- $1
+delete code: 47 : nop
+propagate 83 : %t89 <- %t88
+delete code: 83 : nop
+check if 83 is still in tuse[%t88]={}
+tuse[%t88] is now 85
+propagate 1 : %t42 <- $2000000
+delete code: 1 : nop
+propagate 72 : %t83 <- %t82
+delete code: 72 : nop
+check if 72 is still in tuse[%t82]={}
+tuse[%t82] is now 79
+propagate 52 : %t73 <- $2000000
+delete code: 52 : nop
+propagate 78 : %t87 <- %t85
+delete code: 78 : nop
+check if 78 is still in tuse[%t85]={}
+tuse[%t85] is now 80
+propagate 13 : %t48 <- %t45
+delete code: 13 : nop
+check if 13 is still in tuse[%t45]={}
+tuse[%t45] is now 15
+propagate 46 : %t68 <- %t67
+delete code: 46 : nop
+check if 46 is still in tuse[%t67]={}
+tuse[%t67] is now 30
+propagate 61 : %t78 <- %t76
+delete code: 61 : nop
+check if 61 is still in tuse[%t76]={}
+tuse[%t76] is now 63
+propagate 73 : %t84 <- $1000000
+delete code: 73 : nop
+propagate 9 : %t46 <- $1000
 delete code: 9 : nop
-propagate 16 : %t62 <- %t61
-delete code: 16 : nop
-check if 16 is still in tuse[%t61]={}
-tuse[%t61] is now 25, 29, 36, 41, 46, 52
-propagate 5 : %t57 <- %t55
+propagate 67 : %t81 <- %t79
+delete code: 67 : nop
+check if 67 is still in tuse[%t79]={}
+tuse[%t79] is now 69
+propagate 32 : %t60 <- %t59
+delete code: 32 : nop
+check if 32 is still in tuse[%t59]={39}
+tuse[%t59] is now 34, 39
+propagate 19 : %t51 <- %t43
+delete code: 19 : nop
+check if 19 is still in tuse[%t43]={}
+tuse[%t43] is now 21
+propagate 60 : %t77 <- %t74
+delete code: 60 : nop
+check if 60 is still in tuse[%t74]={}
+tuse[%t74] is now 62
+propagate 20 : %t52 <- %t50
+delete code: 20 : nop
+check if 20 is still in tuse[%t50]={}
+tuse[%t50] is now 22
+propagate 56 : %t75 <- $1000000
+delete code: 56 : nop
+propagate 5 : %t44 <- $1
 delete code: 5 : nop
-check if 5 is still in tuse[%t55]={20, 58, 60}
-tuse[%t55] is now 6, 8, 20, 58, 60
-===================================
-fspace _c0_makeInt(%t1:s, %t2:l):
------------------ blc ._c0_makeInt(%t1, %t2). ------------------
-0 : %t45 <-s- EDI
-1 : %t46 <-l- ESI
-2 : loadfromstack {}
-3 : nop
-4 : cmpl %t46, $0
-5 : Je .L8
-6 : %t48 <-l- %t46 + $0
-7 : %t49 <-s- (%t48)
-8 : nop
-9 : cmpl %t46, $0
-10 : Je .L8
-11 : %t51 <-l- %t46 + $0
-12 : nop
-13 : nop
-14 : %t54 <-s- $1 + %t49
-15 : (%t51) <-s- %t54
-16 : EAX <-s- %t45
-17 : ret
--------------- jump:ret -----------------
-
------------------ blc .L2. ------------------
-18 : ret
--------------- jump:ret -----------------
-
------------------------------------
-tuse = {
-%t48:7
-%t46:4, 6, 9, 11
-%t45:16
-%t54:15
-%t49:14
-%t51:15
-}
-
-     ===================================
-
-
 ===================================
 fspace _c0_main():
 ----------------- blc ._c0_main(). ------------------
 0 : loadfromstack {}
-1 : EDI <-s- $4
-2 : call ____calloc_javaway(EDIs|)[tail call - false]
-3 : %t55 <-l- EAX
-4 : nop
+1 : nop
+2 : EDI <-s- $2000000
+3 : call itod(EDIs|)[tail call - false]
+4 : %t43 <-l- EAX
 5 : nop
-6 : cmpl %t55, $0
-7 : Je .L8
-8 : %t58 <-l- %t55 + $0
+6 : EDI <-s- $1
+7 : call itod(EDIs|)[tail call - false]
+8 : %t45 <-l- EAX
 9 : nop
-10 : (%t58) <-s- $0
-11 : nop
-12 : EDI <-s- $4
-13 : ESI <-s- $4
-14 : call ____allocarray_javaway(EDIs, ESIs|)[tail call - false]
-15 : %t61 <-l- EAX
-16 : nop
-17 : nop
-18 : nop
-19 : EDI <-s- $2
-20 : ESI <-l- %t55
-21 : call _c0_makeInt(EDIs, ESIl|)[tail call - false]
-22 : %t65 <-s- EAX
-23 : nop
-24 : nop
-25 : cmpl %t61, $0
-26 : Je .L8
-27 : cmps %t65, $0
-28 : Jl .L8
-29 : %t68 <-l- %t61 - $8
-30 : %t69 <-s- (%t68)
-31 : cmps %t65, %t69
-32 : Jge .L8
+10 : EDI <-s- $1000
+11 : call itod(EDIs|)[tail call - false]
+12 : %t47 <-l- EAX
+13 : nop
+14 : nop
+15 : EDI <-l- %t45
+16 : ESI <-l- %t47
+17 : call ddiv(EDIl, ESIl|)[tail call - false]
+18 : %t50 <-l- EAX
+19 : nop
+20 : nop
+21 : EDI <-l- %t43
+22 : ESI <-l- %t50
+23 : call dadd(EDIl, ESIl|)[tail call - false]
+24 : %t53 <-l- EAX
+25 : nop
+26 : nop
+27 : nop
+28 : jump.L2
+-------------- jump:.L2 -----------------
+
+----------------- blc .L2. ------------------
+29 : %t57 <-- @(.L3:%t62, ._c0_main():%t53)
+30 : %t58 <-- @(.L3:%t67, ._c0_main():$0)
+31 : %t59 <-- @(.L3:%t71, ._c0_main():$0)
+32 : nop
 33 : nop
-34 : movsxd %t71 <-- %t65
-35 : %t72 <-l- %t71 * $4
-36 : %t73 <-l- %t61 + %t72
-37 : %t74 <-l- %t73 + $0
-38 : %t75 <-s- (%t74)
-39 : nop
-40 : nop
-41 : cmpl %t61, $0
-42 : Je .L8
-43 : movsxd %t78 <-- %t65
-44 : cmps %t65, $0
-45 : Jl .L8
-46 : %t79 <-l- %t61 - $8
-47 : %t80 <-s- (%t79)
-48 : cmps %t65, %t80
-49 : Jge .L8
-50 : %t81 <-l- %t78 * $4
-51 : %t82 <-l- %t81 + $0
-52 : %t83 <-l- %t61 + %t82
-53 : nop
-54 : nop
-55 : %t86 <-s- $1 + %t75
-56 : (%t83) <-s- %t86
-57 : nop
-58 : cmpl %t55, $0
-59 : Je .L8
-60 : %t88 <-l- %t55 + $0
-61 : %t89 <-s- (%t88)
-62 : nop
-63 : nop
-64 : cmps %t89, $1
-65 : Jne .L4
-66 : jump.L3
+34 : cmps %t59, $1000000
+35 : Jge .L4
+36 : jump.L3
 -------------- jump:if(.L3|.L4) -----------------
 
 ----------------- blc .L3. ------------------
-67 : EAX <-s- $1
-68 : ret
--------------- jump:ret -----------------
-
------------------ blc .L6. ------------------
-69 : jump.L5
--------------- jump:.L5 -----------------
+37 : %t62 <-- @(.L2:%t57)
+38 : %t63 <-- @(.L2:%t58)
+39 : %t64 <-- @(.L2:%t59)
+40 : nop
+41 : nop
+42 : EDI <-l- %t63
+43 : ESI <-l- %t62
+44 : call dadd(EDIl, ESIl|)[tail call - false]
+45 : %t67 <-l- EAX
+46 : nop
+47 : nop
+48 : nop
+49 : %t71 <-s- $1 + %t64
+50 : jump.L2
+-------------- jump:.L2 -----------------
 
 ----------------- blc .L4. ------------------
-70 : EAX <-s- $0
-71 : ret
+51 : %t72 <-- @(.L2:%t58)
+52 : nop
+53 : EDI <-s- $2000000
+54 : call itod(EDIs|)[tail call - false]
+55 : %t74 <-l- EAX
+56 : nop
+57 : EDI <-s- $1000000
+58 : call itod(EDIs|)[tail call - false]
+59 : %t76 <-l- EAX
+60 : nop
+61 : nop
+62 : EDI <-l- %t74
+63 : ESI <-l- %t76
+64 : call dmul(EDIl, ESIl|)[tail call - false]
+65 : %t79 <-l- EAX
+66 : nop
+67 : nop
+68 : EDI <-l- %t72
+69 : ESI <-l- %t79
+70 : call dsub(EDIl, ESIl|)[tail call - false]
+71 : %t82 <-l- EAX
+72 : nop
+73 : nop
+74 : EDI <-s- $1000000
+75 : call itod(EDIs|)[tail call - false]
+76 : %t85 <-l- EAX
+77 : nop
+78 : nop
+79 : EDI <-l- %t82
+80 : ESI <-l- %t85
+81 : call dmul(EDIl, ESIl|)[tail call - false]
+82 : %t88 <-l- EAX
+83 : nop
+84 : nop
+85 : EDI <-l- %t88
+86 : call dtoi(EDIl|)[tail call - true]
+87 : %t91 <-s- EAX
+88 : EAX <-s- %t91
+89 : ret
 -------------- jump:ret -----------------
 
------------------ blc .L7. ------------------
-72 : jump.L5
--------------- jump:.L5 -----------------
-
 ----------------- blc .L5. ------------------
-73 : ret
+90 : ret
 -------------- jump:ret -----------------
 
 -----------------------------------
 tuse = {
-%t88:61
-%t86:56
-%t65:27, 31, 34, 43, 44, 48
-%t71:35
-%t61:25, 29, 36, 41, 46, 52
-%t80:48
-%t74:38
-%t89:64
-%t82:52
-%t73:37
-%t68:30
-%t69:31
-%t83:56
-%t75:55
-%t72:36
-%t58:10
-%t81:51
-%t55:6, 8, 20, 58, 60
-%t79:47
-%t78:50
+%t62:29, 43
+%t91:88
+%t88:85
+%t63:42
+%t50:22
+%t59:34, 39
+%t57:37
+%t76:63
+%t71:31
+%t64:49
+%t74:62
+%t85:80
+%t82:79
+%t45:15
+%t67:30
+%t43:21
+%t47:16
+%t53:29
+%t72:68
+%t58:38, 51
+%t79:69
 }
 
      ===================================

@@ -242,7 +242,7 @@ let compile (cmd : cmd_line_args) : unit =
   let mfail = Label.create () in
   let assem' = Codegen_l4.codegen ~mfl:mfail ~unsafe:cmd.unsafe ir in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem');
-  let ssa_off = false in
+  let ssa_off = true in
   let assem =
     if ssa_off
     then assem'
@@ -258,7 +258,8 @@ let compile (cmd : cmd_line_args) : unit =
       let assem = Ssa.de_ssa assem_ssa in
       say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
       (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem) () else () in *)
-      assem)
+      assem
+      )
   in
   say_if cmd.dump_assem (fun () -> "SSAAAAAAAAAAAAAAA");
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);

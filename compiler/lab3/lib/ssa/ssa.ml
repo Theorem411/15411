@@ -572,7 +572,7 @@ let ssa (prog : AS.program) : program =
 let split_jmp (code_rev : AS.instr list) =
   match code_rev with
   | AS.Ret :: rest -> [ AS.Ret ], rest
-  | AS.Jmp l1 :: AS.Cjmp l2 :: rest -> [ AS.Jmp l1; AS.Cjmp l2 ], rest
+  | AS.Jmp l1 :: AS.Cjmp l2 :: AS.Cmp cmp :: rest -> [ AS.Jmp l1; AS.Cjmp l2; AS.Cmp cmp ], rest
   | AS.Jmp l1 :: rest -> [ AS.Jmp l1 ], rest
   | _ -> failwith "fuck you"
 ;;

@@ -1,20 +1,21 @@
-//test return 1
+//test return 980497802
 
-int makeInt(int n, int* ref){
-    (*ref)++;
-    return n;
+// Adventures in rounding modes
+
+int main() {
+  // delta = 2000000.001
+  dub delta = dadd(itod(2000000), ddiv(itod(1), itod(1000)));
+
+  // d = 2000000001000... ish
+  dub d = NULL;
+  for (int i = 0; i < 1000000; i++) d = dadd(d, delta);
+
+  // e = 1000... ish
+  dub e = dsub(d, dmul(itod(2000000), itod(1000000)));
+
+  // f = 1000000000... ish...
+  dub f = dmul(e, itod(1000000));
+  
+  // Which is actually 980497802... ish, of course.
+  return dtoi(f);
 }
-
-int main(){
-    int * ref = alloc(int);
-    *ref = 0;
-    int[] A = alloc_array(int,4);
-    A[makeInt(2, ref)]++;
-    if (*ref == 1){
-        return 1;
-    }
-    else{
-        return 0;
-    }
-}
-
