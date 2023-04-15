@@ -423,9 +423,22 @@ let translate_line
   (* Translating effectful operations *)
   | AS.EfktBinop _ ->
     List.rev_append (translate_efkt ~unsafe get_final errLabel line) prev_lines
-  | Unop { op; dest } ->
-    X86.UnCommand { op = X86.unary_to_opr op; src = get_final (dest, X86.L) }
-    :: prev_lines
+  | Unop { op; dest; src } ->
+    [ X86.BinCommand
+        { op = X86.Mov
+        ; size = X86.L
+        ; dest = X86.get_free X86.L
+        ; src = get_final (src, X86.L)
+        }
+    ; X86.UnCommand { op = X86.unary_to_opr op; src = X86.get_free X86.L }
+    ; X86.BinCommand
+        { op = X86.Mov
+        ; size = X86.L
+        ; src = X86.get_free X86.L
+        ; dest = get_final (dest, X86.L)
+        }
+    ]
+    @ prev_lines
   | Jmp l -> X86.Jump { op = None; label = l } :: prev_lines
   | Cjmp { typ; l } -> X86.Jump { op = Some typ; label = l } :: prev_lines
   | Lab l -> X86.Lbl l :: prev_lines
