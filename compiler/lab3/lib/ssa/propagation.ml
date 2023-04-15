@@ -225,6 +225,7 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
       | AS.BitOr -> Int64.bit_or c1 c2
       | AS.BitXor -> Int64.bit_xor c1 c2
     in
+    let c = Int64.(%) c (Int64.(+) (Int64.of_int32 (Int32.max_value)) (Int64.one)) in
     Some (d, AS.Imm c)
   (* | AS.EfktBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
     (match op with
