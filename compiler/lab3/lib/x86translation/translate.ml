@@ -545,6 +545,7 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
   (* has to be changed to the global one *)
   let alloc = if tmp_magic fspace.tmp_cnt then Stackalloc.stack_alloc else alloc in
   let ({ reg_spill_map = reg_map; updater } : Regalloc.t) = alloc fspace in
+  prerr_endline ("Done register allocator...");
   (* prerr_endline (Regalloc.pp_temp_map reg_map); *)
   let stack_cells = Regalloc.mem_count reg_map in
   let final = get_final updater in
