@@ -6,7 +6,7 @@ module TH = SSA.TH
 module IS = SSA.IS
 module TS = SSA.TS
 
-let debug_mode = true
+let debug_mode = false
 let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
 
 (* let pp_IS (lset : IS.t) : string =
