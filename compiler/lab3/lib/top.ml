@@ -263,6 +263,7 @@ let compile (cmd : cmd_line_args) : unit =
   in
   say_if cmd.dump_assem (fun () -> "SSAAAAAAAAAAAAAAA");
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
+  let assem = if not cmd.unsafe then assem else Assem_strength.strength assem in 
   (* print_endline "after all de-ssa"; *)
   say_if cmd.verbose (fun () -> "Emitting...");
   match cmd.emit with
