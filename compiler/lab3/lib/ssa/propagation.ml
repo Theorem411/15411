@@ -7,7 +7,6 @@ module IS = SSA.IS
 
 (* let debug_mode = true
 let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
-
 let pp_IS (lset : IS.t) : string =
   let lset = IS.to_list lset in
   List.map lset ~f:Int.to_string |> String.concat ~sep:", "
@@ -394,7 +393,7 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
                     (SSA.pp_instr ln lncode'))
              in *)
              (* filter those ln in tuse[t] that are asinstr *)
-             ln, lncode)
+             ln)
          in
          (*_ update tuse[t'] = tuse[t'] u tuse[t]*)
          let () =
@@ -412,13 +411,13 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
          (*_ delete t from tuse *)
          let () = TH.remove tuse t in
          (*_ put all lines tuse[t] that are targets back onto the queue *)
-         let targets' =
+         (* let targets' =
            List.filter_map instr_list ~f:(fun (i, instr) ->
              match target instr with
              | Some _ -> Some i
              | _ -> None)
-         in
-         let () = Queue.enqueue_all wq targets' in
+         in *)
+         let () = Queue.enqueue_all wq instr_list in
          loop ())
   in
   let () = loop () in
@@ -432,33 +431,3 @@ let propagate_fspace (fspace : SSA.fspace) : SSA.fspace =
 ;;
 
 let propagate (prog : SSA.program) : SSA.program = List.map prog ~f:propagate_fspace
-
-(*_ debug section: recreate the entire process of 
-   1) going into ssa 
-   2) phi_opt 
-   3) propagate 
-   4) de_ssa *)
-
-let debug (_ : AS.program) : unit =
-  (* let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in
-  let () = printf "dumping 3-assem...\n%s\n\n" (AS.format_program prog) in
-  let prog_ssa : SSA.program_ssa = SSA.global_rename prog in
-  let () = printf "dumping prog after ssa...\n\n%s\n\n" (SSA.pp_program_ssa prog_ssa prog) in
-  let prog_phi : SSA.program_phi = SSA.global_phi prog_ssa in
-  let () =
-    printf
-      "dumping prog after phi transformation...\n\n%s\n\n"
-      (SSA.pp_program_phi prog_phi prog_ssa)
-  in
-  let prog : SSA.program = SSA.global_lining prog_phi in
-  let () = printf "dumping prog after lining...\n\n%s\n\n" (SSA.pp_program prog) in
-  (* let prog : SSA.program = propagate prog in
-  let () =
-    printf "dumping prog after const/copy propagation...\n\n%s\n\n" (SSA.pp_program prog)
-  ``in *)
-  let prog : AS.program = SSA.de_ssa prog in
-  let () =
-    printf "dumping AS.program after de_ssa ... \n\n%s\n\n" (AS.format_program prog)
-  in *)
-  ()
-;;
