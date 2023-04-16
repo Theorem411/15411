@@ -123,12 +123,13 @@ let rec sr_mpexp (mexp : T.mpexp) : T.mpexp =
     | _ -> T.Binop { lhs = el, sl; rhs = er, sr; op = T.Sub }, esize)
   | Binop { lhs; rhs; op } ->
     (*_ associativity optimizations *)
-    let lhs' = sr_mpexp lhs in
-    let rhs' = sr_mpexp rhs in
-    let exp_lst = tr_traversal (T.Binop { lhs = lhs'; rhs = rhs'; op }, esize) op in
+    (* let lhs' = sr_mpexp lhs in *)
+    (* let rhs' = sr_mpexp rhs in *)
+    let exp_lst = tr_traversal (T.Binop { lhs = lhs; rhs = rhs; op }, esize) op in
+    let exp_lst = List.map exp_lst ~f:sr_mpexp in
     let clst, elst = const_sieve exp_lst in
     (match fold_const clst op, elst with
-    | None, _ -> T.Binop { lhs = lhs'; rhs = rhs'; op }, esize
+    | None, _ -> tr_assemble elst op
     | Some c, [] -> T.Const c, esize
     | Some c, _ -> sr_assoc_binop c elst op)
   | Cmpop { lhs; rhs; op; size = 4 } ->

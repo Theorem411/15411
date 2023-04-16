@@ -320,7 +320,7 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
     (match Int32.of_int64 c with
      | None -> None
      | Some _ -> Some (d, AS.Imm c))
-  | AS.EfktBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
+  (* | AS.EfktBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
     (match op with
      | AS.Div ->
        if Int64.equal c2 Int64.zero
@@ -338,7 +338,7 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
          match Int32.of_int64 c with
          | None -> None
          | Some _ -> Some (d, AS.Imm c))
-     | _ -> None)
+     | _ -> None) *)
   | _ -> None
 ;;
 
@@ -411,7 +411,7 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
                     (SSA.pp_instr ln lncode'))
              in *)
              (* filter those ln in tuse[t] that are asinstr *)
-             ln, lncode)
+             ln)
          in
          (*_ update tuse[t'] = tuse[t'] u tuse[t]*)
          let () =
@@ -429,13 +429,13 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
          (*_ delete t from tuse *)
          let () = TH.remove tuse t in
          (*_ put all lines tuse[t] that are targets back onto the queue *)
-         let targets' =
+         (* let targets' =
            List.filter_map instr_list ~f:(fun (i, instr) ->
              match target instr with
              | Some _ -> Some i
              | _ -> None)
-         in
-         let () = Queue.enqueue_all wq targets' in
+         in *)
+         let () = Queue.enqueue_all wq instr_list in
          loop ())
   in
   let () = loop () in

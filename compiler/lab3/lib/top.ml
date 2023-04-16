@@ -228,9 +228,9 @@ let compile (cmd : cmd_line_args) : unit =
   if cmd.typecheck_only then exit 0;
   (* Translate *)
   say_if cmd.verbose (fun () -> "Translating...");
-  let raw_ir = TranslationM.translate elab in
-  (* say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program raw_ir); *)
-  let ir = Strength.strength_reduction raw_ir in
+  let ir = TranslationM.translate elab in
+  say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
+  let ir = Strength.strength_reduction ir in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (*_ opt: function inline *)
   say_if cmd.verbose (fun () -> "Doing function inline...");
@@ -248,14 +248,14 @@ let compile (cmd : cmd_line_args) : unit =
     else (
       say_if cmd.verbose (fun () -> "Starting ssa...");
       let assem_ssa' = Ssa.ssa assem' in
-      print_endline "after all ssa";
-      print_endline (Ssa.pp_program assem_ssa');
+      (* print_endline "after all ssa"; *)
+      (* print_endline (Ssa.pp_program assem_ssa'); *)
       say_if cmd.verbose (fun () -> "Starting propogation ...");
       let assem_ssa' = Propagation.propagate assem_ssa' in
-      print_endline (Ssa.pp_program assem_ssa');
+      (* print_endline (Ssa.pp_program assem_ssa'); *)
       say_if cmd.verbose (fun () -> "Starting de-ssa ...");
       let assem_ssa' = Ssa.de_ssa assem_ssa' in
-      print_endline (AssemM.format_program assem_ssa');
+      (* print_endline (AssemM.format_program assem_ssa'); *)
       say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
       (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem_ssa') () else () in *)
       assem_ssa')
