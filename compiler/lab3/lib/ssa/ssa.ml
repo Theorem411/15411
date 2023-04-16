@@ -596,10 +596,18 @@ let fixed_extra_moves (moves : AS.instr list) : AS.instr list =
     | Some _ ->
       let t = Temp.create () in
       let new_final = AS.Map.add_exn final ~key:dest ~data:(AS.Temp t) in
-      [ AS.Temp t, dest; dest, src ] @ accum, new_final
+      [ dest, src; AS.Temp t, dest ] @ accum, new_final
   in
   let raw_moves, _ = List.fold ms ~init:([], final) ~f in
-  List.map raw_moves ~f:(fun (dest, src) -> AS.Mov { dest; src; size = AS.L })
+  print_endline "before";
+  print_endline (String.concat ~sep:"\n" (List.map moves ~f:AS.format_instr));
+  let fms =
+    List.map (List.rev raw_moves) ~f:(fun (dest, src) ->
+        AS.Mov { dest; src; size = AS.L })
+  in
+  print_endline "after";
+  print_endline (String.concat ~sep:"\n" (List.map fms ~f:AS.format_instr));
+  fms
 ;;
 
 (*_ ***** de-ssa function ****** *)
@@ -619,7 +627,7 @@ let reconstruct_blocks
   let assemble ~key:l ~(data : AS.instr list) : unit =
     let code_rev = LT.find_exn l2instrs l |> List.rev in
     let jmp, rest_rev = split_jmp code_rev in
-    let code = jmp @ fixed_extra_moves (List.rev data) @ rest_rev |> List.rev in
+    let code = jmp @ List.rev (fixed_extra_moves (List.rev data)) @ rest_rev |> List.rev in
     LT.update l2instrs l ~f:(fun _ -> code)
   in
   let () = LM.iteri extra_moves ~f:assemble in
