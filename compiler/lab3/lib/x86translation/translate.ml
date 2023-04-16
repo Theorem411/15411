@@ -368,7 +368,7 @@ let translate_lea_array (get_final : AS.operand * X86.size -> X86.operand) = fun
     let b_final = get_final (base, X86.Q) in
     let index_final = get_final (index, X86.L) in
     (match index_final with
-    | Imm icount ->
+    (* | Imm icount ->
       let final_disp =
         Int.of_int64_exn
           (Int64.( + ) (Int64.( * ) (Int64.of_int scale) icount) (Int64.of_int offset))
@@ -394,7 +394,7 @@ let translate_lea_array (get_final : AS.operand * X86.size -> X86.operand) = fun
             ; size = X86.Q
             ; src = X86.Mem { disp; base_reg = b; idx_reg = None; scale = None }
             }
-        ]
+        ] *)
     | _ ->
       let disp = if offset = 0 then None else Some offset in
       let (i, pre_i) : R.reg * X86.instr list =
