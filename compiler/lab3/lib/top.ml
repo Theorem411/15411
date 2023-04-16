@@ -252,24 +252,23 @@ let compile (cmd : cmd_line_args) : unit =
       (* print_endline "after all ssa"; *)
       (* print_endline (Ssa.pp_program assem_ssa'); *)
       let num_phi, num_reg = Ssa.cnt_phi_proportion assem_ssa' in
-      if 3 * num_phi > num_reg then 
-        assem'
-      else 
-      let assem_ssa' = Propagation.propagate assem_ssa' in
-      say_if cmd.verbose (fun () -> "Done propogation ...");
-      (* printf "%s" "after prop...\n"; *)
-      (* print_endline (Ssa.pp_program assem_ssa'); *)
-      say_if cmd.verbose (fun () -> "Starting de-ssa ...");
-      let assem_ssa' = Ssa.de_ssa assem_ssa' in
-      (* print_endline (AssemM.format_program assem_ssa'); *)
-      say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
-      (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem_ssa') () else () in *)
-      assem_ssa'
-      )
+      if 3 * num_phi > num_reg
+      then assem'
+      else (
+        let assem_ssa' = Propagation.propagate assem_ssa' in
+        say_if cmd.verbose (fun () -> "Done propogation ...");
+        (* printf "%s" "after prop...\n"; *)
+        (* print_endline (Ssa.pp_program assem_ssa'); *)
+        say_if cmd.verbose (fun () -> "Starting de-ssa ...");
+        let assem_ssa' = Ssa.de_ssa assem_ssa' in
+        (* print_endline (AssemM.format_program assem_ssa'); *)
+        say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
+        (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem_ssa') () else () in *)
+        assem_ssa'))
   in
   say_if cmd.dump_assem (fun () -> "SSAAAAAAAAAAAAAAA");
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
-  let assem = if not cmd.unsafe then assem else Assem_strength.strength assem in 
+  let assem = if not cmd.unsafe then assem else Assem_strength.strength assem in
   (* print_endline "after all de-ssa"; *)
   say_if cmd.verbose (fun () -> "Emitting...");
   match cmd.emit with
@@ -278,18 +277,18 @@ let compile (cmd : cmd_line_args) : unit =
     let file = cmd.filename ^ ".abs" in
     say_if cmd.verbose (fun () -> sprintf "Writing abstract assem to %s..." file);
     Out_channel.with_file file ~f:(fun out ->
-        Out_channel.fprintf out "%s" (AssemM.format_program assem))
+      Out_channel.fprintf out "%s" (AssemM.format_program assem))
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
     Out_channel.with_file file ~f:(fun out ->
-        let output_x86_instr instr = Out_channel.fprintf out "%s\n" (X86.format instr) in
-        let translated = Translate.translate assem ~mfail ~unsafe:cmd.unsafe in
-        say_if cmd.verbose (fun () -> "Doing speed up");
-        let union = Translate.get_string_list translated in
-        output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
-        output_x86_instr (X86.Directive ".text");
-        List.iter ~f:output_x86_instr union)
+      let output_x86_instr instr = Out_channel.fprintf out "%s\n" (X86.format instr) in
+      let translated = Translate.translate assem ~mfail ~unsafe:cmd.unsafe in
+      say_if cmd.verbose (fun () -> "Doing speed up");
+      let union = Translate.get_string_list translated in
+      output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
+      output_x86_instr (X86.Directive ".text");
+      List.iter ~f:output_x86_instr union)
 ;;
 
 let run (cmd : cmd_line_args) : unit =
