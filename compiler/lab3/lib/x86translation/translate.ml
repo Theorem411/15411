@@ -326,7 +326,8 @@ let translate_mov_from (get_final : AS.operand * X86.size -> X86.operand) = func
       (* mov (mem) -> reg *)
       [ X86.BinCommand
           { op = Mov; dest = X86.get_free X86.Q; src = src_final; size = X86.Q }
-      ; X86.MovFrom { dest = d_final; src = X86.get_free X86.Q; size }
+      ; X86.MovFrom { dest = X86.get_memfree size; src = X86.get_free X86.Q; size }
+      ; X86.BinCommand { op = Mov; dest = d_final; src = X86.get_memfree size; size }
       ]
     | _, Stack _ ->
       (* mov (reg) -> mem *)
@@ -688,7 +689,7 @@ let speed_up (p : X86.instr list) : X86.instr list =
   List.rev (List.fold ~init:[] p ~f:speed_up_aux)
 ;;
 
-let speed_up_off = false
+let speed_up_off = true
 
 (* let pp_fspace l = List.map ~f:(X86.format) l
 let pp_program l = List.concat_map ~f:pp_fspace l *)
