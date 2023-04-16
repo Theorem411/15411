@@ -370,7 +370,12 @@ let translate_lea_array (get_final : AS.operand * X86.size -> X86.operand) = fun
     let disp = if offset = 0 then None else Some offset in
     let (i, pre_i) : R.reg * X86.instr list =
       ( { reg = R.R11D; size = 8 }
-      , [ X86.Movsxd { dest = X86.get_free X86.Q; src = index_final } ] )
+      , match index_final with
+        | X86.Imm _ ->
+          [ X86.BinCommand
+              { op = X86.Mov; size = X86.Q; dest = X86.get_free X86.Q; src = index_final }
+          ]
+        | _ -> [ X86.Movsxd { dest = X86.get_free X86.Q; src = index_final } ] )
     in
     let (b, pre_b) : R.reg * X86.instr list =
       match b_final with
@@ -650,5 +655,5 @@ let speed_up_off = false
 (* let pp_fspace l = List.map ~f:(X86.format) l
 let pp_program l = List.concat_map ~f:pp_fspace l *)
 let get_string_list p : X86.instr list =
-  if speed_up_off then List.concat p else speed_up (List.concat p)
+  if not speed_up_off then speed_up (List.concat p) else List.concat p
 ;;
