@@ -579,6 +579,29 @@ let split_jmp (code_rev : AS.instr list) =
   | _ -> failwith "fuck you"
 ;;
 
+let fixed_extra_moves (moves : AS.instr list) : AS.instr list =
+  let ms =
+    List.map moves ~f:(fun m ->
+        match m with
+        | Mov { dest; src; _ } -> dest, src
+        | _ -> failwith "fixed_extra_moves got not a move")
+  in
+  let used = AS.Set.of_list (List.map ms ~f:(fun (_, src) -> src)) in
+  let final = AS.Map.of_alist_exn [] in
+  let f ((accum, final) : (AS.operand * AS.operand) list * AS.operand AS.Map.t) (dest, src)
+    =
+    let src = Option.value (AS.Map.find final src) ~default:src in
+    match AS.Set.find used ~f:(AS.equal_operand dest) with
+    | None -> (dest, src) :: accum, final
+    | Some _ ->
+      let t = Temp.create () in
+      let new_final = AS.Map.add_exn final ~key:dest ~data:(AS.Temp t) in
+      [ AS.Temp t, dest; dest, src ] @ accum, new_final
+  in
+  let raw_moves, _ = List.fold ms ~init:([], final) ~f in
+  List.map raw_moves ~f:(fun (dest, src) -> AS.Mov { dest; src; size = AS.L })
+;;
+
 (*_ ***** de-ssa function ****** *)
 let reconstruct_blocks
     (l2instrs : AS.instr list LT.t)
@@ -596,7 +619,7 @@ let reconstruct_blocks
   let assemble ~key:l ~(data : AS.instr list) : unit =
     let code_rev = LT.find_exn l2instrs l |> List.rev in
     let jmp, rest_rev = split_jmp code_rev in
-    let code = jmp @ List.rev data @ rest_rev |> List.rev in
+    let code = jmp @ fixed_extra_moves (List.rev data) @ rest_rev |> List.rev in
     LT.update l2instrs l ~f:(fun _ -> code)
   in
   let () = LM.iteri extra_moves ~f:assemble in
