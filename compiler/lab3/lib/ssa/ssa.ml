@@ -470,6 +470,21 @@ type fspace =
 
 type program = fspace list
 
+let cnt_phi_proportion (prog : program) : int * int =
+  let cnt_fspace ({ code; _ } : fspace) : int * int =
+    let code_phi, code_reg =
+      IH.partition_tf code ~f:(fun instr ->
+        match instr with
+        | Phi _ -> true
+        | _ -> false)
+    in
+    IH.length code_phi, IH.length code_reg
+  in
+  List.fold prog ~init:(0, 0) ~f:(fun (cnt_phi, cnt_reg) fspace ->
+    let phi, reg = cnt_fspace fspace in
+    cnt_phi + phi, cnt_reg + reg)
+;;
+
 let instr_def (instr : instr) : Temp.t list =
   match instr with
   | ASInstr instr ->
@@ -596,7 +611,7 @@ let reconstruct_blocks
   let assemble ~key:l ~(data : AS.instr list) : unit =
     let code_rev = LT.find_exn l2instrs l |> List.rev in
     let jmp, rest_rev = split_jmp code_rev in
-    let code = jmp @ (List.rev data) @ rest_rev |> List.rev in
+    let code = jmp @ List.rev data @ rest_rev |> List.rev in
     LT.update l2instrs l ~f:(fun _ -> code)
   in
   let () = LM.iteri extra_moves ~f:assemble in

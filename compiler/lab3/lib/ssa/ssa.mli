@@ -101,6 +101,7 @@ val ssa : AS.program -> program
 (*_ going out of ssa *)
 val de_ssa : program -> AS.program
 
+val cnt_phi_proportion : program -> int * int (* #phi/#code *)
 (*_ debug function: will delete later *)
 val pp_instr : int -> instr -> string
 val pp_program_ssa : program_ssa -> AS.program -> string
