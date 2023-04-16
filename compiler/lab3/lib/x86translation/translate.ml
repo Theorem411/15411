@@ -370,9 +370,12 @@ let translate_lea_array (get_final : AS.operand * X86.size -> X86.operand) = fun
     let disp = if offset = 0 then None else Some offset in
     let (i, pre_i) : R.reg * X86.instr list =
       ( { reg = R.R11D; size = 8 }
-      , [ X86.BinCommand
-            { op = X86.Mov; size = X86.Q; dest = X86.get_free X86.Q; src = index_final }
-        ] )
+      , match index_final with
+        | X86.Imm _ ->
+          [ X86.BinCommand
+              { op = X86.Mov; size = X86.Q; dest = X86.get_free X86.Q; src = index_final }
+          ]
+        | _ -> [ X86.Movsxd { dest = X86.get_free X86.Q; src = index_final } ] )
     in
     let (b, pre_b) : R.reg * X86.instr list =
       match b_final with
