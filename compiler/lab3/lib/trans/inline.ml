@@ -45,6 +45,16 @@ let is_lab1_code (code : T.stm list) : bool =
   let booleans = List.map code ~f:is_lab1_stm in
   List.fold booleans ~init:true ~f:( && )
 ;;
+(* 
+let rm_redundant_ret (fdef : T.block list) : T.block option = 
+  if List.length fdef <> 2 then None
+  else  
+  match List.last fdef with 
+  | None -> None
+  | Some { jump; block; _ } -> 
+    match (block, jump) with 
+    | ([T.Return None], T.JRet) -> failwith "no"
+    | _ -> None *)
 
 let is_target ({ fname; args; fdef } : T.fspace_block) : fspace_target option =
   (* let () = debug_print (sprintf ">>> is %s target? fdef=%i\n" (Symbol.name fname) (List.length fdef)) in *)
