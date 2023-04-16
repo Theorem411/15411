@@ -33,6 +33,10 @@ let intop_to_ebop = function
   | A.Efkt o -> T.Efkt (intop_to_ebop o)
 ;; *)
 
+let unsafe_ref = ref false
+let set_unsafe v = unsafe_ref := v
+let unsafe () = !unsafe_ref
+
 (*_ block handling *)
 (*_ given A.stm list in rev order, produce a block *)
 type block_tobe =
@@ -294,7 +298,12 @@ let rec tr_stm_rev
     (*_ translate read from mem first *)
     let t = Temp.create () in
     let b =
-      { b with code = T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } :: b.code }
+      if unsafe ()
+      then b
+      else
+        { b with
+          code = T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } :: b.code
+        }
     in
     (*_ then translate e *)
     let e, acc, b = tr_exp_rev env dep exp acc b in
@@ -304,9 +313,12 @@ let rec tr_stm_rev
       | Some (A.Pure op) ->
         (* let t = Temp.create () in *)
         let op = intop_to_pbop op in
-        T.MovToMem { addr; src = T.Binop { op; lhs = T.Temp t, 4; rhs = e }, 4 }
-        (* :: T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } *)
-        :: b.code
+        (T.MovToMem { addr; src = T.Binop { op; lhs = T.Temp t, 4; rhs = e }, 4 }
+        ::
+        (if unsafe ()
+        then [ T.MovPureExp { dest = t; src = T.Mem addr, A.size exp } ]
+        else []))
+        @ b.code
       | Some (A.Efkt op) ->
         let ebop = intop_to_ebop op in
         (* let t = Temp.create () in *)
@@ -520,6 +532,7 @@ let args_tag (sl : (Symbol.t * int) list) : (Temp.t * int) list * Temp.t S.t =
 ;;
 
 let tr_glob ({ f; args; fdef } : A.glob) : T.fspace_block =
+  (* print_endline (sprintf "Unsafe mode in trans is %b" (unsafe ())); *)
   let ts, env = args_tag args in
   let ts' = List.map ts ~f:(fun (t, _) -> t) in
   let binit = { l = Label.FunName { fname = f; args = ts' }; code = []; depth = 0 } in
