@@ -102,6 +102,7 @@ let is_target ({ fname; args; fdef } : T.fspace_block) : fspace_target option =
         else if not (is_lab1_code code)
         then None
         else (
+          let code = List.rev code in
           let return, rest =
             match code with
             | T.Return ret :: rest -> ret, rest
