@@ -92,31 +92,38 @@ let rm_redundant_ret (fdef : T.block list) : T.stm list option =
 ;; *)
 
 let is_target ({ fname; args; fdef } : T.fspace_block) : fspace_target option =
-  if String.equal fname.name "_c0_main" then None 
-  else 
-    match rm_redundant_ret fdef with 
+  if String.equal fname.name "_c0_main"
+  then None
+  else if String.equal fname.name "_c0_init"
+  then None
+  else if String.equal fname.name "_c0_prepare"
+  then None
+  else if String.equal fname.name "_c0_checksum"
+  then None
+  else (
+    match rm_redundant_ret fdef with
     | None -> None
-    | Some code -> 
+    | Some code ->
       if List.length code > 50
-        then None
-        else if not (is_lab1_code code)
-        then None
-        else (
-          let code = List.rev code in
-          let return, rest =
-            match code with
-            | T.Return ret :: rest -> ret, rest
-            | _ ->
-              failwith
-                (sprintf
-                   "inline: encounter L1 func %s without a return at the end, what is trans \
-                    doing?"
-                   (Symbol.name fname))
-          in
-          let fdef = List.rev rest in
-          let fspace_target = { fname; args; fdef; return } in
-          (* let () = debug_print (sprintf "    find target! %s\n" (pp_fspace_target fspace_target)) in *)
-          Some fspace_target)
+      then None
+      else if not (is_lab1_code code)
+      then None
+      else (
+        let code = List.rev code in
+        let return, rest =
+          match code with
+          | T.Return ret :: rest -> ret, rest
+          | _ ->
+            failwith
+              (sprintf
+                 "inline: encounter L1 func %s without a return at the end, what is \
+                  trans doing?"
+                 (Symbol.name fname))
+        in
+        let fdef = List.rev rest in
+        let fspace_target = { fname; args; fdef; return } in
+        (* let () = debug_print (sprintf "    find target! %s\n" (pp_fspace_target fspace_target)) in *)
+        Some fspace_target))
 ;;
 
 let split_program (program : T.program) : fspace_target SM.t * T.program =
