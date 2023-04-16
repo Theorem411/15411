@@ -164,7 +164,7 @@ let rm_single_pred_passing (ls : Label.bt list) (btbl : entry LH.t) (preds : LS.
   failwith "no"
 ;; *)
 
-let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
+(* let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
   (*_ init wq with initially dead blocks *)
   let wq_init =
     LH.filteri preds ~f:(fun ~key:l ~data:s ->
@@ -218,6 +218,20 @@ let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
     | None -> ()
   in
   loop ()
+;; *)
+
+let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
+  let iterf ~key:l ~data:entry =
+  match l with 
+  | Label.FunName _ -> ()
+  | _ -> 
+    if LS.length (LH.find_exn preds l) <> 0 then () 
+    else 
+      match entry.jtag with 
+      | Tree.JRet -> LH.remove btbl l
+      | _ -> ()
+  in
+  LH.iteri btbl ~f:iterf
 ;;
 
 let run_till_none (fdef : Tree.block list) : entry LH.t =
