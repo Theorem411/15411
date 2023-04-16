@@ -277,6 +277,7 @@ let compile (cmd : cmd_line_args) : unit =
     Out_channel.with_file file ~f:(fun out ->
         let output_x86_instr instr = Out_channel.fprintf out "%s\n" (X86.format instr) in
         let translated = Translate.translate assem ~mfail ~unsafe:cmd.unsafe in
+        say_if cmd.verbose (fun () -> "Doing speed up");
         let union = Translate.get_string_list translated in
         output_x86_instr (X86.Directive (".file\t\"" ^ cmd.filename ^ "\""));
         output_x86_instr (X86.Directive ".text");

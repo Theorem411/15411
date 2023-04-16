@@ -655,5 +655,5 @@ let speed_up_off = false
 (* let pp_fspace l = List.map ~f:(X86.format) l
 let pp_program l = List.concat_map ~f:pp_fspace l *)
 let get_string_list p : X86.instr list =
-  if speed_up_off then List.concat p else speed_up (List.concat p)
+  if not speed_up_off then speed_up (List.concat p) else List.concat p
 ;;
