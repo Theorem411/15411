@@ -596,7 +596,7 @@ let reconstruct_blocks
   let assemble ~key:l ~(data : AS.instr list) : unit =
     let code_rev = LT.find_exn l2instrs l |> List.rev in
     let jmp, rest_rev = split_jmp code_rev in
-    let code = jmp @ data @ rest_rev |> List.rev in
+    let code = jmp @ (List.rev data) @ rest_rev |> List.rev in
     LT.update l2instrs l ~f:(fun _ -> code)
   in
   let () = LM.iteri extra_moves ~f:assemble in

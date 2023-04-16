@@ -6,7 +6,7 @@ module TH = SSA.TH
 module IS = SSA.IS
 module TS = SSA.TS
 
-let debug_mode = false
+let debug_mode = true
 let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
 
 (* let pp_IS (lset : IS.t) : string =
@@ -342,10 +342,42 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
   | _ -> None
 ;;
 
-let target (instr : SSA.instr) : (Temp.t * AS.operand) option =
+let target (ln : int) (instr : SSA.instr) : (Temp.t * AS.operand) option =
   match instr with
-  | SSA.ASInstr asinstr -> target_instr asinstr
-  | SSA.Phi phi -> target_second_phiopt phi
+  | SSA.ASInstr asinstr -> 
+    (* let () =
+           debug_print
+             (sprintf
+                "propagate %i : %s <- %s\n"
+                ln
+                (Temp.name t)
+                (AS.format_operand sub))
+         in *)
+    (match (target_instr asinstr) with 
+    | None -> None 
+    | Some (t, sub) -> 
+      let () =
+           debug_print
+             (sprintf
+                "regular prop %i : %s <- %s\n"
+                ln
+                (Temp.name t)
+                (AS.format_operand sub))
+         in
+      Some (t, sub))
+  | SSA.Phi phi -> 
+    (match (target_second_phiopt phi) with 
+    | None -> None
+    | Some (t, sub) -> 
+      let () =
+           debug_print
+             (sprintf
+                "phi prop %i : %s <- %s\n"
+                ln
+                (Temp.name t)
+                (AS.format_operand sub))
+         in
+      Some (t, sub))
   | _ -> None
 ;;
 
@@ -357,17 +389,9 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
     | None -> ()
     | Some ln ->
       let instr_ssa = IH.find_exn code ln in
-      (match target instr_ssa with
+      (match target ln instr_ssa with
        | None -> loop ()
        | Some (t, sub) ->
-         let () =
-           debug_print
-             (sprintf
-                "propagate %i : %s <- %s\n"
-                ln
-                (Temp.name t)
-                (AS.format_operand sub))
-         in
          (* replace code[ln] with Nop *)
          let () = IH.update code ln ~f:(fun _ -> Nop) in
          (* let () =
