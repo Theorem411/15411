@@ -12,7 +12,7 @@ let if_cond_to_rev_jump_t = function
 ;;
 
 let is_lea_scale = function
-  | 1 | 2 | 4 | 8 -> false (* true *)
+  | 1 | 2 | 4 | 8 -> true (* true *)
   | _ -> false
 ;;
 
