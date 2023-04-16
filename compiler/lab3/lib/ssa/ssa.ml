@@ -599,14 +599,14 @@ let fixed_extra_moves (moves : AS.instr list) : AS.instr list =
       [ dest, src; AS.Temp t, dest ] @ accum, new_final
   in
   let raw_moves, _ = List.fold ms ~init:([], final) ~f in
-  print_endline "before";
-  print_endline (String.concat ~sep:"\n" (List.map moves ~f:AS.format_instr));
+  (* print_endline "before"; *)
+  (* print_endline (String.concat ~sep:"\n" (List.map moves ~f:AS.format_instr)); *)
   let fms =
     List.map (List.rev raw_moves) ~f:(fun (dest, src) ->
         AS.Mov { dest; src; size = AS.L })
   in
-  print_endline "after";
-  print_endline (String.concat ~sep:"\n" (List.map fms ~f:AS.format_instr));
+  (* print_endline "after"; *)
+  (* print_endline (String.concat ~sep:"\n" (List.map fms ~f:AS.format_instr)); *)
   fms
 ;;
 
