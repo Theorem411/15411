@@ -1,0 +1,9 @@
+// Uses int arrays as strings
+// Here be undefined behavior, if not '\0'-terminated
+
+int strlen(int[] A);
+
+// Warning! You can't actually use this in the autograder
+// Printing to standard error interferes with autograder's reading the integer
+void puts(int[] A); 
+
