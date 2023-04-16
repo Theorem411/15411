@@ -532,7 +532,7 @@ let args_tag (sl : (Symbol.t * int) list) : (Temp.t * int) list * Temp.t S.t =
 ;;
 
 let tr_glob ({ f; args; fdef } : A.glob) : T.fspace_block =
-  print_endline (sprintf "Unsafe mode in trans is %b" (unsafe ()));
+  (* print_endline (sprintf "Unsafe mode in trans is %b" (unsafe ())); *)
   let ts, env = args_tag args in
   let ts' = List.map ts ~f:(fun (t, _) -> t) in
   let binit = { l = Label.FunName { fname = f; args = ts' }; code = []; depth = 0 } in
