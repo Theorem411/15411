@@ -221,17 +221,20 @@ let rm_single_pred_passing (ls : Label.bt list) (btbl : entry LH.t) (preds : LS.
 ;; *)
 
 let rm_dead_blc_passing (btbl : entry LH.t) (preds : LS.t LH.t) : unit =
-  let iterf ~key:l ~data:entry =
-  match l with 
-  | Label.FunName _ -> ()
-  | _ -> 
-    if LS.length (LH.find_exn preds l) <> 0 then () 
-    else 
-      match entry.jtag with 
-      | Tree.JRet -> LH.remove btbl l
-      | _ -> ()
+  let labs = LH.keys btbl in
+  let fltr l =
+    let entry = LH.find_exn btbl l in
+    match l with 
+    | Label.FunName _ -> None
+    | _ -> 
+      if LS.length (LH.find_exn preds l) <> 0 then None
+      else 
+        match entry.jtag with 
+        | Tree.JRet -> Some l
+        | _ -> None
   in
-  LH.iteri btbl ~f:iterf
+  let labs' = List.filter_map labs ~f:fltr in
+  List.iter labs' ~f:(fun l -> LH.remove btbl l)
 ;;
 
 let run_till_none (fdef : Tree.block list) : entry LH.t =
