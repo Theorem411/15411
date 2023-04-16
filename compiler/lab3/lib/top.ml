@@ -249,21 +249,20 @@ let compile (cmd : cmd_line_args) : unit =
     else (
       say_if cmd.verbose (fun () -> "Starting ssa...");
       let assem_ssa' = Ssa.ssa assem' in
-      (* print_endline "after all ssa"; *)
-      (* print_endline (Ssa.pp_program assem_ssa'); *)
-      let num_phi, num_reg = Ssa.cnt_phi_proportion assem_ssa' in
-      if 3 * num_phi > num_reg
+      print_endline "after all ssa";
+      print_endline (Ssa.pp_program assem_ssa');
+      (* let num_phi, num_reg = Ssa.cnt_phi_proportion assem_ssa' in *)
+      if false (* 3 * num_phi > num_reg *)
       then assem'
       else (
         let assem_ssa' = Propagation.propagate assem_ssa' in
         say_if cmd.verbose (fun () -> "Done propogation ...");
-        (* printf "%s" "after prop...\n"; *)
-        (* print_endline (Ssa.pp_program assem_ssa'); *)
+        printf "%s" "after prop...\n";
+        print_endline (Ssa.pp_program assem_ssa');
         say_if cmd.verbose (fun () -> "Starting de-ssa ...");
         let assem_ssa' = Ssa.de_ssa assem_ssa' in
-        (* print_endline (AssemM.format_program assem_ssa'); *)
+        print_endline (AssemM.format_program assem_ssa');
         say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
-        (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem_ssa') () else () in *)
         assem_ssa'))
   in
   say_if cmd.dump_assem (fun () -> "SSAAAAAAAAAAAAAAA");
