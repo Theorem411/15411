@@ -97,7 +97,7 @@ let pp_args (args : (Temp.t * AS.size) list) : string =
 let pp_params (params : params) : string =
   let stuff = TM.to_alist params in
   List.map stuff ~f:(fun (told, tnew) ->
-    sprintf "%s:%s" (Temp.name told) (Temp.name tnew))
+      sprintf "%s:%s" (Temp.name told) (Temp.name tnew))
   |> String.concat ~sep:", "
 ;;
 
@@ -115,7 +115,7 @@ let pp_jtag (jtag : jtag) : string =
 ;;
 
 let pp_block_ssa ({ label; code; bparams; jtag; _ } : block_ssa) ({ block; _ } : AS.block)
-  : string
+    : string
   =
   sprintf
     "----------------- blc %s(%s) ------------------\n\
@@ -124,7 +124,7 @@ let pp_block_ssa ({ label; code; bparams; jtag; _ } : block_ssa) ({ block; _ } :
     (Label.name_bt label)
     (pp_params bparams)
     (List.map (List.zip_exn code block) ~f:(fun (instr, ref_instr) ->
-       AS.format_instr ref_instr ^ " ==> " ^ AS.format_instr instr)
+         AS.format_instr ref_instr ^ " ==> " ^ AS.format_instr instr)
     |> String.concat ~sep:"\n")
     (pp_jtag jtag)
 ;;
@@ -368,10 +368,10 @@ let fspace_rename (fspace : AS.fspace) : fspace_ssa =
 let global_rename (prog : AS.program) : program_ssa = List.map prog ~f:fspace_rename
 
 let block_phi
-  (cfg_pred : LS.t LM.t)
-  (l2jtag : jtag LM.t)
-  ({ label = lcur; code; jump; depth; bparams; _ } : block_ssa)
-  : block_phi
+    (cfg_pred : LS.t LM.t)
+    (l2jtag : jtag LM.t)
+    ({ label = lcur; code; jump; depth; bparams; _ } : block_ssa)
+    : block_phi
   =
   (*_ block_phi:
   create phi functions: each blcssa has this information that can construct 
@@ -392,8 +392,8 @@ let block_phi
   (*_ for each predecessor block, find jtag and gather the their parameter *)
   let preds_jtag =
     List.map preds ~f:(fun lpred ->
-      (* printf "lpred is %s\n" (Label.name_bt lpred); *)
-      lpred, LM.find_exn l2jtag lpred)
+        (* printf "lpred is %s\n" (Label.name_bt lpred); *)
+        lpred, LM.find_exn l2jtag lpred)
   in
   let see_jtag (lpred, jtag) =
     match jtag with
@@ -413,16 +413,16 @@ let block_phi
   let preds_params =
     (*_ tnew -> (tcur * label) *)
     List.map preds_params ~f:(fun (l, params) ->
-      List.map (TM.to_alist params) ~f:(fun (told, tnew) ->
-        let tcur = TM.find_exn bparams told in
-        (*_ replace with latest temp in current params *)
-        tcur, (l, tnew)))
+        List.map (TM.to_alist params) ~f:(fun (told, tnew) ->
+            let tcur = TM.find_exn bparams told in
+            (*_ replace with latest temp in current params *)
+            tcur, (l, tnew)))
     |> List.concat
   in
   let t2nodes = TM.of_alist_multi preds_params |> TM.to_alist in
   let phies : phi list =
     List.map t2nodes ~f:(fun (self, alt) ->
-      { self; alt_selves = List.map alt ~f:(fun (l, t) -> l, AS.Temp t) })
+        { self; alt_selves = List.map alt ~f:(fun (l, t) -> l, AS.Temp t) })
   in
   let code : instr list =
     List.map phies ~f:(fun instr -> Phi instr)
@@ -432,7 +432,7 @@ let block_phi
 ;;
 
 let fspace_phi ({ fname; args; fdef; cfg_pred; l2jtag; tmp_cnt } : fspace_ssa)
-  : fspace_phi
+    : fspace_phi
   =
   let fdef = List.map fdef ~f:(block_phi cfg_pred l2jtag) in
   (*_ find the first block after rename and get the temps *)
@@ -478,9 +478,9 @@ let instr_def (instr : instr) : Temp.t list =
     let def =
       AS.Set.to_list def
       |> List.filter_map ~f:(fun op ->
-           match op with
-           | AS.Temp t -> Some t
-           | _ -> None)
+             match op with
+             | AS.Temp t -> Some t
+             | _ -> None)
     in
     def
   | Phi { self; _ } -> [ self ]
@@ -495,17 +495,17 @@ let instr_use (instr : instr) : Temp.t list =
     let use =
       AS.Set.to_list use
       |> List.filter_map ~f:(fun op ->
-           match op with
-           | AS.Temp t -> Some t
-           | _ -> None)
+             match op with
+             | AS.Temp t -> Some t
+             | _ -> None)
     in
     use
   | Phi { alt_selves; _ } ->
     let ts =
       List.filter_map alt_selves ~f:(fun (_, op) ->
-        match op with
-        | AS.Temp t -> Some t
-        | _ -> None)
+          match op with
+          | AS.Temp t -> Some t
+          | _ -> None)
     in
     ts
   | Nop -> []
@@ -515,9 +515,9 @@ let blocks_lining (fdef : block_phi list) : instr IH.t * block list =
   (*_ produce code & block_info *)
   let lined_codes : instr IH.t = IH.of_alist_exn [] in
   let to_blocks
-    ((blocks, acc) : block list * int)
-    ({ label; code; jump; depth } : block_phi)
-    : block list * int
+      ((blocks, acc) : block list * int)
+      ({ label; code; jump; depth } : block_phi)
+      : block list * int
     =
     (*_ annote this blocks' codes with line numbers *)
     let code_line = List.mapi code ~f:(fun idx instr -> idx + acc, instr) in
@@ -525,7 +525,7 @@ let blocks_lining (fdef : block_phi list) : instr IH.t * block list =
     (*_ update global line numbering *)
     let () =
       List.iter code_line ~f:(fun (i, instr) ->
-        IH.update lined_codes i ~f:(fun _ -> instr))
+          IH.update lined_codes i ~f:(fun _ -> instr))
     in
     { label; lines; jump; depth } :: blocks, acc + List.length lines
   in
@@ -581,32 +581,32 @@ let split_jmp (code_rev : AS.instr list) =
 
 (*_ ***** de-ssa function ****** *)
 let reconstruct_blocks
-  (l2instrs : AS.instr list LT.t)
-  (phies : phi list)
-  (block_info : block list)
-  : AS.block list
+    (l2instrs : AS.instr list LT.t)
+    (phies : phi list)
+    (block_info : block list)
+    : AS.block list
   =
   (*_ for each phi t <- {l:op}, and for each l, append Mov {t, op} *)
   let mapf ({ self; alt_selves } : phi) : (Label.bt * AS.instr) list =
     List.map alt_selves ~f:(fun (lpred, op) ->
-      lpred, AS.Mov { dest = AS.Temp self; src = op; size = AS.L })
+        lpred, AS.Mov { dest = AS.Temp self; src = op; size = AS.L })
   in
   let extra_moves = List.map phies ~f:mapf |> List.concat |> LM.of_alist_multi in
   (*_ feed extra moves to corresponding labels in l2instrs *)
   let assemble ~key:l ~(data : AS.instr list) : unit =
     let code_rev = LT.find_exn l2instrs l |> List.rev in
     let jmp, rest_rev = split_jmp code_rev in
-    let code = jmp @ data @ rest_rev |> List.rev in
+    let code = jmp @ List.rev data @ rest_rev |> List.rev in
     LT.update l2instrs l ~f:(fun _ -> code)
   in
   let () = LM.iteri extra_moves ~f:assemble in
   (*_ construct AS.block using l2instrs and block_info *)
   List.map block_info ~f:(fun { label; jump; depth; _ } : AS.block ->
-    { label; block = LT.find_exn l2instrs label; jump; depth })
+      { label; block = LT.find_exn l2instrs label; jump; depth })
 ;;
 
 let reconstruct_fspace ({ fname; args; code; block_info; tmp_cnt; _ } : fspace)
-  : AS.fspace
+    : AS.fspace
   =
   (*_ for each b in block_info, reconstruct AS.block *)
   let assemble (lines : int list) : AS.instr list * phi list =
@@ -643,9 +643,9 @@ let de_ssa (prog : program) : AS.program = List.map prog ~f:reconstruct_fspace
 (*_ debug functions *)
 
 let pp_fspace_ssa
-  ({ fname; args; fdef; cfg_pred; l2jtag; _ } : fspace_ssa)
-  ({ fdef_blocks; _ } : AS.fspace)
-  : string
+    ({ fname; args; fdef; cfg_pred; l2jtag; _ } : fspace_ssa)
+    ({ fdef_blocks; _ } : AS.fspace)
+    : string
   =
   sprintf
     "==================================\n\
@@ -672,13 +672,13 @@ let pp_phi ({ self; alt_selves } : phi) : string =
     "%s <-- @(%s)"
     (Temp.name self)
     (List.map alt_selves ~f:(fun (l, op) ->
-       sprintf "%s:%s" (Label.name_bt l) (AS.format_operand op))
+         sprintf "%s:%s" (Label.name_bt l) (AS.format_operand op))
     |> String.concat ~sep:", ")
 ;;
 
 let pp_block_phi
-  (({ label; code; _ }, { code = code'; bparams; jtag; _ }) : block_phi * block_ssa)
-  : string
+    (({ label; code; _ }, { code = code'; bparams; jtag; _ }) : block_phi * block_ssa)
+    : string
   =
   let isphi = function
     | Phi phi -> Some (pp_phi phi)
@@ -687,9 +687,9 @@ let pp_block_phi
   let phies = List.filter_map code ~f:isphi in
   let asinstr =
     List.filter_map code ~f:(fun instr ->
-      match instr with
-      | ASInstr i -> Some i
-      | _ -> None)
+        match instr with
+        | ASInstr i -> Some i
+        | _ -> None)
   in
   sprintf
     "----------------- blc %s (%s) ------------------\n\
@@ -700,14 +700,14 @@ let pp_block_phi
     (pp_params bparams)
     (String.concat phies ~sep:"\n")
     (List.map (List.zip_exn asinstr code') ~f:(fun (i1, i2) ->
-       sprintf "%s >>> %s" (AS.format_instr i1) (AS.format_instr i2))
+         sprintf "%s >>> %s" (AS.format_instr i1) (AS.format_instr i2))
     |> String.concat ~sep:"\n")
     (pp_jtag jtag)
 ;;
 
 let pp_fspace_phi
-  (({ fname; args; fdef; _ }, { fdef = fdef_ssa; _ }) : fspace_phi * fspace_ssa)
-  : string
+    (({ fname; args; fdef; _ }, { fdef = fdef_ssa; _ }) : fspace_phi * fspace_ssa)
+    : string
   =
   sprintf
     "==================================\n\
@@ -733,8 +733,8 @@ let pp_instr (l : int) (instr : instr) : string =
 let pp_block ({ label; lines; jump; _ } : block) (code : instr IH.t) : string =
   let l2code =
     List.map lines ~f:(fun l ->
-      let instr = IH.find_exn code l in
-      pp_instr l instr)
+        let instr = IH.find_exn code l in
+        pp_instr l instr)
   in
   sprintf
     "----------------- blc %s. ------------------\n\
