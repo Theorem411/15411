@@ -4,12 +4,10 @@ module SSA = Ssa
 module IH = SSA.IH
 module TH = SSA.TH
 module IS = SSA.IS
-module TS = SSA.TS
 
-let debug_mode = false
+(* let debug_mode = true
 let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
-
-(* let pp_IS (lset : IS.t) : string =
+let pp_IS (lset : IS.t) : string =
   let lset = IS.to_list lset in
   List.map lset ~f:Int.to_string |> String.concat ~sep:", "
 ;; *)
@@ -85,7 +83,7 @@ let instr_prop (instr : SSA.instr) (t : Temp.t) (sub : AS.operand) : SSA.instr =
   | Nop -> Nop
 ;;
 
-let rm_tuse (ln : int) = function
+let update_tuse (ln : int) = function
   | None ->
     failwith (sprintf "propagate on ln %i:  why isn't this temp documented in tuse?" ln)
   | Some use -> IS.remove use ln
@@ -121,36 +119,20 @@ let first_phiopt (code : SSA.instr IH.t) (tuse : IS.t TH.t) (i2phi : (int * SSA.
   code, tuse
 ;;
 
-let target_second_phiopt ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand) option =
-  let cset, rset, tset =
-    List.partition3_map (List.map alt_selves ~f:snd) ~f:(fun op ->
-      match op with
-      | AS.Imm c -> `Fst c
-      | AS.Reg r -> `Snd (AS.Reg r)
-      | AS.Temp t -> `Trd t)
-  in
-  let cset = List.dedup_and_sort cset ~compare:Int64.compare in
-  let rset = AS.Set.of_list rset in
-  let tset = TS.of_list tset in
-  match List.length cset, AS.Set.length rset, TS.length tset with
-  | 1, 0, 0 -> (* alt_selves only has one const *) Some (self, AS.Imm (List.hd_exn cset))
-  (* | 0, 0, 1 ->
-    (* alt_selves only has one temps excluding self *)
-    if not (TS.mem tset self)
-    then (
-      let other = TS.to_list tset |> List.hd_exn in
-      Some (self, AS.Temp other))
-    else None *)
-  | 0, 0, 2 ->
-    (* alt_selves only has two temps including self *)
-    if TS.mem tset self
-    then (
-      let tset' = TS.remove tset self in
-      let other = TS.to_list tset' |> List.hd_exn in
-      Some (self, AS.Temp other))
-    else None
-  | _ -> None
+let second_phiopt_target ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand) option =
+  let opset = AS.Temp self :: List.map alt_selves ~f:snd |> AS.Set.of_list in
+  if AS.Set.length opset = 2 (* && AS.Set.mem opset (AS.Temp self) *)
+  then (
+    let opset' = AS.Set.remove opset (AS.Temp self) in
+    let op = AS.Set.to_list opset' |> List.hd_exn in
+    Some (self, op))
+  else None
 ;;
+
+(* let third_phiopt_target ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand) option = 
+  let opset = List.map alt_selves ~f:snd |> AS.Set.of_list in
+  failwith "No"
+;; *)
 
 (* let second_phiopt
     (code : SSA.instr IH.t)
@@ -160,7 +142,7 @@ let target_second_phiopt ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand
   =
   let targets =
     List.filter_map i2phi ~f:(fun (i, phi) ->
-        match target_second_phiopt phi with
+        match second_phiopt_target phi with
         | Some tandop -> Some (i, tandop)
         | None -> None)
   in
@@ -172,10 +154,10 @@ let target_second_phiopt ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand
       (*_ replace code[i] with Nop *)
       let () = IH.update code ln ~f:(fun _ -> Nop) in
       (*_ delete i from tuse[t] and tuse[t'] *)
-      let () = TH.update tuse t ~f:(rm_tuse ln) in
+      let () = TH.update tuse t ~f:(update_tuse ln) in
       let () =
         match sub with
-        | AS.Temp t' -> TH.update tuse t' ~f:(rm_tuse ln)
+        | AS.Temp t' -> TH.update tuse t' ~f:(update_tuse ln)
         | _ -> ()
       in
       (*_ get tuse[t] *)
@@ -207,7 +189,7 @@ let target_second_phiopt ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand
       (*_ put all lines tuse[t] that are second_targets back onto the queue *)
       let target' =
         List.filter_map phi_list ~f:(fun (i, phi) ->
-            match target_second_phiopt phi with
+            match second_phiopt_target phi with
             | Some res -> Some (i, res)
             | _ -> None)
       in
@@ -218,7 +200,7 @@ let target_second_phiopt ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand
   code, tuse
 ;; *)
 
-(* let second_phiopt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * IS.t TH.t =
+let second_phiopt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * IS.t TH.t =
   let targets_init =
     IH.filter code ~f:(fun instr ->
       match instr with
@@ -234,13 +216,13 @@ let target_second_phiopt ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand
       let instr_phi = IH.find_exn code ln in
       (match instr_phi with
        | SSA.Phi phi ->
-         (match target_second_phiopt phi with
+         (match second_phiopt_target phi with
           | None -> loop ()
           | Some (t, sub) ->
             let () = IH.update code ln ~f:(fun _ -> Nop) in
             let () =
               match sub with
-              | AS.Temp t' -> TH.update tuse t' ~f:(rm_tuse ln)
+              | AS.Temp t' -> TH.update tuse t' ~f:(update_tuse ln)
               | _ -> ()
             in
             (*_ get tuse[t] *)
@@ -280,7 +262,7 @@ let target_second_phiopt ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand
             (*_ put all lines tuse[t] that are targets back onto the queue *)
             let target' =
               List.filter_map phi_list ~f:(fun (i, phi) ->
-                match target_second_phiopt phi with
+                match second_phiopt_target phi with
                 | Some _ -> Some i
                 | _ -> None)
             in
@@ -307,7 +289,7 @@ let fspace_phiopt (fspace : SSA.fspace) : SSA.fspace =
   { fspace with code; tuse }
 ;;
 
-let phiopt (prog : SSA.program) : SSA.program = List.map prog ~f:fspace_phiopt *)
+let phiopt (prog : SSA.program) : SSA.program = List.map prog ~f:fspace_phiopt
 
 (* copy and constant propagation all in one function *)
 
@@ -324,9 +306,7 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
       | AS.BitOr -> Int64.bit_or c1 c2
       | AS.BitXor -> Int64.bit_xor c1 c2
     in
-    (match Int32.of_int64 c with
-     | None -> None
-     | Some _ -> Some (d, AS.Imm c))
+    (match (Int32.of_int64 c) with | None -> None | Some _ -> Some (d, AS.Imm c))
   (* | AS.EfktBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
     (match op with
      | AS.Div ->
@@ -334,49 +314,20 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
        then None
        else (
          let c = Int64.( / ) c1 c2 in
-         match Int32.of_int64 c with
-         | None -> None
-         | Some _ -> Some (d, AS.Imm c))
+         Some (d, AS.Imm c))
      | AS.Mod ->
        if Int64.equal c2 Int64.zero
        then None
        else (
          let c = Int64.( % ) c1 c2 in
-         match Int32.of_int64 c with
-         | None -> None
-         | Some _ -> Some (d, AS.Imm c))
+         Some (d, AS.Imm c))
      | _ -> None) *)
   | _ -> None
 ;;
 
-let target (ln : int) (instr : SSA.instr) : (Temp.t * AS.operand) option =
+let target (instr : SSA.instr) : (Temp.t * AS.operand) option =
   match instr with
-  | SSA.ASInstr asinstr -> 
-    (match (target_instr asinstr) with 
-    | None -> None 
-    | Some (t, sub) -> 
-      let () =
-           debug_print
-             (sprintf
-                "regular prop %i : %s <- %s\n"
-                ln
-                (Temp.name t)
-                (AS.format_operand sub))
-         in
-      Some (t, sub))
-  | SSA.Phi phi -> 
-    (match (target_second_phiopt phi) with 
-    | None -> None
-    | Some (t, sub) -> 
-      let () =
-           debug_print
-             (sprintf
-                "phi prop %i : %s <- %s\n"
-                ln
-                (Temp.name t)
-                (AS.format_operand sub))
-         in
-      Some (t, sub))
+  | SSA.ASInstr asinstr -> target_instr asinstr
   | _ -> None
 ;;
 
@@ -388,9 +339,17 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
     | None -> ()
     | Some ln ->
       let instr_ssa = IH.find_exn code ln in
-      (match target ln instr_ssa with
+      (match target instr_ssa with
        | None -> loop ()
        | Some (t, sub) ->
+         (* let () =
+           debug_print
+             (sprintf
+                "propagate %i : %s <- %s\n"
+                ln
+                (Temp.name t)
+                (AS.format_operand sub))
+         in *)
          (* replace code[ln] with Nop *)
          let () = IH.update code ln ~f:(fun _ -> Nop) in
          (* let () =
@@ -400,7 +359,7 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
          (*_ delete ln from tuse[t'] *)
          let () =
            match sub with
-           | AS.Temp t' -> TH.update tuse t' ~f:(rm_tuse ln)
+           | AS.Temp t' -> TH.update tuse t' ~f:(update_tuse ln)
            (* debug_print
                (sprintf
                   "check if %i is still in tuse[%s]={%s}\n"
@@ -465,26 +424,10 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
   code, tuse
 ;;
 
-
-let fspace_phiopt (fspace : SSA.fspace) : SSA.fspace =
-  let i2phies =
-    IH.filter_map fspace.code ~f:(fun code ->
-      match code with
-      | SSA.Phi phi -> Some phi
-      | _ -> None)
-    |> IH.to_alist
-  in
-  (*_ fst phi optimization: update code and tuse *)
-  let code, tuse = first_phiopt fspace.code fspace.tuse i2phies in
-  { fspace with code; tuse }
-;;
-
 let propagate_fspace (fspace : SSA.fspace) : SSA.fspace =
   (* let () = debug_print (sprintf "prop on fspace %s\n" (Symbol.name fspace.fname)) in *)
   let code, tuse = propagate_opt fspace.code fspace.tuse in
-  let fspace = { fspace with code; tuse } in
-  let fspace = fspace_phiopt fspace in
-  fspace
+  { fspace with code; tuse }
 ;;
 
 let propagate (prog : SSA.program) : SSA.program = List.map prog ~f:propagate_fspace
