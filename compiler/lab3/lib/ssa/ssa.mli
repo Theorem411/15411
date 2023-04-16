@@ -12,6 +12,7 @@ module TH : Hashtbl.S with type key := Temp.t
 module IComp : Comparable.S with type t := int
 module IS = IComp.Set
 module IH : Hashtbl.S with type key := int
+
 type params = Temp.t TM.t
 
 type jtag =
@@ -26,12 +27,12 @@ type jtag =
       ; lf : Label.bt
       ; fparams : params
       }
-      
+
 type phi =
-  { self : Temp.t
-  (* ; size : AS.size *)
+  { self : Temp.t (* ; size : AS.size *)
   ; alt_selves : (Label.bt * AS.operand) list
   }
+
 type block_ssa =
   { (*_ each block has a matrix of (orig)temp -> (pred) lab to *)
     label : Label.bt
@@ -49,6 +50,8 @@ type fspace_ssa =
   ; cfg_pred : LS.t LM.t
   ; l2jtag : jtag LM.t
   ; tmp_cnt : int
+  ; old_args : (Temp.t * AS.size) list
+  ; old_fdef : AS.block list
   }
 
 type program_ssa = fspace_ssa list
@@ -70,6 +73,8 @@ type fspace_phi =
   ; args : (Temp.t * AS.size) list
   ; fdef : block_phi list
   ; tmp_cnt : int
+  ; old_args : (Temp.t * AS.size) list
+  ; old_fdef : AS.block list
   }
 
 type program_phi = fspace_phi list
@@ -88,6 +93,8 @@ type fspace =
   ; block_info : block list
   ; tuse : IS.t TH.t
   ; tmp_cnt : int
+  ; old_args : (Temp.t * AS.size) list
+  ; old_fdef : AS.block list
   }
 
 type program = fspace list
@@ -95,9 +102,11 @@ type program = fspace list
 (*_ ssa step functions *)
 val global_rename : AS.program -> program_ssa
 val global_phi : program_ssa -> program_phi
-val global_lining : program_phi -> program 
+val global_lining : program_phi -> program
+
 (*_ going into ssa *)
 val ssa : AS.program -> program
+
 (*_ going out of ssa *)
 val de_ssa : program -> AS.program
 

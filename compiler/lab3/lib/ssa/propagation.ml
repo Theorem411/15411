@@ -121,7 +121,7 @@ let first_phiopt (code : SSA.instr IH.t) (tuse : IS.t TH.t) (i2phi : (int * SSA.
 ;;
 
 let second_phiopt_target ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand) option =
-  let opset = (AS.Temp self :: List.map alt_selves ~f:snd) |> AS.Set.of_list in
+  let opset = AS.Temp self :: List.map alt_selves ~f:snd |> AS.Set.of_list in
   if AS.Set.length opset = 2 (* && AS.Set.mem opset (AS.Temp self) *)
   then (
     let opset' = AS.Set.remove opset (AS.Temp self) in
@@ -353,9 +353,15 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
 ;;
 
 let propagate_fspace (fspace : SSA.fspace) : SSA.fspace =
-  (* let () = debug_print (sprintf "prop on fspace %s\n" (Symbol.name fspace.fname)) in *)
-  let code, tuse = propagate_opt fspace.code fspace.tuse in
-  { fspace with code; tuse }
+  let fspace_MAGIC = 20 in
+  if List.length fspace.block_info >= fspace_MAGIC
+  then (
+    (* let () = print_endline ("skipped propogate for " ^ Symbol.name fspace.fname) in *)
+    fspace)
+  else (
+    (* let () = debug_print (sprintf "prop on fspace %s\n" (Symbol.name fspace.fname)) in *)
+    let code, tuse = propagate_opt fspace.code fspace.tuse in
+    { fspace with code; tuse })
 ;;
 
 let propagate (prog : SSA.program) : SSA.program = List.map prog ~f:propagate_fspace

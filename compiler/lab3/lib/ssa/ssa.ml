@@ -68,6 +68,8 @@ type fspace_ssa =
   ; cfg_pred : LS.t LM.t
   ; l2jtag : jtag LM.t
   ; tmp_cnt : int
+  ; old_args : (Temp.t * AS.size) list
+  ; old_fdef : AS.block list
   }
 
 type program_ssa = fspace_ssa list
@@ -84,6 +86,8 @@ type fspace_phi =
   ; args : (Temp.t * AS.size) list
   ; fdef : block_phi list
   ; tmp_cnt : int
+  ; old_args : (Temp.t * AS.size) list
+  ; old_fdef : AS.block list
   }
 
 type program_phi = fspace_phi list
@@ -319,6 +323,8 @@ let block_rename (block : AS.block) (told2new : told2new) (lparams : lparams) : 
 ;;
 
 let fspace_rename (fspace : AS.fspace) : fspace_ssa =
+  (* print_endline
+    (sprintf "fspace_rename a function with %d blocks" (List.length fspace.fdef_blocks)); *)
   let ({ block_in; cfg_pred; _ } : Live.live_package_t) =
     Live.mk_liveness_fspace (Block.of_fspace fspace)
   in
@@ -362,6 +368,8 @@ let fspace_rename (fspace : AS.fspace) : fspace_ssa =
   ; cfg_pred
   ; l2jtag
   ; tmp_cnt = fspace.tmp_cnt
+  ; old_fdef = fspace.fdef_blocks
+  ; old_args = fspace.args
   }
 ;;
 
@@ -431,7 +439,8 @@ let block_phi
   { label = lcur; code; jump; depth }
 ;;
 
-let fspace_phi ({ fname; args; fdef; cfg_pred; l2jtag; tmp_cnt } : fspace_ssa)
+let fspace_phi
+    ({ fname; args; fdef; cfg_pred; l2jtag; tmp_cnt; old_args; old_fdef } : fspace_ssa)
     : fspace_phi
   =
   let fdef = List.map fdef ~f:(block_phi cfg_pred l2jtag) in
@@ -446,7 +455,7 @@ let fspace_phi ({ fname; args; fdef; cfg_pred; l2jtag; tmp_cnt } : fspace_ssa)
   let sizes = List.map args ~f:snd in
   let args_new = List.zip_exn fst_blc_params sizes in
   (*_ result *)
-  { fname; args = args_new; fdef; tmp_cnt }
+  { fname; args = args_new; fdef; tmp_cnt; old_args; old_fdef }
 ;;
 
 let global_phi (prog : program_ssa) : program_phi = List.map prog ~f:fspace_phi
@@ -466,13 +475,14 @@ type fspace =
   ; block_info : block list
   ; tuse : IS.t TH.t
   ; tmp_cnt : int
+  ; old_args : (Temp.t * AS.size) list
+  ; old_fdef : AS.block list
   }
 
 type program = fspace list
 
-
-let instr_def (instr : instr) : Temp.t list = 
-  match instr with 
+let instr_def (instr : instr) : Temp.t list =
+  match instr with
   | ASInstr instr ->
     let def, _ = SP.def_n_use instr in
     let def = V.vertex_set_to_op_set def in
@@ -484,9 +494,10 @@ let instr_def (instr : instr) : Temp.t list =
              | _ -> None)
     in
     def
-  | Phi { self; _ } -> [self]
+  | Phi { self; _ } -> [ self ]
   | Nop -> []
-  ;;
+;;
+
 let instr_use (instr : instr) : Temp.t list =
   match instr with
   | ASInstr instr ->
@@ -536,7 +547,7 @@ let blocks_lining (fdef : block_phi list) : instr IH.t * block list =
 
 let fspace_use (fdef : instr IH.t) : IS.t TH.t =
   let tuse : IS.t TH.t = TH.of_alist_exn [] in
-  let iterf (instr : instr) : unit = 
+  let iterf (instr : instr) : unit =
     let tdef = instr_def instr in
     List.iter tdef ~f:(fun t -> TH.update tuse t ~f:(fun _ -> IS.empty))
   in
@@ -553,11 +564,13 @@ let fspace_use (fdef : instr IH.t) : IS.t TH.t =
   tuse
 ;;
 
-let fspace_lining ({ fname; args; fdef; tmp_cnt } : fspace_phi) : fspace =
+let fspace_lining ({ fname; args; fdef; tmp_cnt; old_args; old_fdef } : fspace_phi)
+    : fspace
+  =
   (*_ 0. produce code & block_info : instr IH.t, block LM.t *)
   let code, block_info = blocks_lining fdef in
   let tuse = fspace_use code in
-  { fname; args; code; block_info; tuse; tmp_cnt }
+  { fname; args; code; block_info; tuse; tmp_cnt; old_args; old_fdef }
 ;;
 
 let global_lining (prog : program_phi) : program = List.map prog ~f:fspace_lining
@@ -573,7 +586,8 @@ let ssa (prog : AS.program) : program =
 let split_jmp (code_rev : AS.instr list) =
   match code_rev with
   | AS.Ret :: rest -> [ AS.Ret ], rest
-  | AS.Jmp l1 :: AS.Cjmp l2 :: AS.Cmp cmp :: rest -> [ AS.Jmp l1; AS.Cjmp l2; AS.Cmp cmp ], rest
+  | AS.Jmp l1 :: AS.Cjmp l2 :: AS.Cmp cmp :: rest ->
+    [ AS.Jmp l1; AS.Cjmp l2; AS.Cmp cmp ], rest
   | AS.Jmp l1 :: rest -> [ AS.Jmp l1 ], rest
   | _ -> failwith "fuck you"
 ;;
@@ -604,35 +618,45 @@ let reconstruct_blocks
       { label; block = LT.find_exn l2instrs label; jump; depth })
 ;;
 
-let reconstruct_fspace ({ fname; args; code; block_info; _ } : fspace) : AS.fspace =
-  (*_ for each b in block_info, reconstruct AS.block *)
-  let assemble (lines : int list) : AS.instr list * phi list =
-    let lines = List.sort ~compare:Int.compare lines in
-    (*_ ensure instr is in the right order *)
-    let codes = List.map lines ~f:(fun i -> IH.find_exn code i) in
-    let fltr_instr = function
-      | ASInstr instr -> Some instr
-      | _ -> None
+let reconstruct_fspace
+    ({ fname; args; code; block_info; tmp_cnt; old_args; old_fdef; _ } : fspace)
+    : AS.fspace
+  =
+  (* make sure to change it in all files. Just search for it in all files *)
+  let fspace_MAGIC = 20 in
+  if List.length old_fdef >= fspace_MAGIC
+  then (
+    (* let () = print_endline ("skipped ssa for " ^ Symbol.name fname) in *)
+    { fname; args = old_args; fdef_blocks = old_fdef; tmp_cnt })
+  else (
+    (*_ for each b in block_info, reconstruct AS.block *)
+    let assemble (lines : int list) : AS.instr list * phi list =
+      let lines = List.sort ~compare:Int.compare lines in
+      (*_ ensure instr is in the right order *)
+      let codes = List.map lines ~f:(fun i -> IH.find_exn code i) in
+      let fltr_instr = function
+        | ASInstr instr -> Some instr
+        | _ -> None
+      in
+      let instr_lst = List.filter_map codes ~f:fltr_instr in
+      let fltr_phi = function
+        | Phi phi -> Some phi
+        | _ -> None
+      in
+      let phi_lst = List.filter_map codes ~f:fltr_phi in
+      instr_lst, phi_lst
     in
-    let instr_lst = List.filter_map codes ~f:fltr_instr in
-    let fltr_phi = function
-      | Phi phi -> Some phi
-      | _ -> None
+    let l2instrs, phies =
+      List.map block_info ~f:(fun blc -> blc.label, assemble blc.lines)
+      |> List.map ~f:(fun (l, (instrL, phiL)) -> (l, instrL), phiL)
+      |> List.unzip
     in
-    let phi_lst = List.filter_map codes ~f:fltr_phi in
-    instr_lst, phi_lst
-  in
-  let l2instrs, phies =
-    List.map block_info ~f:(fun blc -> blc.label, assemble blc.lines)
-    |> List.map ~f:(fun (l, (instrL, phiL)) -> (l, instrL), phiL)
-    |> List.unzip
-  in
-  let l2instrs = LT.of_alist_exn l2instrs in
-  let phies = List.concat phies in
-  (*_ for each predecessor blocks *)
-  let fdef_blocks = reconstruct_blocks l2instrs phies block_info in
-  (* tmp count is undermined as we are already in ssa, so we do not care about temp count *)
-  { fname; args; fdef_blocks; tmp_cnt = -1 }
+    let l2instrs = LT.of_alist_exn l2instrs in
+    let phies = List.concat phies in
+    (*_ for each predecessor blocks *)
+    let fdef_blocks = reconstruct_blocks l2instrs phies block_info in
+    (* tmp count is undermined as we are already in ssa, so we do not care about temp count *)
+    { fname; args; fdef_blocks; tmp_cnt })
 ;;
 
 let de_ssa (prog : program) : AS.program = List.map prog ~f:reconstruct_fspace
@@ -762,8 +786,9 @@ let pp_fspace ({ fname; args; code; block_info; _ } : fspace) : string =
     (Symbol.name fname)
     (pp_args args)
     (List.map block_info ~f:(fun b -> pp_block b code) |> String.concat ~sep:"\n")
-    (* (pp_tuse tuse) *)
 ;;
+
+(* (pp_tuse tuse) *)
 
 let pp_program (prog : program) : string =
   List.map prog ~f:pp_fspace |> String.concat ~sep:"\n\n"
