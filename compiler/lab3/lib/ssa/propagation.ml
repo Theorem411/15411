@@ -5,13 +5,13 @@ module IH = SSA.IH
 module TH = SSA.TH
 module IS = SSA.IS
 
-let debug_mode = true
+(* let debug_mode = true
 let debug_print (err_msg : string) : unit = if debug_mode then printf "%s" err_msg else ()
 
 let pp_IS (lset : IS.t) : string =
   let lset = IS.to_list lset in
   List.map lset ~f:Int.to_string |> String.concat ~sep:", "
-;;
+;; *)
 
 module T = struct
   type t = Temp.t [@@deriving equal, compare, sexp, hash]
