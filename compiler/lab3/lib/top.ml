@@ -231,9 +231,9 @@ let compile (cmd : cmd_line_args) : unit =
   let ir = Strength.strength_reduction raw_ir in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (*_ opt: function inline *)
-  (* say_if cmd.verbose (fun () -> "Doing function inline...");
+  say_if cmd.verbose (fun () -> "Doing function inline...");
   let ir = Inline.inline ir in
-  say_if cmd.inline (fun () -> TreeM.Print.pp_program ir); *)
+  say_if cmd.inline (fun () -> TreeM.Print.pp_program ir);
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
   let mfail = Label.create () in

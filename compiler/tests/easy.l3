@@ -1,23 +1,26 @@
-//test return -8245040
+//test return 128
 
-int a(int n);
-int b(int n);
+// testing void return
 
-int a(int n) {
-    if (n == 0) return 1;
-    return n + b(n - 1);
+void nop() {
 }
 
-int b(int n) {
-    if (n == 0) return 2;
-    return n * a(n - 1);
+void raise() {
+  1/0;
+}
+
+void abort() {
+  assert(false);
+  return;
+}
+
+void okay() {
+  assert(true);
+  return;
 }
 
 int main() {
-    int c = 0;
-    int i = 0;
-    for (; i < 20000; i++) {
-        c += b(i) - a(i);
-    }
-    return c;
+  nop();
+  if (true) okay();
+  return 128;
 }
