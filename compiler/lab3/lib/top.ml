@@ -205,6 +205,8 @@ let elaboration_step (ast, ast_h) cmd =
 
 (* The main driver for the compiler: runs each phase. *)
 let compile (cmd : cmd_line_args) : unit =
+  let ssa_off = false in
+  let aSSEM_MAGIC = 1000 in
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
   (* Parse *)
   say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
@@ -238,8 +240,8 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.verbose (fun () -> "Codegen...");
   let mfail = Label.create () in
   let assem' = Codegen_l4.codegen ~mfl:mfail ~unsafe:cmd.unsafe ir in
+  let ssa_off = ssa_off || List.length assem' > aSSEM_MAGIC in
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem');
-  let ssa_off = false in
   let assem =
     if ssa_off
     then assem'
@@ -256,8 +258,7 @@ let compile (cmd : cmd_line_args) : unit =
       (* print_endline (AssemM.format_program assem); *)
       say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
       (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem) () else () in *)
-      assem
-      )
+      assem)
   in
   say_if cmd.dump_assem (fun () -> "SSAAAAAAAAAAAAAAA");
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
