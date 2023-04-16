@@ -121,8 +121,8 @@ let first_phiopt (code : SSA.instr IH.t) (tuse : IS.t TH.t) (i2phi : (int * SSA.
 ;;
 
 let second_phiopt_target ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand) option =
-  let opset = List.map alt_selves ~f:snd |> AS.Set.of_list in
-  if AS.Set.length opset = 2 && AS.Set.mem opset (AS.Temp self)
+  let opset = (AS.Temp self :: List.map alt_selves ~f:snd) |> AS.Set.of_list in
+  if AS.Set.length opset = 2 (* && AS.Set.mem opset (AS.Temp self) *)
   then (
     let opset' = AS.Set.remove opset (AS.Temp self) in
     let op = AS.Set.to_list opset' |> List.hd_exn in
