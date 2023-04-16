@@ -233,9 +233,9 @@ let compile (cmd : cmd_line_args) : unit =
   let ir = Strength.strength_reduction raw_ir in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (*_ opt: function inline *)
-  (* say_if cmd.verbose (fun () -> "Doing function inline...");
+  say_if cmd.verbose (fun () -> "Doing function inline...");
   let ir = Inline.inline ir in
-  say_if cmd.inline (fun () -> TreeM.Print.pp_program ir); *)
+  say_if cmd.inline (fun () -> TreeM.Print.pp_program ir);
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
   let mfail = Label.create () in
@@ -248,20 +248,17 @@ let compile (cmd : cmd_line_args) : unit =
     else (
       say_if cmd.verbose (fun () -> "Starting ssa...");
       let assem_ssa' = Ssa.ssa assem' in
-      (* print_endline "after all ssa"; *)
-      (* print_endline (Ssa.pp_program assem_ssa'); *)
+      print_endline "after all ssa";
+      print_endline (Ssa.pp_program assem_ssa');
       say_if cmd.verbose (fun () -> "Starting propogation ...");
-      let assem_ssa_prop = Propagation.propagate assem_ssa' in
-      (* print_endline (Ssa.pp_program assem_ssa_prop); *)
-      say_if cmd.verbose (fun () -> "Doing phi_opt");
-      let assem_ssa_phi_opt = Propagation.phiopt assem_ssa_prop in
-      (* print_endline (Ssa.pp_program assem_ssa_prop); *)
+      let assem_ssa' = Propagation.propagate assem_ssa' in
+      print_endline (Ssa.pp_program assem_ssa');
       say_if cmd.verbose (fun () -> "Starting de-ssa ...");
-      let assem = Ssa.de_ssa assem_ssa_phi_opt in
-      (* print_endline (AssemM.format_program assem); *)
+      let assem_ssa' = Ssa.de_ssa assem_ssa' in
+      print_endline (AssemM.format_program assem_ssa');
       say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
-      (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem) () else () in *)
-      assem)
+      (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem_ssa') () else () in *)
+      assem_ssa')
   in
   say_if cmd.dump_assem (fun () -> "SSAAAAAAAAAAAAAAA");
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);

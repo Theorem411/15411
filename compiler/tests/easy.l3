@@ -1,100 +1,18 @@
-//test return -925055377
-int main() {
-int aaa;
-aaa = 1411935404;
-int aaab;
-int aaac;
-aaac = 1971140494;
-aaa = -1206915049;
-int aaad;
-aaad = 1960999628;
-aaa += aaac + aaac - aaac * aaac - aaa + aaac - aaad + aaad ;
-aaab = -900670420;
-int aaae;
-aaae = -2105854640;
-int aaaf;
-int aaag;
-aaag = -1077628538;
-int aaah;
-int aaai;
-aaad += aaac * aaa - aaag - aaac - aaac - aaab ;
-int aaaj;
-aaae = -1803190679;
-aaae = aaa + aaa * aaad ;
-aaac = 257752463;
-aaag = -1280742988;
-aaag *= aaab - aaae - aaa + aaa * aaac + aaab ;
-aaab -= aaad + aaac - aaab * aaab + aaab + aaab ;
-int aaak;
-int aaal;
-aaac = aaad - aaae - aaa ;
-aaag -= aaae + aaae * aaag ;
-int aaam;
-aaae = aaae + aaae + aaa - aaae - aaag - aaab ;
-aaac *= aaa ;
-int aaan;
-int aaao;
-int aaap;
-int aaaq;
-aaab -= aaad * aaag * aaae - aaac - aaae - aaac * aaag + aaag + aaag + aaag - aaae - aaae - aaac + aaac + aaab - aaac + aaac * aaab - aaab - aaae - aaag * aaag ;
-int aaar;
-int aaas;
-int aaat;
-aaae = -1615271803;
-aaa = 1938220534;
-aaar = 878942066;
-aaab = aaac ;
-aaad -= aaag + aaae - aaab * aaac * aaac * aaar * aaac + aaac * aaab ;
-aaae += aaab * aaae * aaag - aaar * aaad - aaag ;
-aaab -= aaab - aaad ;
-int aaau;
-aaae *= aaa * aaad * aaab * aaad - aaac - aaac + aaae * aaar - aaad - aaag - aaa * aaae * aaag + aaa ;
-int aaav;
-int aaaw;
-aaae = -1342599392;
-aaaj = -1276368899;
-int aaax;
-int aaay;
-int aaaz;
-aaak = -1088219617;
-aaak -= aaaj * aaad * aaac * aaaj + aaar * aaak + aaag + aaac + aaab ;
-aaad += aaab - aaar ;
-int aaaab;
-aaaj += aaag + aaaj + aaae - aaab - aaak ;
-int aaabb;
-aaad -= aaac + aaa * aaad - aaaj - aaad ;
-aaag = aaab + aaak - aaab + aaae - aaaj * aaae - aaag * aaab ;
-aaav = 935835818;
-aaak = -168662072;
-aaak = aaab ;
-int aaacb;
-aaad += aaag - aaar * aaaj ;
-aaag += aaav - aaac + aaac - aaab * aaaj * aaae + aaag + aaac * aaag - aaaj * aaac - aaag + aaav + aaae * aaar + aaag * aaad + aaak + aaar * aaak * aaad + aaae - aaag - aaar * aaav + aaav * aaa + aaa + aaar ;
-int aaadb;
-aaar = -141978887;
-int aaaeb;
-aaa = -1961332400;
-int aaafb;
-aaadb = 1776932348;
-aaat = -655779708;
-aaav = 1529832167;
-aaae += aaad + aaaj + aaav * aaar + aaab * aaadb + aaad ;
-int aaagb;
-int aaahb;
-aaar -= aaat - aaad - aaad + aaab ;
-aaai = -1534732744;
-aaat *= aaai - aaad + aaab + aaab * aaab + aaad - aaae - aaak + aaac - aaae + aaai + aaak ;
-int aaaib;
-aaai = -1800276298;
-int aaajb;
-aaat = 1229313745;
-aaac = 2125579902;
-aaai = 220426407;
-aaad = 2094744470;
-aaao = -1054537031;
-int aaakb;
-int aaalb;
-aaadb *= aaae * aaav - aaak - aaaj ;
-aaaq = 772567253;
-return aaag;
+//test return 8
+/* gcd */
+
+int gcd (int x, int y) {
+  /* x,y >= 0 */
+  int r;
+  while (y != 0) {
+    r = x%y;
+    x = y;
+    y = r;
+  }
+  return x;
+}
+  
+
+int main () {
+  return gcd(24,56);
 }
