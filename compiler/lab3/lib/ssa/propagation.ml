@@ -233,8 +233,11 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
       | AS.BitOr -> Int64.bit_or c1 c2
       | AS.BitXor -> Int64.bit_xor c1 c2
     in
-    (* let c = Int64.(%) c (Int64.(+) (Int64.of_int32 (Int32.max_value)) (Int64.one)) in *)
-    Some (d, AS.Imm c)
+    (match Int32.of_int64 c with
+    | None -> None
+    | Some _ -> Some (d, AS.Imm c))
+  (* let c = Int64.(%) c (Int64.(+) (Int64.of_int32 (Int32.max_value)) (Int64.one)) in *)
+  (* Some (d, AS.Imm c) *)
   (* | AS.EfktBinop { dest = AS.Temp d; lhs = AS.Imm c1; rhs = AS.Imm c2; op; _ } ->
     (match op with
      | AS.Div ->
@@ -355,9 +358,9 @@ let propagate_opt (code : SSA.instr IH.t) (tuse : IS.t TH.t) : SSA.instr IH.t * 
 let propagate_fspace (fspace : SSA.fspace) : SSA.fspace =
   let fspace_MAGIC = 20 in
   if List.length fspace.block_info >= fspace_MAGIC
-  then (
+  then
     (* let () = print_endline ("skipped propogate for " ^ Symbol.name fspace.fname) in *)
-    fspace)
+    fspace
   else (
     (* let () = debug_print (sprintf "prop on fspace %s\n" (Symbol.name fspace.fname)) in *)
     let code, tuse = propagate_opt fspace.code fspace.tuse in
