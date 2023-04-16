@@ -367,46 +367,83 @@ let translate_lea_array (get_final : AS.operand * X86.size -> X86.operand) = fun
     let d_final = get_final (d, X86.Q) in
     let b_final = get_final (base, X86.Q) in
     let index_final = get_final (index, X86.L) in
-    let disp = if offset = 0 then None else Some offset in
-    let (i, pre_i) : R.reg * X86.instr list =
-      ( { reg = R.R11D; size = 8 }
-      , match index_final with
-        | X86.Imm _ ->
-          [ X86.BinCommand
-              { op = X86.Mov; size = X86.Q; dest = X86.get_free X86.Q; src = index_final }
-          ]
-        | _ -> [ X86.Movsxd { dest = X86.get_free X86.Q; src = index_final } ] )
-    in
-    let (b, pre_b) : R.reg * X86.instr list =
-      match b_final with
-      | Stack _ ->
-        ( { reg = R.R10D; size = 8 }
-        , [ X86.BinCommand
-              { op = X86.Mov; dest = X86.get_memfree X86.Q; src = b_final; size = X86.Q }
-          ] )
-      | Reg r -> r, []
-      | _ -> failwith "lea can base can not be an int?"
-    in
-    let lea =
-      match d_final with
-      | Stack _ ->
-        [ X86.Lea
-            { dest = X86.get_free X86.Q
-            ; size = X86.Q
-            ; src = X86.Mem { disp; base_reg = b; idx_reg = Some i; scale = Some scale }
-            }
-        ; X86.BinCommand
-            { op = X86.Mov; size = X86.Q; dest = d_final; src = X86.get_free X86.Q }
-        ]
-      | _ ->
-        [ X86.Lea
+    (match index_final with
+    | Imm icount ->
+      let final_disp =
+        Int.of_int64_exn
+          (Int64.( + ) (Int64.( * ) (Int64.of_int scale) icount) (Int64.of_int offset))
+      in
+      let disp = if final_disp = 0 then None else Some final_disp in
+      let (b, pre_b) : R.reg * X86.instr list =
+        match b_final with
+        | Stack _ ->
+          ( { reg = R.R10D; size = 8 }
+          , [ X86.BinCommand
+                { op = X86.Mov
+                ; dest = X86.get_memfree X86.Q
+                ; src = b_final
+                ; size = X86.Q
+                }
+            ] )
+        | Reg r -> r, []
+        | _ -> failwith "lea can base can not be an int?"
+      in
+      pre_b
+      @ [ X86.Lea
             { dest = d_final
             ; size = X86.Q
-            ; src = X86.Mem { disp; base_reg = b; idx_reg = Some i; scale = Some scale }
+            ; src = X86.Mem { disp; base_reg = b; idx_reg = None; scale = None }
             }
         ]
-    in
-    pre_i @ pre_b @ lea
+    | _ ->
+      let disp = if offset = 0 then None else Some offset in
+      let (i, pre_i) : R.reg * X86.instr list =
+        ( { reg = R.R11D; size = 8 }
+        , match index_final with
+          | X86.Imm _ ->
+            [ X86.BinCommand
+                { op = X86.Mov
+                ; size = X86.Q
+                ; dest = X86.get_free X86.Q
+                ; src = index_final
+                }
+            ]
+          | _ -> [ X86.Movsxd { dest = X86.get_free X86.Q; src = index_final } ] )
+      in
+      let (b, pre_b) : R.reg * X86.instr list =
+        match b_final with
+        | Stack _ ->
+          ( { reg = R.R10D; size = 8 }
+          , [ X86.BinCommand
+                { op = X86.Mov
+                ; dest = X86.get_memfree X86.Q
+                ; src = b_final
+                ; size = X86.Q
+                }
+            ] )
+        | Reg r -> r, []
+        | _ -> failwith "lea can base can not be an int?"
+      in
+      let lea =
+        match d_final with
+        | Stack _ ->
+          [ X86.Lea
+              { dest = X86.get_free X86.Q
+              ; size = X86.Q
+              ; src = X86.Mem { disp; base_reg = b; idx_reg = Some i; scale = Some scale }
+              }
+          ; X86.BinCommand
+              { op = X86.Mov; size = X86.Q; dest = d_final; src = X86.get_free X86.Q }
+          ]
+        | _ ->
+          [ X86.Lea
+              { dest = d_final
+              ; size = X86.Q
+              ; src = X86.Mem { disp; base_reg = b; idx_reg = Some i; scale = Some scale }
+              }
+          ]
+      in
+      pre_i @ pre_b @ lea)
   | _ -> failwith "translate_mov_from is getting not mov_from"
 ;;
 
