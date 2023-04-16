@@ -134,6 +134,13 @@ let target_second_phiopt ({ self; alt_selves } : SSA.phi) : (Temp.t * AS.operand
   let tset = TS.of_list tset in
   match List.length cset, AS.Set.length rset, TS.length tset with
   | 1, 0, 0 -> (* alt_selves only has one const *) Some (self, AS.Imm (List.hd_exn cset))
+  | 0, 0, 1 ->
+    (* alt_selves only has one temps excluding self *)
+    if not (TS.mem tset self)
+    then (
+      let other = TS.to_list tset |> List.hd_exn in
+      Some (self, AS.Temp other))
+    else None
   | 0, 0, 2 ->
     (* alt_selves only has two temps including self *)
     if TS.mem tset self
@@ -345,14 +352,6 @@ let target_instr : AS.instr -> (Temp.t * AS.operand) option = function
 let target (ln : int) (instr : SSA.instr) : (Temp.t * AS.operand) option =
   match instr with
   | SSA.ASInstr asinstr -> 
-    (* let () =
-           debug_print
-             (sprintf
-                "propagate %i : %s <- %s\n"
-                ln
-                (Temp.name t)
-                (AS.format_operand sub))
-         in *)
     (match (target_instr asinstr) with 
     | None -> None 
     | Some (t, sub) -> 
