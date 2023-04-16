@@ -252,9 +252,12 @@ let compile (cmd : cmd_line_args) : unit =
       (* print_endline (Ssa.pp_program assem_ssa'); *)
       say_if cmd.verbose (fun () -> "Starting propogation ...");
       let assem_ssa_prop = Propagation.propagate assem_ssa' in
+      (* print_endline (Ssa.pp_program assem_ssa_prop); *)
+      say_if cmd.verbose (fun () -> "Doing phi_opt");
+      let assem_ssa_phi_opt = Propagation.phiopt assem_ssa_prop in
       print_endline (Ssa.pp_program assem_ssa_prop);
       say_if cmd.verbose (fun () -> "Starting de-ssa ...");
-      let assem = Ssa.de_ssa assem_ssa_prop in
+      let assem = Ssa.de_ssa assem_ssa_phi_opt in
       (* print_endline (AssemM.format_program assem); *)
       say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
       (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem) () else () in *)
