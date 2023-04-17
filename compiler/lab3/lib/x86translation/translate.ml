@@ -10,7 +10,7 @@ module Helper = New_helper
 (*_ DEBUGGING STAFF  *)
 
 let debug = false
-let stupid_tail_optimization_on = true
+let stupid_tail_optimization_on = false
 let tmp_magic n = if n = 3740 then false else n > 1500
 let alloc = if not debug then Regalloc.reg_alloc else Stackalloc.stack_alloc
 
@@ -688,7 +688,7 @@ let speed_up (p : X86.instr list) : X86.instr list =
   List.rev (List.fold ~init:[] p ~f:speed_up_aux)
 ;;
 
-let speed_up_off = false
+let speed_up_off = true
 
 (* let pp_fspace l = List.map ~f:(X86.format) l
 let pp_program l = List.concat_map ~f:pp_fspace l *)

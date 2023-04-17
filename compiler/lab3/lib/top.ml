@@ -205,7 +205,16 @@ let elaboration_step (ast, ast_h) cmd =
 
 (* The main driver for the compiler: runs each phase. *)
 let compile (cmd : cmd_line_args) : unit =
-  let ssa_off = false in
+  let ssa_off = true in
+  let strength_off = true in (* includes constant folding *)
+  let inline_off = true in
+  let strength_assem_off = true in
+  (* constant-folding *)
+
+  (* speed-up (block alignment, remove unnessesary jumps, some peephole) *)
+  (* coalesce *)
+  (* tail-call *)
+
   let aSSEM_MAGIC = 1000 in
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
   (* Parse *)
@@ -230,12 +239,12 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.verbose (fun () -> "Translating...");
   let raw_ir = TranslationM.translate elab in
   (* say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program raw_ir); *)
-  let ir = Strength.strength_reduction raw_ir in
+  let ir = if strength_off then raw_ir else Strength.strength_reduction raw_ir in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (*_ opt: function inline *)
-  (* say_if cmd.verbose (fun () -> "Doing function inline...");
-  let ir = Inline.inline ir in
-  say_if cmd.inline (fun () -> TreeM.Print.pp_program ir); *)
+  (* say_if cmd.verbose (fun () -> "Doing function inline...");*)
+  let ir = if inline_off then ir else Inline.inline ir in
+  (*say_if cmd.inline (fun () -> TreeM.Print.pp_program ir); *)
   (* Codegen *)
   say_if cmd.verbose (fun () -> "Codegen...");
   let mfail = Label.create () in
@@ -266,7 +275,7 @@ let compile (cmd : cmd_line_args) : unit =
   in
   say_if cmd.dump_assem (fun () -> "SSAAAAAAAAAAAAAAA");
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
-  let assem = if cmd.unsafe then Assem_strength.strength assem else assem in
+  let assem = if strength_assem_off then assem else Assem_strength.strength assem in
   (* print_endline "after all de-ssa"; *)
   say_if cmd.verbose (fun () -> "Emitting...");
   match cmd.emit with

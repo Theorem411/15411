@@ -9,7 +9,7 @@ module UF = Unionfind
 
 type color = (int[@deriving compare, equal, hash])
 
-let coalesce_on = true
+let coalesce_on = false
 let coalesce_regs = true
 
 (* let print_info s = prerr_endline s; *)
