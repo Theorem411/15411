@@ -12,6 +12,7 @@ module TH : Hashtbl.S with type key := Temp.t
 module IComp : Comparable.S with type t := int
 module IS = IComp.Set
 module IH : Hashtbl.S with type key := int
+
 type params = Temp.t TM.t
 
 type jtag =
@@ -26,12 +27,12 @@ type jtag =
       ; lf : Label.bt
       ; fparams : params
       }
-      
+
 type phi =
-  { self : Temp.t
-  (* ; size : AS.size *)
+  { self : Temp.t (* ; size : AS.size *)
   ; alt_selves : (Label.bt * AS.operand) list
   }
+
 type block_ssa =
   { (*_ each block has a matrix of (orig)temp -> (pred) lab to *)
     label : Label.bt
@@ -56,7 +57,7 @@ type program_ssa = fspace_ssa list
 type instr =
   | ASInstr of AS.instr
   | Phi of phi
-  | Nop
+  | Nop [@deriving equal]
 
 type block_phi =
   { label : Label.bt
@@ -95,9 +96,11 @@ type program = fspace list
 (*_ ssa step functions *)
 val global_rename : AS.program -> program_ssa
 val global_phi : program_ssa -> program_phi
-val global_lining : program_phi -> program 
+val global_lining : program_phi -> program
+
 (*_ going into ssa *)
 val ssa : AS.program -> program
+
 (*_ going out of ssa *)
 val de_ssa : program -> AS.program
 

@@ -49,7 +49,7 @@ type phi =
 type instr =
   | ASInstr of AS.instr
   | Phi of phi
-  | Nop
+  | Nop [@deriving equal] 
 
 type block_ssa =
   { (*_ each block has a matrix of (orig)temp -> (pred) lab to *)
@@ -627,7 +627,9 @@ let reconstruct_blocks
   let assemble ~key:l ~(data : AS.instr list) : unit =
     let code_rev = LT.find_exn l2instrs l |> List.rev in
     let jmp, rest_rev = split_jmp code_rev in
-    let code = jmp @ List.rev (fixed_extra_moves (List.rev data)) @ rest_rev |> List.rev in
+    let code =
+      jmp @ List.rev (fixed_extra_moves (List.rev data)) @ rest_rev |> List.rev
+    in
     LT.update l2instrs l ~f:(fun _ -> code)
   in
   let () = LM.iteri extra_moves ~f:assemble in
