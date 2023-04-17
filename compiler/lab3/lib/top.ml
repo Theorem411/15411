@@ -205,17 +205,24 @@ let elaboration_step (ast, ast_h) cmd =
 
 (* The main driver for the compiler: runs each phase. *)
 let compile (cmd : cmd_line_args) : unit =
-  let ssa_off = true in
-  let strength_off = true in (* includes constant folding *)
-  let inline_off = true in
+  (* ***********************************************************)
+  (* peephole *)
+  Codegen_l4.set_lea_off true;
+  Translate.set_strength_off true;
   let strength_assem_off = true in
-  (* constant-folding *)
-
-  (* speed-up (block alignment, remove unnessesary jumps, some peephole) *)
-  (* coalesce *)
-  (* tail-call *)
-  (* lea *)
-
+  (* const fold *)
+  let const_fold_off = true in
+  (* ssa + global copy-const *)
+  let ssa_off = true in
+  (* inline *)
+  let inline_off = true in
+  (* basic tail call *)
+  Translate.set_tail_off true;
+  (* register coalescing *)
+  Coalesce.set_coalesce_off true;
+  (* block align *)
+  Translate.set_block_algn_off true;
+  (* ***********************************************************)
   let aSSEM_MAGIC = 1000 in
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
   (* Parse *)
@@ -240,7 +247,7 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.verbose (fun () -> "Translating...");
   let raw_ir = TranslationM.translate elab in
   (* say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program raw_ir); *)
-  let ir = if strength_off then raw_ir else Strength.strength_reduction raw_ir in
+  let ir = if const_fold_off then raw_ir else Strength.strength_reduction raw_ir in
   say_if cmd.dump_ir (fun () -> TreeM.Print.pp_program ir);
   (*_ opt: function inline *)
   (* say_if cmd.verbose (fun () -> "Doing function inline...");*)

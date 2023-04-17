@@ -7,3 +7,4 @@ module TM = Temp.Map
 type color = (int[@deriving compare, equal, hash])
 
 val coalesce : Graph.new_graph -> color VT.t -> (V.t * V.t) list -> V.t TM.t
+val set_coalesce_off : bool -> unit

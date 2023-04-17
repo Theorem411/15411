@@ -9,9 +9,17 @@ module TM = Temp.Map
 module Helper = New_helper
 (*_ DEBUGGING STAFF  *)
 
-let debug = false
-let stupid_tail_optimization_on = false
+let tail_off_ref = ref false
+let set_tail_off b = tail_off_ref := b
+let tail_on () = not !tail_off_ref
+let strength_off_ref = ref false
+let set_strength_off b = strength_off_ref := b
+let strength_on () = not !strength_off_ref
+let block_algn_off_ref = ref false
+let set_block_algn_off b = block_algn_off_ref := b
+let block_algn_on () = not !block_algn_off_ref
 let tmp_magic n = if n = 3740 then false else n > 1500
+let debug = false
 let alloc = if not debug then Regalloc.reg_alloc else Stackalloc.stack_alloc
 
 type fspace = X86.instr list
@@ -198,7 +206,7 @@ let translate_call
     (stack_args : (AS.operand * AS.size) list)
   =
   let call, to_tail =
-    match stupid_tail_optimization_on, tail_call, String.equal this_fun_name fname with
+    match tail_on (), tail_call, String.equal this_fun_name fname with
     | true, true, true -> [ X86.Jump { op = None; label = bodyLabel } ], true
     | _ -> [ X86.Call fname ], false
   in
@@ -617,7 +625,7 @@ let translate_function ~(unsafe : bool) (errLabel : Label.t) (fspace : AS.fspace
     List.rev (List.nth_exn (List.map ~f:translated [ first_block_instrs ]) 0)
   in
   let full_rev = List.rev_append e res in
-  if not stupid_tail_optimization_on
+  if not (tail_on ())
   then b @ first_block_code @ List.rev full_rev
   else b @ [ X86.Lbl fun_body_label ] @ first_block_code @ List.rev full_rev
 ;;
@@ -632,22 +640,24 @@ let translate (fs : AS.program) ~mfail ~(unsafe : bool) =
 ;;
 
 let to_remove_cur (cur : X86.instr) (prec : X86.instr) : bool =
+  let do_strength = strength_on () in
   match cur with
   | X86.BinCommand ({ op = X86.Mov; _ } as m2) ->
-    if X86.equal_operand m2.src m2.dest
+    if X86.equal_operand m2.src m2.dest (* always to self-moves *)
     then true
     else (
       match prec with
       | X86.BinCommand ({ op = X86.Mov; _ } as m1) ->
-        (X86.equal_size m1.size m2.size
-        && X86.equal_operand m1.src m2.dest
-        && X86.equal_operand m2.src m1.dest)
-        || (X86.equal_size m1.size m2.size
-           && X86.equal_operand m1.src m2.src
-           && X86.equal_operand m1.dest m2.dest)
+        do_strength
+        && ((X86.equal_size m1.size m2.size
+            && X86.equal_operand m1.src m2.dest
+            && X86.equal_operand m2.src m1.dest)
+           || (X86.equal_size m1.size m2.size
+              && X86.equal_operand m1.src m2.src
+              && X86.equal_operand m1.dest m2.dest))
       | _ -> false)
   | X86.BinCommand { op = X86.Add | X86.Addq | X86.Sub | X86.Subq; src = Imm n; _ } ->
-    Int64.equal n Int64.zero
+    do_strength && Int64.equal n Int64.zero
   | _ -> false
 ;;
 
@@ -669,18 +679,22 @@ let to_remove_prec cur prec =
 ;;
 
 let speed_up_aux prev cur =
+  let do_strength = strength_on () in
+  let do_block_algn = block_algn_on () in
   (* let rm i prev = X86.Comment (X86.format cur) :: prev in *)
   match prev, cur with
   | [], cur -> [ cur ]
   | (prec :: prev_prev as prev), cur ->
     if to_remove_cur cur prec
     then prev
-    else if to_remove_prec cur prec
+    else if do_block_algn && to_remove_prec cur prec
     then cur :: prev_prev
-    else (
+    else if do_strength
+    then (
       match replace_cur_with cur prec with
       | None -> cur :: prev
       | Some new_instr -> new_instr :: prev)
+    else cur :: prev
 ;;
 
 let speed_up (p : X86.instr list) : X86.instr list =
@@ -688,10 +702,6 @@ let speed_up (p : X86.instr list) : X86.instr list =
   List.rev (List.fold ~init:[] p ~f:speed_up_aux)
 ;;
 
-let speed_up_off = true
-
 (* let pp_fspace l = List.map ~f:(X86.format) l
 let pp_program l = List.concat_map ~f:pp_fspace l *)
-let get_string_list p : X86.instr list =
-  if not speed_up_off then speed_up (List.concat p) else List.concat p
-;;
+let get_string_list p : X86.instr list = speed_up (List.concat p)

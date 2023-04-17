@@ -9,7 +9,9 @@ module UF = Unionfind
 
 type color = (int[@deriving compare, equal, hash])
 
-let coalesce_on = false
+let coalesce_off_ref = ref false
+let set_coalesce_off b = coalesce_off_ref := b
+let coalesce_on () = not !coalesce_off_ref
 let coalesce_regs = true
 
 (* let print_info s = prerr_endline s; *)
@@ -69,7 +71,7 @@ let recolor_from
 let coalesce (g : Graph.new_graph) (v2c : color VT.t) (moves : (V.t * V.t) list)
     : V.t TM.t
   =
-  if not coalesce_on
+  if not (coalesce_on ())
   then TM.of_alist_exn []
   else (
     let forest = UF.create_forest () in

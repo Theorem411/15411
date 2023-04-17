@@ -11,8 +11,12 @@ let if_cond_to_rev_jump_t = function
   | T.Neq -> A.Je
 ;;
 
+let lea_off_ref = ref false
+let set_lea_off b = lea_off_ref := b
+let lea_on () = not !lea_off_ref
+
 let is_lea_scale = function
-  | 1 | 2 | 4 | 8 -> false (* true *)
+  | 1 | 2 | 4 | 8 -> lea_on () (* true only if lea_on *)
   | _ -> false
 ;;
 
@@ -326,7 +330,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     let adrs_calc =
       if unsafe
       then
-        if is_lea_scale typ_size 
+        if is_lea_scale typ_size
         then
           [ A.LeaArray
               { dest = t; base = th; index = ti; scale = typ_size; offset = extra }
