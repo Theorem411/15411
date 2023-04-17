@@ -214,6 +214,7 @@ let compile (cmd : cmd_line_args) : unit =
   (* speed-up (block alignment, remove unnessesary jumps, some peephole) *)
   (* coalesce *)
   (* tail-call *)
+  (* lea *)
 
   let aSSEM_MAGIC = 1000 in
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
