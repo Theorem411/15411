@@ -524,7 +524,7 @@ let propagate_lea (fspace : SSA.fspace) (code : SSA.instr IH.t) (tuse : IS.t TH.
   code, tuse
 ;;
 
-let lea_prop_on = false
+let lea_prop_on = true
 
 let propagate_fspace (fspace : SSA.fspace) : SSA.fspace =
   (* let () = debug_print (sprintf "prop on fspace %s\n" (Symbol.name fspace.fname)) in *)
