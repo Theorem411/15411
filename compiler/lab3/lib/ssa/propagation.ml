@@ -489,16 +489,16 @@ let propagate_lea (fspace : SSA.fspace) (code : SSA.instr IH.t) (tuse : IS.t TH.
               (match InstrTbl.find lea_tbl lea_key with
               (* if have not seen this lea, then add it to the table *)
               | None ->
-                print_endline
+                (* print_endline
                   (sprintf
                      "adding the lea %s on %s"
                      (AS.format_instr lea_key)
-                     (Label.format_bt b.label));
+                     (Label.format_bt b.label)); *)
                 InstrTbl.add_exn lea_tbl ~key:lea_key ~data:dest
               | Some oper ->
                 (* if found make it nop *)
-                print_endline
-                  (sprintf "found the lea again on %s" (Label.format_bt b.label));
+                (* print_endline
+                  (sprintf "found the lea again on %s" (Label.format_bt b.label)); *)
                 IH.update code ln ~f:(fun _ -> Nop);
                 (* add the temp to oper_tbl *)
                 OperandTbl.add_exn ~key:dest ~data:oper oper_tbl)
