@@ -207,9 +207,9 @@ let elaboration_step (ast, ast_h) cmd =
 let compile (cmd : cmd_line_args) : unit =
   (* ***********************************************************)
   (* ssa + global copy-const *)
-  let ssa_off = false in
+  let ssa_off = true in
   (* register coalescing *)
-  Coalesce.set_coalesce_off false;
+  Coalesce.set_coalesce_off true;
   (* COMMON GROUP *)
   let common_off = false in
   (* peephole *)
