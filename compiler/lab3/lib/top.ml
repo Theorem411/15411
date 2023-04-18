@@ -217,11 +217,11 @@ let compile (cmd : cmd_line_args) : unit =
   (* inline *)
   let inline_off = true in
   (* basic tail call *)
-  Translate.set_tail_off true;
+  Translate.set_tail_off false;
   (* register coalescing *)
   Coalesce.set_coalesce_off true;
   (* block align *)
-  Translate.set_block_algn_off false;
+  Translate.set_block_algn_off true;
   (* ***********************************************************)
   let aSSEM_MAGIC = 1000 in
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
