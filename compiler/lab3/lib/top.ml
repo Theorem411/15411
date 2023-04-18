@@ -206,22 +206,24 @@ let elaboration_step (ast, ast_h) cmd =
 (* The main driver for the compiler: runs each phase. *)
 let compile (cmd : cmd_line_args) : unit =
   (* ***********************************************************)
-  (* peephole *)
-  Codegen_l4.set_lea_off true;
-  Translate.set_strength_off true;
-  let strength_assem_off = true in
-  (* const fold *)
-  let const_fold_off = true in
   (* ssa + global copy-const *)
   let ssa_off = true in
-  (* inline *)
-  let inline_off = true in
-  (* basic tail call *)
-  Translate.set_tail_off true;
   (* register coalescing *)
   Coalesce.set_coalesce_off true;
+  (* COMMON GROUP *)
+  let common_off = true in
+  (* peephole *)
+  Codegen_l4.set_lea_off common_off;
+  Translate.set_strength_off common_off;
+  let strength_assem_off = common_off in
+  (* const fold *)
+  let const_fold_off = common_off in
+  (* inline *)
+  let inline_off = common_off in
+  (* basic tail call *)
+  Translate.set_tail_off common_off;
   (* block align *)
-  Translate.set_block_algn_off true;
+  Translate.set_block_algn_off common_off;
   (* ***********************************************************)
   let aSSEM_MAGIC = 1000 in
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
