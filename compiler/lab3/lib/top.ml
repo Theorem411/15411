@@ -219,9 +219,9 @@ let compile (cmd : cmd_line_args) : unit =
   (* basic tail call *)
   Translate.set_tail_off true;
   (* register coalescing *)
-  Coalesce.set_coalesce_off false;
+  Coalesce.set_coalesce_off true;
   (* block align *)
-  Translate.set_block_algn_off true;
+  Translate.set_block_algn_off false;
   (* ***********************************************************)
   let aSSEM_MAGIC = 1000 in
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
