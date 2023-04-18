@@ -209,7 +209,7 @@ let compile (cmd : cmd_line_args) : unit =
   (* ssa + global copy-const *)
   let ssa_off = true in
   (* register coalescing *)
-  Coalesce.set_coalesce_off true;
+  Coalesce.set_coalesce_off false;
   (* COMMON GROUP *)
   let common_off = false in
   (* peephole *)
