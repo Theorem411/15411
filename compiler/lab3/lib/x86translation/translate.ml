@@ -648,13 +648,12 @@ let to_remove_cur (cur : X86.instr) (prec : X86.instr) : bool =
     else (
       match prec with
       | X86.BinCommand ({ op = X86.Mov; _ } as m1) ->
-        do_strength
-        && ((X86.equal_size m1.size m2.size
-            && X86.equal_operand m1.src m2.dest
-            && X86.equal_operand m2.src m1.dest)
-           || (X86.equal_size m1.size m2.size
-              && X86.equal_operand m1.src m2.src
-              && X86.equal_operand m1.dest m2.dest))
+        (X86.equal_size m1.size m2.size
+        && X86.equal_operand m1.src m2.dest
+        && X86.equal_operand m2.src m1.dest)
+        || (X86.equal_size m1.size m2.size
+           && X86.equal_operand m1.src m2.src
+           && X86.equal_operand m1.dest m2.dest)
       | _ -> false)
   | X86.BinCommand { op = X86.Add | X86.Addq | X86.Sub | X86.Subq; src = Imm n; _ } ->
     do_strength && Int64.equal n Int64.zero
