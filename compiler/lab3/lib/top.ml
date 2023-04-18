@@ -207,9 +207,9 @@ let elaboration_step (ast, ast_h) cmd =
 let compile (cmd : cmd_line_args) : unit =
   (* ***********************************************************)
   (* peephole *)
-  Codegen_l4.set_lea_off true;
-  Translate.set_strength_off true;
-  let strength_assem_off = true in
+  Codegen_l4.set_lea_off false;
+  Translate.set_strength_off false;
+  let strength_assem_off = false in
   (* const fold *)
   let const_fold_off = true in
   (* ssa + global copy-const *)
@@ -217,7 +217,7 @@ let compile (cmd : cmd_line_args) : unit =
   (* inline *)
   let inline_off = true in
   (* basic tail call *)
-  Translate.set_tail_off false;
+  Translate.set_tail_off true;
   (* register coalescing *)
   Coalesce.set_coalesce_off true;
   (* block align *)
