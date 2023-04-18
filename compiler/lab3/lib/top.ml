@@ -209,9 +209,9 @@ let compile (cmd : cmd_line_args) : unit =
   (* ssa + global copy-const *)
   let ssa_off = true in
   (* register coalescing *)
-  Coalesce.set_coalesce_off false;
+  Coalesce.set_coalesce_off true;
   (* COMMON GROUP *)
-  let common_off = true in
+  let common_off = false in
   (* peephole *)
   Codegen_l4.set_lea_off common_off;
   Translate.set_strength_off common_off;
