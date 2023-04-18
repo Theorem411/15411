@@ -219,7 +219,7 @@ let compile (cmd : cmd_line_args) : unit =
   (* basic tail call *)
   Translate.set_tail_off true;
   (* register coalescing *)
-  Coalesce.set_coalesce_off true;
+  Coalesce.set_coalesce_off false;
   (* block align *)
   Translate.set_block_algn_off true;
   (* ***********************************************************)
