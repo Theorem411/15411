@@ -21,6 +21,7 @@ module Cogen = Codegen_l4
 module TreeM = Tree_l4
 module Asts = Asts
 module Statsem = Statsem_l4
+module LLVM_custom = Llvm_custom
 
 (* Command line arguments *)
 
@@ -48,15 +49,18 @@ module Emit = struct
   type t =
     | X86_64
     | Abstract_assem
+    | LLVM
 
   let show = function
     | X86_64 -> "x86-64"
     | Abstract_assem -> "abs"
+    | LLVM -> "llvm"
   ;;
 
   let parse = function
     | "abs" -> Result.Ok Abstract_assem
     | "x86-64" -> Result.Ok X86_64
+    | "llvm" -> Result.Ok LLVM
     | arg -> Result.Error (`Msg ("Unknown emit arg: " ^ arg))
   ;;
 
@@ -207,11 +211,11 @@ let elaboration_step (ast, ast_h) cmd =
 let compile (cmd : cmd_line_args) : unit =
   (* ***********************************************************)
   (* ssa + global copy-const *)
-  let ssa_off = false in
+  (* let ssa_off = false in *)
   (* register coalescing *)
   Coalesce.set_coalesce_off true;
   (* COMMON GROUP *)
-  let common_off = true in
+  let common_off = false in
   (* peephole *)
   Codegen_l4.set_lea_off common_off;
   Translate.set_strength_off common_off;
@@ -219,13 +223,13 @@ let compile (cmd : cmd_line_args) : unit =
   (* const fold *)
   let const_fold_off = common_off in
   (* inline *)
-  let inline_off = common_off in
+  let inline_off = true in
   (* basic tail call *)
   Translate.set_tail_off common_off;
   (* block align *)
   Translate.set_block_algn_off common_off;
   (* ***********************************************************)
-  let aSSEM_MAGIC = 1000 in
+  (* let aSSEM_MAGIC = 1000 in *)
   if cmd.dump_parsing then ignore (Parsing.set_trace true : bool);
   (* Parse *)
   say_if cmd.verbose (fun () -> "Parsing... " ^ cmd.filename);
@@ -259,30 +263,24 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.verbose (fun () -> "Codegen...");
   let mfail = Label.create () in
   let assem' = Codegen_l4.codegen ~mfl:mfail ~unsafe:cmd.unsafe ir in
-  let ssa_off = ssa_off || List.length assem' > aSSEM_MAGIC in
+  (* let ssa_off = ssa_off || List.length assem' > aSSEM_MAGIC in *)
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem');
-  let assem =
-    if ssa_off
-    then assem'
-    else (
-      say_if cmd.verbose (fun () -> "Starting ssa...");
-      let assem_ssa' = Ssa.ssa assem' in
-      (* print_endline "after all ssa"; *)
-      (* print_endline (Ssa.pp_program assem_ssa'); *)
-      say_if cmd.verbose (fun () -> "Starting propogation ...");
-      let assem_ssa_prop = Propagation.propagate assem_ssa' in
-      (* print_endline (Ssa.pp_program assem_ssa_prop); *)
-      say_if cmd.verbose (fun () -> "Doing phi_opt");
-      let assem_ssa_phi_opt = Propagation.phiopt assem_ssa_prop in
-      (* print_endline "assem_ssa_phi_opt"; *)
-      (* print_endline (Ssa.pp_program assem_ssa_phi_opt); *)
-      say_if cmd.verbose (fun () -> "Starting de-ssa ...");
-      let assem = Ssa.de_ssa assem_ssa_phi_opt in
-      (* print_endline (AssemM.format_program assem); *)
-      say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
-      (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem) () else () in *)
-      assem)
-  in
+  say_if cmd.verbose (fun () -> "Starting ssa...");
+  let assem_ssa' = Ssa.ssa assem' in
+  (* print_endline "after all ssa"; *)
+  (* print_endline (Ssa.pp_program assem_ssa'); *)
+  say_if cmd.verbose (fun () -> "Starting propogation ...");
+  let assem_ssa_prop = Propagation.propagate assem_ssa' in
+  (* print_endline (Ssa.pp_program assem_ssa_prop); *)
+  say_if cmd.verbose (fun () -> "Doing phi_opt");
+  let assem_ssa_phi_opt = Propagation.phiopt assem_ssa_prop in
+  (* print_endline "assem_ssa_phi_opt"; *)
+  print_endline (Ssa.pp_program assem_ssa_phi_opt);
+  say_if cmd.verbose (fun () -> "Starting de-ssa ...");
+  let assem = Ssa.de_ssa assem_ssa_phi_opt in
+  (* print_endline (AssemM.format_program assem); *)
+  say_if cmd.dump_ssa (fun () -> "Dumping ssa...");
+  (* let () = if cmd.dump_ssa then (fun () -> Propagation.debug assem) () else () in *)
   say_if cmd.dump_assem (fun () -> "SSAAAAAAAAAAAAAAA");
   say_if cmd.dump_assem (fun () -> AssemM.format_program assem);
   let assem = if strength_assem_off then assem else Assem_strength.strength assem in
@@ -295,6 +293,12 @@ let compile (cmd : cmd_line_args) : unit =
     say_if cmd.verbose (fun () -> sprintf "Writing abstract assem to %s..." file);
     Out_channel.with_file file ~f:(fun out ->
         Out_channel.fprintf out "%s" (AssemM.format_program assem))
+  | LLVM ->
+    let file = cmd.filename ^ ".ll" in
+    say_if cmd.verbose (fun () -> sprintf "Writing llvm assem to %s..." file);
+    let assem_llvm = LLVM_custom.create assem_ssa_phi_opt in
+    Out_channel.with_file file ~f:(fun out ->
+        Out_channel.fprintf out "%s" (LLVM_custom.format_program assem_llvm))
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);
