@@ -1,0 +1,299 @@
+.file	"compiler/tests/testing.all"
+.text
+.globl _unsafe_calloc
+.type	_unsafe_calloc, @function
+_unsafe_calloc:
+	movslq	%edi, %rsi
+	movl	$1, %edi
+	jmp	calloc
+.globl _unsafe_allocarray_javaway
+.type	_unsafe_allocarray_javaway, @function
+_unsafe_allocarray_javaway:
+	imull	%edi, %esi
+	movl	$1, %edi
+	movslq	%esi, %rsi
+	jmp	calloc
+.L25:
+/* Arithmetic Error Label */
+	movl	$1, %eax
+	xorl	%ecx, %ecx
+	cltd
+	idivl	%ecx
+.globl _c0_factorial
+.type	_c0_factorial, @function
+_c0_factorial:
+	pushq	%rbp
+.L27:
+	movl	%edi, %ebp
+/* 	loading from stack... */
+	cmpl	$0, %ebp
+	jne	.L4
+.L3:
+	movl	$1, %eax
+	jmp	.L26
+.L6:
+	jmp	.L5
+.L4:
+	movl	%ebp, %eax
+	subl	$1, %eax
+	movl	%eax, %edi
+	call	_c0_factorial
+	movl	%eax, %edx
+	movl	%ebp, %eax
+	imull	%edx, %eax
+	jmp	.L26
+.L7:
+.L5:
+.L26:
+	popq	%rbp
+	ret
+.globl _c0_init
+.type	_c0_init, @function
+_c0_init:
+	pushq	%rbp
+.L29:
+	movl	%edi, %eax
+/* 	loading from stack... */
+	movl	$16, %edi
+	call	_unsafe_calloc
+	movq	%rax, %rbp
+	xorl	%r11d, %r11d
+	movq	%rax, %r10
+	movl	%r11d, (%r10)
+	movl	$4, %edi
+	movl	$2478, %esi
+	call	_unsafe_allocarray_javaway
+	movq	%rbp, %rdx
+	addq	$8, %rdx
+	movq	%rax, %r11
+	movq	%rdx, %r10
+	movq	%r11, (%r10)
+	movq	%rbp, %rax
+	jmp	.L28
+.L8:
+.L28:
+	popq	%rbp
+	ret
+.globl _c0_prepare
+.type	_c0_prepare, @function
+_c0_prepare:
+	pushq	%rbp
+.L31:
+	movq	%rdi, %rdx
+	movl	%esi, %ecx
+/* 	loading from stack... */
+	movq	%rdx, %rcx
+	xorl	%r11d, %r11d
+	movq	%rcx, %r10
+	movl	%r11d, (%r10)
+	xorq	%rcx, %rcx
+.L9:
+	cmpl	$2478, %ecx
+	jge	.L11
+.L10:
+	movq	%rdx, %rsi
+	addq	$8, %rsi
+	movq	(%rsi), %rsi
+	movsxd	%ecx, %r11
+	leaq	(%rsi,%r11,4), %rsi
+	movl	(%rsi), %edi
+	xorl	%r11d, %r11d
+	movq	%rsi, %r10
+	movl	%r11d, (%r10)
+	movl	$1, %esi
+	addl	%ecx, %esi
+	movq	%rsi, %rcx
+	movq	%rdx, %rsi
+	jmp	.L9
+.L11:
+.L30:
+	popq	%rbp
+	ret
+.globl _c0_checksum
+.type	_c0_checksum, @function
+_c0_checksum:
+	pushq	%rbp
+.L33:
+	movq	%rdi, %rax
+	movl	%esi, %edx
+/* 	loading from stack... */
+	movq	%rax, %rdx
+	movl	(%rdx), %edx
+	movl	%edx, %eax
+	jmp	.L32
+.L12:
+.L32:
+	popq	%rbp
+	ret
+.globl _c0_mystery
+.type	_c0_mystery, @function
+_c0_mystery:
+	pushq	%rbx
+	pushq	%r12
+	pushq	%r13
+	pushq	%rbp
+	subq	$8, %rsp
+.L35:
+	movq	%rdi, %rax
+/* 	loading from stack... */
+	xorq	%rdx, %rdx
+.L13:
+	cmpl	$2478, %edx
+	jge	.L15
+.L14:
+	movsxd	%edx, %r11
+	leaq	(%rax,%r11,4), %rcx
+	movl	(%rcx), %esi
+	movl	$1, %r11d
+	movq	%rcx, %r10
+	movl	%r11d, (%r10)
+	movl	$1, %ecx
+	addl	%edx, %ecx
+	movq	%rcx, %rdx
+	jmp	.L13
+.L15:
+	xorq	%rbp, %rbp
+	movq	%rax, %rcx
+.L16:
+	movl	$2478, %eax
+	movl	$100, %r11d
+	cltd
+	idivl	%r11d
+	movl	%eax, %esi
+	cmpl	%esi, %ebp
+	jge	.L18
+.L17:
+	movq	$2477, %r12
+	movq	%rcx, %rbx
+.L19:
+	cmpl	$0, %r12d
+	jl	.L21
+.L20:
+	movsxd	%r12d, %r11
+	leaq	(%rbx,%r11,4), %r13
+	movl	(%r13), %eax
+	movl	$32, %edx
+	orl	%eax, %edx
+	movl	%edx, %r11d
+	movq	%r13, %r10
+	movl	%r11d, (%r10)
+	movl	(%r13), %eax
+	movl	$4, %edx
+	orl	%eax, %edx
+	movl	%edx, %r11d
+	movq	%r13, %r10
+	movl	%r11d, (%r10)
+	movl	(%r13), %eax
+	movl	$1, %edx
+	orl	%eax, %edx
+	movl	%edx, %r11d
+	movq	%r13, %r10
+	movl	%r11d, (%r10)
+	movl	(%r13), %eax
+	movl	(%r13), %edx
+	movl	(%r13), %ecx
+	movl	%edx, %eax
+	imull	%ecx, %eax
+	movl	%eax, %edi
+	call	_c0_factorial
+	movl	%eax, %r11d
+	movq	%r13, %r10
+	movl	%r11d, (%r10)
+	movl	(%r13), %ecx
+	movl	(%r13), %eax
+	movl	$1, %esi
+	addl	%eax, %esi
+	movl	%ecx, %eax
+	cltd
+	idivl	%esi
+	movl	%eax, %ecx
+	movl	%ecx, %r11d
+	movq	%r13, %r10
+	movl	%r11d, (%r10)
+	movl	(%r13), %eax
+	movl	(%r13), %eax
+	movsxd	%ebp, %r11
+	leaq	(%rbx,%r11,4), %rdx
+	movl	(%rdx), %edx
+	movl	%eax, %ecx
+	addl	%edx, %ecx
+	movl	$1, %eax
+	addl	%ecx, %eax
+	movl	%eax, %r11d
+	movq	%r13, %r10
+	movl	%r11d, (%r10)
+	movl	%r12d, %eax
+	subl	$1, %eax
+	movq	%rax, %r12
+	movq	%rbx, %rax
+	jmp	.L19
+.L21:
+	movl	$1, %eax
+	addl	%ebp, %eax
+	movq	%rax, %rbp
+	movq	%rbx, %rcx
+	jmp	.L16
+.L18:
+	movl	$7434, %eax
+	movl	$4, %r11d
+	cltd
+	idivl	%r11d
+	movl	%eax, %esi
+	movsxd	%esi, %r11
+	leaq	(%rcx,%r11,4), %rax
+	movl	(%rax), %edx
+	movl	%edx, %eax
+	jmp	.L34
+.L22:
+.L34:
+	addq	$8, %rsp
+	popq	%rbp
+	popq	%r13
+	popq	%r12
+	popq	%rbx
+	ret
+.globl _c0_run
+.type	_c0_run, @function
+_c0_run:
+	pushq	%rbp
+.L37:
+	movq	%rdi, %rbp
+	movl	%esi, %eax
+/* 	loading from stack... */
+	movq	%rbp, %rax
+	addq	$8, %rax
+	movq	(%rax), %rax
+	movq	%rax, %rdi
+	call	_c0_mystery
+	movl	%eax, %edx
+	movq	%rbp, %rcx
+	movl	%edx, %r11d
+	movq	%rcx, %r10
+	movl	%r11d, (%r10)
+.L36:
+	popq	%rbp
+	ret
+.globl _c0_main
+.type	_c0_main, @function
+_c0_main:
+	pushq	%rbp
+.L39:
+/* 	loading from stack... */
+	movl	$2478, %edi
+	call	_c0_init
+	movq	%rax, %rbp
+	movq	%rbp, %rdi
+	movl	$2478, %esi
+	call	_c0_prepare
+	movq	%rbp, %rdi
+	movl	$2478, %esi
+	call	_c0_run
+	movq	%rbp, %rdi
+	movl	$2478, %esi
+	call	_c0_checksum
+	movl	%eax, %edx
+	jmp	.L38
+.L23:
+.L38:
+	popq	%rbp
+	ret
