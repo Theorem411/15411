@@ -531,12 +531,12 @@ let instr_use (instr : instr) : Temp.t list =
   match instr with
   | ASInstr instr ->
     let _, use = SP.def_n_use instr in
-    print_endline
+    (* print_endline
       (sprintf
          "getting for %s: {%s}"
          (AS.format_instr instr)
          (let l = V.Set.to_list use in
-          String.concat ~sep:"," (List.map ~f:V._to_string l)));
+          String.concat ~sep:"," (List.map ~f:V._to_string l))); *)
     let use = V.vertex_set_to_op_set use in
     let use =
       AS.Set.to_list use
