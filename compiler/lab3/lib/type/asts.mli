@@ -139,6 +139,7 @@ type stm =
 type glob =
   { f : Symbol.t
   ; args : (Symbol.t * int) list
+  ; ret_size : int option
   ; fdef : stm
   }
 

@@ -7,6 +7,7 @@ module Regalloc = Regalloc
 
 let get_temps_line instr : Temp.t list =
   let all_ops : AS.instr -> AS.operand list = function
+    | LLVM_IF _ | LLVM_Jmp _ | LLVM_Call _ | LLVM_Cmp _ | LLVM_Set _ | LLVM_Ret _ -> []
     | AS.Mov m -> [ m.dest; m.src ]
     | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
     | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]

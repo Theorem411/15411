@@ -181,6 +181,7 @@ type stm =
 type glob =
   { f : Symbol.t
   ; args : (Symbol.t * int) list
+  ; ret_size : int option
   ; fdef : stm
   }
 
@@ -303,7 +304,7 @@ module Print = struct
       | Some (e, _) ->
         sprintf "decl %s=%s;\n%s" (Symbol.name var) (pp_exp e) (pp_stm body))
     | Assign { var; exp } -> sprintf "%s = %s;" (Symbol.name var) (pp_mexp exp)
-    | A2PA { addr; op = None; exp} ->
+    | A2PA { addr; op = None; exp } ->
       sprintf "(%s)p = %s" (pp_ptraddr addr) (pp_mexp exp)
     | A2PA { addr; op = Some o; exp } ->
       sprintf "(%s)p %s= %s" (pp_ptraddr addr) (pp_binop o) (pp_mexp exp)
@@ -330,12 +331,13 @@ module Print = struct
         |> String.concat ~sep:", ")
   ;;
 
-  let pp_glob { f; args; fdef } =
+  let pp_glob { f; args; fdef; ret_size } =
     sprintf
-      "%s(%s) =\n%s\n\n"
+      "%s(%s)[%s] =\n%s\n\n"
       (Symbol.name f)
       (List.map args ~f:(fun (s, i) -> sprintf "%s:%s," (Symbol.name s) (Int.to_string i))
       |> String.concat)
+      (Option.value_map ret_size ~default:"void" ~f:Int.to_string)
       (pp_stm fdef)
   ;;
 

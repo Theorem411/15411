@@ -78,3 +78,7 @@ ulan-test-files/*
 
 *ulan*
 compiler/tests/testing.all
+compiler/tests/a
+compiler/tests/*
+compiler/tests/a.c
+compiler/tests/first

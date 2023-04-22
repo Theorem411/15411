@@ -8,6 +8,10 @@ module OperS = AS.Set
 (* let dump_liveness : bool ref = ref false *)
 (* let print_info f = if true then () else prerr_endline (f ()) *)
 
+let llvm_off_ref = ref false
+let set_llvm_off b = llvm_off_ref := b
+let llvm_on () = true
+
 type ht_entry =
   { d : V.Set.t
   ; u : V.Set.t
@@ -94,6 +98,40 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
   | AS.LeaArray { dest; base; index; _ } ->
     op_to_vset dest, V.Set.union_list [ op_to_vset base; op_to_vset index ]
   | AS.LeaPointer { dest; base; _ } -> op_to_vset dest, op_to_vset base
+  | _ ->
+    if not (llvm_on ())
+    then V.Set.empty, V.Set.empty
+    else (
+      match instr with
+      | LLVM_Jmp _ -> V.Set.empty, V.Set.empty
+      | LLVM_IF _ -> V.Set.empty,  V.Set.empty
+      | LLVM_Ret None -> V.Set.empty, V.Set.empty
+      | LLVM_Ret (Some (src, _)) -> V.Set.empty, op_to_vset src
+      | LLVM_Call { dest = Some (dest, ret_size); args; _ } ->
+        ( V.Set.empty
+        , V.Set.of_list
+            (List.filter_map
+               ~f:(fun (r, _) ->
+                 match r with
+                 | AS.Reg x -> Some (V.R x)
+                 | AS.Temp t -> Some (V.T t)
+                 | _ -> None)
+               ((dest, ret_size) :: args)) )
+      | LLVM_Call { dest = None; args; _ } ->
+        ( V.Set.empty
+        , V.Set.of_list
+            (List.filter_map
+               ~f:(fun (r, _) ->
+                 match r with
+                 | AS.Reg x -> Some (V.R x)
+                 | AS.Temp t -> Some (V.T t)
+                 | _ -> None)
+               args) )
+      | LLVM_Set { lhs; rhs; _ } ->
+        V.Set.empty, V.Set.union_list [ op_to_vset lhs; op_to_vset rhs ]
+      | LLVM_Cmp { lhs; rhs; dest; _ } ->
+        V.Set.empty, V.Set.union_list [ op_to_vset dest; op_to_vset lhs; op_to_vset rhs ]
+      | _ -> failwith (sprintf "%s is not LLVM operation" (AS.format_instr instr)))
 ;;
 
 (* let format_v_set s =

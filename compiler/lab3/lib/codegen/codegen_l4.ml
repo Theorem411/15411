@@ -14,6 +14,9 @@ let if_cond_to_rev_jump_t = function
 let lea_off_ref = ref false
 let set_lea_off b = lea_off_ref := b
 let lea_on () = not !lea_off_ref
+let llvm_off_ref = ref true
+let set_llvm_off b = llvm_off_ref := b
+let llvm_on () = not !llvm_off_ref
 
 let is_lea_scale = function
   | 1 | 2 | 4 | 8 -> lea_on () (* true only if lea_on *)
@@ -85,9 +88,18 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
       let lhs = A.Temp (Temp.create ()) in
       let rhs = A.Temp (Temp.create ()) in
       (*_ view in reverse order *)
-      A.Set { typ; src = dest }
-      :: A.Cmp { lhs; rhs; size = munch_size size }
-      :: (munch_exp_rev ~mfl rhs e2 @ munch_exp_rev ~mfl lhs e1)
+      (* TODO check this out *)
+      if llvm_on ()
+      then
+        [ A.LLVM_Cmp { size = munch_size size; lhs; rhs; typ; dest } ]
+        @ (A.Set { typ; src = dest }
+          :: A.Cmp { lhs; rhs; size = munch_size size }
+          :: (munch_exp_rev ~mfl rhs e2 @ munch_exp_rev ~mfl lhs e1))
+      else
+        []
+        @ (A.Set { typ; src = dest }
+          :: A.Cmp { lhs; rhs; size = munch_size size }
+          :: (munch_exp_rev ~mfl rhs e2 @ munch_exp_rev ~mfl lhs e1))
     | T.Unop { op; p } ->
       let op = munch_unary_op op in
       let src = A.Temp (Temp.create ()) in
@@ -233,13 +245,25 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     ; [ A.EfktBinop { dest = A.Temp dest; op = munch_efkt_op ebop; lhs = t1; rhs = t2 } ]
     ]
     |> List.concat
-  | T.Goto label -> [ A.Jmp label ]
+  | T.Goto label ->
+    if llvm_on () then [ A.LLVM_Jmp label; A.Jmp label ] else [ A.Jmp label ]
   | T.Label label -> [ A.Lab label ]
   | T.Return eopt ->
-    (* return e is implemented as %eax <- e *)
-    (match eopt with
-    | None -> [ A.Ret ]
-    | Some e -> munch_exp ~unsafe (A.Reg A.EAX) e ~mfl @ [ A.Ret ])
+    (* return e is implemented as %eax <- e; ret *)
+    if not (llvm_on ())
+    then (
+      match eopt with
+      | None -> [ A.Ret ]
+      | Some e -> munch_exp ~unsafe (A.Reg A.EAX) e ~mfl @ [ A.Ret ])
+    else (
+      (* LLVM Return style *)
+      let t_ret = A.Temp (Temp.create ()) in
+      match eopt with
+      | None -> [ A.LLVM_Ret None; A.Ret ]
+      | Some e ->
+        let _, sz = e in
+        munch_exp ~unsafe t_ret e ~mfl
+        @ [ A.LLVM_Ret (Some (t_ret, munch_size sz)); A.Ret ])
   | T.AssertFail -> [ A.AssertFail ]
   | T.Alloc { dest; size } ->
     [ (* edi <-4 size *)
@@ -281,14 +305,29 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     let jmptyp = if_cond_to_rev_jump_t cmp in
     let t1 = A.Temp (Temp.create ()) in
     let t2 = A.Temp (Temp.create ()) in
-    [ munch_exp ~unsafe t1 e1 ~mfl
-    ; munch_exp ~unsafe t2 e2 ~mfl
-    ; [ A.Cmp { lhs = t1; size = sz; rhs = t2 }
-      ; A.Cjmp { typ = jmptyp; l = lf }
-      ; A.Jmp lt
+    if llvm_on ()
+    then (
+      let t_llvm = A.Temp (Temp.create ()) in
+      [ munch_exp ~unsafe t1 e1 ~mfl
+      ; munch_exp ~unsafe t2 e2 ~mfl
+      ; [ A.Cmp { lhs = t1; size = sz; rhs = t2 }
+        ; A.LLVM_Set
+            { dest = t_llvm; lhs = t1; size = sz; rhs = t2; typ = cmp_to_set_t cmp }
+        ; A.LLVM_IF { cond = t_llvm; tl = lt; fl = lf }
+        ; A.Cjmp { typ = jmptyp; l = lf }
+        ; A.Jmp lt
+        ]
       ]
-    ]
-    |> List.concat
+      |> List.concat)
+    else
+      [ munch_exp ~unsafe t1 e1 ~mfl
+      ; munch_exp ~unsafe t2 e2 ~mfl
+      ; [ A.Cmp { lhs = t1; size = sz; rhs = t2 }
+        ; A.Cjmp { typ = jmptyp; l = lf }
+        ; A.Jmp lt
+        ]
+      ]
+      |> List.concat
   | T.MovToMem { addr = T.Null; _ } -> if unsafe then [] else [ A.Jmp mfl ]
   | T.MovToMem { addr = T.Ptr { start; off }; src } ->
     let ts = A.Temp (Temp.create ()) in
@@ -416,14 +455,34 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
         ; tail_call
         }
     in
-    (match dest with
-    | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
-    | Some (d, sz) ->
-      [ cogen_args
-      ; args_mv
-      ; [ call; A.Mov { dest = A.Temp d; size = munch_size sz; src = A.Reg A.EAX } ]
-      ]
-      |> List.concat)
+    if not (llvm_on ())
+    then (
+      match dest with
+      | None -> [ cogen_args; args_mv; [ call ] ] |> List.concat
+      | Some (d, sz) ->
+        [ cogen_args
+        ; args_mv
+        ; [ call; A.Mov { dest = A.Temp d; size = munch_size sz; src = A.Reg A.EAX } ]
+        ]
+        |> List.concat)
+    else (
+      let llvm_args = List.map ~f:(fun (t, sz) -> A.Temp t, sz) ops in
+      match dest with
+      | None ->
+        [ cogen_args
+        ; args_mv
+        ; [ call ]
+        ; [ A.LLVM_Call { dest = None; args = llvm_args; fname } ]
+        ]
+        |> List.concat
+      | Some (d, sz) ->
+        [ cogen_args
+        ; args_mv
+        ; [ call; A.Mov { dest = A.Temp d; size = munch_size sz; src = A.Reg A.EAX } ]
+        ; [ A.LLVM_Call { dest = Some (A.Temp d, munch_size sz); args = llvm_args; fname }
+          ]
+        ]
+        |> List.concat)
 ;;
 
 let munch_arg_moves (args : (Temp.t * A.size) list) =
@@ -456,12 +515,18 @@ let munch_block
 ;;
 
 let codegen (prog : T.program) ~(mfl : Label.t) ~(unsafe : bool) : A.program =
-  let map_f ~(unsafe : bool) ({ fname; args; fdef } : T.fspace_block) : A.fspace =
+  let map_f ~(unsafe : bool) ({ fname; args; fdef; ret_size } : T.fspace_block) : A.fspace
+    =
     let tmp_cnt_init = Temp.get_counter () in
     let args = List.map args ~f:(fun (t, i) -> t, munch_size i) in
     let fdef_blocks = List.map fdef ~f:(fun b -> munch_block b ~unsafe ~mfl ~args) in
     let tmp_cnt_final = Temp.get_counter () in
-    { fname; args; fdef_blocks; tmp_cnt = tmp_cnt_final - tmp_cnt_init }
+    { fname
+    ; args
+    ; fdef_blocks
+    ; tmp_cnt = tmp_cnt_final - tmp_cnt_init
+    ; ret_size = Option.map ~f:munch_size ret_size
+    }
   in
   List.map prog ~f:(map_f ~unsafe)
 ;;

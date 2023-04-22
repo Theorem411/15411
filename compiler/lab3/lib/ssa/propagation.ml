@@ -88,6 +88,38 @@ let asinstr_prop
       ; scale
       ; offset
       }
+  | LLVM_Ret None -> LLVM_Ret None
+  | LLVM_Ret (Some (src, sz)) -> LLVM_Ret (Some (op_prop src t sub, sz))
+  | LLVM_Call { dest = None; args; fname } ->
+    LLVM_Call
+      { dest = None
+      ; args = List.map args ~f:(fun (op, sz) -> op_prop op t sub, sz)
+      ; fname
+      }
+  | LLVM_Call { dest = Some (dest, sz); args; fname } ->
+    LLVM_Call
+      { dest = Some (op_prop dest t sub, sz)
+      ; args = List.map args ~f:(fun (op, sz) -> op_prop op t sub, sz)
+      ; fname
+      }
+  | LLVM_Jmp l -> LLVM_Jmp l
+  | LLVM_IF { cond; tl; fl } -> LLVM_IF { cond = op_prop cond t sub; tl; fl }
+  | LLVM_Cmp { dest; size; lhs; rhs; typ } ->
+    LLVM_Cmp
+      { dest = op_prop dest t sub
+      ; size
+      ; typ
+      ; lhs = op_prop lhs t sub
+      ; rhs = op_prop rhs t sub
+      }
+  | LLVM_Set { dest; size; lhs; rhs; typ } ->
+    LLVM_Set
+      { dest 
+      ; size
+      ; typ
+      ; lhs = op_prop lhs t sub
+      ; rhs = op_prop rhs t sub
+      }
   | _ -> instr
 ;;
 

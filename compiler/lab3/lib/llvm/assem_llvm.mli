@@ -161,32 +161,6 @@ type instr =
   | Directive of string
   (* Human-friendly comment. *)
   | Comment of string
-  | LLVM_Jmp of Label.t
-  | LLVM_Ret of (operand * size) option
-  | LLVM_IF of
-      { cond : operand
-      ; tl : Label.t
-      ; fl : Label.t
-      }
-  | LLVM_Call of
-      { dest : (operand * size) option
-      ; fname : Symbol.t
-      ; args : (operand * size) list
-      }
-  | LLVM_Cmp of
-      { size : size
-      ; lhs : operand
-      ; rhs : operand
-      ; typ : set_t
-      ; dest : operand
-      }
-  | LLVM_Set of
-      { size : size
-      ; lhs : operand
-      ; rhs : operand
-      ; typ : set_t
-      ; dest : operand
-      }
 [@@deriving equal, sexp, compare, hash]
 
 type assem_jump_tag_t =
@@ -211,7 +185,6 @@ type fspace =
   ; args : (Temp.t * size) list
   ; fdef_blocks : block list
   ; tmp_cnt : int
-  ; ret_size : size option
   }
 [@@deriving equal, sexp, compare]
 

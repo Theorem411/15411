@@ -6,8 +6,8 @@ let strength_instr (instr : AS.instr) : AS.instr =
   | AS.PureBinop { op = AS.Mul; size = AS.S; dest; lhs = AS.Imm c1; rhs = AS.Imm c2 } ->
     let c = Int64.( * ) c1 c2 in
     (match Int32.of_int64 c with
-     | None -> instr
-     | Some _ -> AS.Mov { dest; src = AS.Imm c; size = AS.S })
+    | None -> instr
+    | Some _ -> AS.Mov { dest; src = AS.Imm c; size = AS.S })
   | AS.PureBinop { op = AS.Mul; size = AS.S; dest; lhs = AS.Imm c; rhs } ->
     if Int64.( = ) c Int64.zero
     then AS.Mov { dest; size = AS.S; src = AS.Imm Int64.zero }
@@ -40,6 +40,7 @@ let strength_instr (instr : AS.instr) : AS.instr =
     if Int64.( = ) c Int64.zero
     then AS.Mov { dest; size = AS.L; src = AS.Imm Int64.zero }
     else instr
+  (* | LLVM_Jmp _ | LLVM_Call _ | LLVM_Cmp _ | LLVM_IF _ | LLVM_Ret _ -> failwith "not implemented yet" *)
   | _ -> instr
 ;;
 

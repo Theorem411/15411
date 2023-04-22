@@ -172,8 +172,8 @@ let validate_args tdef (args : Symbol.t list) ((ats, rett) : T.fsig_real) : unit
   List.iter check_list ~f:chk
 ;;
 
-let validate_ssig (ssig : T.ssig) : unit = 
-  let flds, _= List.unzip ssig in
+let validate_ssig (ssig : T.ssig) : unit =
+  let flds, _ = List.unzip ssig in
   if SS.length (SS.of_list flds) = List.length ssig then () else raise TypeError
 ;;
 
@@ -493,7 +493,7 @@ let rec static_semantic_exp (mexp : A.mexp) (exp_ctx : exp_ctx) : exp_res =
     { res = A'.Alloc size, 8; typ = T.Star t; used = SS.empty }
   | A.Alloc_array { typ; len } ->
     let t, _ = resolve exp_ctx.tdef typ in
-    let { res = lres; used; typ=lt } = static_semantic_exp len exp_ctx in
+    let { res = lres; used; typ = lt } = static_semantic_exp len exp_ctx in
     let type_size =
       match t with
       | T.Struct s ->
@@ -566,7 +566,7 @@ let rec static_semantic_stm
       let { res = eres; typ; used = ue } =
         static_semantic_exp ae { fdec; tdef; vdef; vdec; sdec; sdef; suse }
       in
-       (* let () = printf "what is t? %s\n" (T._t_tostring t) in *)
+      (* let () = printf "what is t? %s\n" (T._t_tostring t) in *)
       let { vdef = vdef'; res = body; used = us } =
         static_semantic_stm
           body
@@ -612,7 +612,7 @@ let rec static_semantic_stm
       | A'.StructAccess ptraddr -> A'.A2PA { addr = ptraddr; op = None; exp = re }
       | _ -> failwith "incorrect lvalue shape for in statsem"
     in
-    let _ : int = small_type_size td in
+    let (_ : int) = small_type_size td in
     type_unify_exn td te;
     { vdef; res; used = SS.union ud ue }
   | A.Assign { var; exp } ->
@@ -671,7 +671,7 @@ let rec static_semantic_stm
     let { res; used; typ } =
       static_semantic_exp e { fdec; tdef; vdec; vdef; sdec; sdef; suse }
     in
-    let _ : int = small_type_size typ in
+    let (_ : int) = small_type_size typ in
     { vdef; res = A'.NakedExpr res; used }
   | A.AssertFail -> { vdef; res = A'.AssertFail; used = SS.empty }
   | A.NakedCall { name; args } ->
@@ -781,7 +781,12 @@ let static_semantic_gdecl
     let ({ res; used; _ } : stm_res) = static_semantic_stm mstm stm_ctx topt in
     ( { fdef = fdef'; fdec = fdec'; tdef; sdec = SS.union sdec snames; sdef; suse }
     , used
-    , Some { f; args = List.map args_size ~f:(fun (x, (_, i)) -> x, i); fdef = res } )
+    , Some
+        { f
+        ; args = List.map args_size ~f:(fun (x, (_, i)) -> x, i)
+        ; fdef = res
+        ; ret_size = Option.map ~f:small_type_size topt
+        } )
   | A.Sdecl s ->
     (* not_func_names (SM.key_set fdec) s;
     not_type_names tdef s; *)

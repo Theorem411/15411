@@ -143,6 +143,7 @@ type fspace_block =
   { fname : Symbol.t
   ; args : (Temp.t * int) list
   ; fdef : block list
+  ; ret_size : int option
   }
 
 type program = fspace_block list

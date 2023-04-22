@@ -22,3 +22,4 @@ val bt : t -> bt
 val name : t -> string
 val name_bt : bt -> string
 val format_bt : bt -> string
+val number: t -> int

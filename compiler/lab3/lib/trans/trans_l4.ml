@@ -493,15 +493,19 @@ let tr_stm (env : Temp.t S.t) (dep : int) (stm : A.stm) (binit : block_tobe)
   =
   let acc_rev, bleft = tr_stm_rev env dep stm ([] : T.block list) binit in
   (*_ finish off any leftover block by adding a jret *)
-  let rem_intrs =
+  let rem_intrs, is_empty =
     match bleft.code with
-    | [] -> [ T.Return None ]
-    | _ -> List.rev (T.Return None :: bleft.code)
+    | [] -> [ T.Return None ], true
+    | _ -> List.rev (T.Return None :: bleft.code), false
   in
+  (* do not create an empty block *)
   let acc_rev =
-    ({ label = bleft.l; block = rem_intrs; jump = T.JRet; loop_depth = bleft.depth }
-      : T.block)
-    :: acc_rev
+    if not is_empty
+    then
+      ({ label = bleft.l; block = rem_intrs; jump = T.JRet; loop_depth = bleft.depth }
+        : T.block)
+      :: acc_rev
+    else acc_rev
   in
   (*_ reminder: blocks are in original order; blocks are in reverse order *)
   let acc = List.rev acc_rev in
@@ -519,12 +523,12 @@ let args_tag (sl : (Symbol.t * int) list) : (Temp.t * int) list * Temp.t S.t =
   t2i, sset
 ;;
 
-let tr_glob ({ f; args; fdef } : A.glob) : T.fspace_block =
+let tr_glob ({ f; args; fdef; ret_size } : A.glob) : T.fspace_block =
   let ts, env = args_tag args in
   let ts' = List.map ts ~f:(fun (t, _) -> t) in
   let binit = { l = Label.FunName { fname = f; args = ts' }; code = []; depth = 0 } in
   let fdef' = tr_stm env 0 fdef binit in
-  { fname = f; args = ts; fdef = fdef' }
+  { fname = f; args = ts; fdef = fdef'; ret_size }
 ;;
 
 let translate (prog : A.program) : T.program = List.map prog ~f:tr_glob

@@ -1,9 +1,9 @@
 open Core
 module AS = Assem_l4
 module B = Block
-module Live = Live_faster
 module V = Graph.Vertex
 module SP = Singlepass
+module Live = Live_faster
 module LM = Live.LM
 module LS = Live.LS
 module LT = Live.LT
@@ -49,7 +49,7 @@ type phi =
 type instr =
   | ASInstr of AS.instr
   | Phi of phi
-  | Nop [@deriving equal] 
+  | Nop [@deriving equal]
 
 type block_ssa =
   { (*_ each block has a matrix of (orig)temp -> (pred) lab to *)
@@ -68,6 +68,7 @@ type fspace_ssa =
   ; cfg_pred : LS.t LM.t
   ; l2jtag : jtag LM.t
   ; tmp_cnt : int
+  ; ret_size : AS.size option
   }
 
 type program_ssa = fspace_ssa list
@@ -84,6 +85,8 @@ type fspace_phi =
   ; args : (Temp.t * AS.size) list
   ; fdef : block_phi list
   ; tmp_cnt : int
+  ; ret_size : AS.size option
+  ; cfg_pred : LS.t LM.t
   }
 
 type program_phi = fspace_phi list
@@ -258,7 +261,39 @@ let instr_rename (instr : AS.instr) (told2new : told2new) : AS.instr =
       ; size
       ; offset
       }
-  | _ -> instr
+  | LLVM_Cmp { dest; typ; size; lhs; rhs } ->
+    LLVM_Cmp
+      { dest = oper_rename_use dest told2new
+      ; typ
+      ; size
+      ; lhs = oper_rename_use lhs told2new
+      ; rhs = oper_rename_use rhs told2new
+      }
+  | LLVM_Set { dest; typ; size; lhs; rhs } ->
+    LLVM_Set
+      { dest
+      ; typ
+      ; size
+      ; lhs = oper_rename_use lhs told2new
+      ; rhs = oper_rename_use rhs told2new
+      }
+  | LLVM_Jmp l -> LLVM_Jmp l
+  | LLVM_IF { cond; tl; fl } -> LLVM_IF { cond; tl; fl }
+  | LLVM_Ret None -> LLVM_Ret None
+  | LLVM_Ret (Some (src, sz)) -> LLVM_Ret (Some (oper_rename_use src told2new, sz))
+  | Directive _ | Comment _ -> instr
+  | LLVM_Call { dest = None; args; fname } ->
+    LLVM_Call
+      { dest = None
+      ; args = List.map args ~f:(fun (op, sz) -> oper_rename_use op told2new, sz)
+      ; fname
+      }
+  | LLVM_Call { dest = Some (dest, sz); args; fname } ->
+    LLVM_Call
+      { dest = Some (oper_rename_use dest told2new, sz)
+      ; args = List.map args ~f:(fun (op, sz) -> oper_rename_use op told2new, sz)
+      ; fname
+      }
 ;;
 
 let block_param_rename_def (params : TS.t) (told2new : told2new) : params =
@@ -362,6 +397,7 @@ let fspace_rename (fspace : AS.fspace) : fspace_ssa =
   ; cfg_pred
   ; l2jtag
   ; tmp_cnt = fspace.tmp_cnt
+  ; ret_size = fspace.ret_size
   }
 ;;
 
@@ -431,7 +467,9 @@ let block_phi
   { label = lcur; code; jump; depth }
 ;;
 
-let fspace_phi ({ fname; args; fdef; cfg_pred; l2jtag; tmp_cnt } : fspace_ssa)
+let fspace_phi
+    ({ fname; args; fdef; cfg_pred; l2jtag; tmp_cnt; ret_size : AS.size option } :
+      fspace_ssa)
     : fspace_phi
   =
   let fdef = List.map fdef ~f:(block_phi cfg_pred l2jtag) in
@@ -446,7 +484,7 @@ let fspace_phi ({ fname; args; fdef; cfg_pred; l2jtag; tmp_cnt } : fspace_ssa)
   let sizes = List.map args ~f:snd in
   let args_new = List.zip_exn fst_blc_params sizes in
   (*_ result *)
-  { fname; args = args_new; fdef; tmp_cnt }
+  { fname; args = args_new; fdef; tmp_cnt; cfg_pred; ret_size }
 ;;
 
 let global_phi (prog : program_ssa) : program_phi = List.map prog ~f:fspace_phi
@@ -466,6 +504,8 @@ type fspace =
   ; block_info : block list
   ; tuse : IS.t TH.t
   ; tmp_cnt : int
+  ; ret_size : AS.size option
+  ; cfg_pred : LS.t LM.t
   }
 
 type program = fspace list
@@ -491,6 +531,12 @@ let instr_use (instr : instr) : Temp.t list =
   match instr with
   | ASInstr instr ->
     let _, use = SP.def_n_use instr in
+    print_endline
+      (sprintf
+         "getting for %s: {%s}"
+         (AS.format_instr instr)
+         (let l = V.Set.to_list use in
+          String.concat ~sep:"," (List.map ~f:V._to_string l)));
     let use = V.vertex_set_to_op_set use in
     let use =
       AS.Set.to_list use
@@ -553,11 +599,14 @@ let fspace_use (fdef : instr IH.t) : IS.t TH.t =
   tuse
 ;;
 
-let fspace_lining ({ fname; args; fdef; tmp_cnt } : fspace_phi) : fspace =
+let fspace_lining
+    ({ fname; args; fdef; tmp_cnt; cfg_pred; ret_size : AS.size option } : fspace_phi)
+    : fspace
+  =
   (*_ 0. produce code & block_info : instr IH.t, block LM.t *)
   let code, block_info = blocks_lining fdef in
   let tuse = fspace_use code in
-  { fname; args; code; block_info; tuse; tmp_cnt }
+  { fname; args; code; block_info; tuse; tmp_cnt; cfg_pred; ret_size }
 ;;
 
 let global_lining (prog : program_phi) : program = List.map prog ~f:fspace_lining
@@ -638,7 +687,8 @@ let reconstruct_blocks
       { label; block = LT.find_exn l2instrs label; jump; depth })
 ;;
 
-let reconstruct_fspace ({ fname; args; code; block_info; tmp_cnt; _ } : fspace)
+let reconstruct_fspace
+    ({ fname; args; code; block_info; tmp_cnt; ret_size : AS.size option; _ } : fspace)
     : AS.fspace
   =
   (*_ for each b in block_info, reconstruct AS.block *)
@@ -668,7 +718,7 @@ let reconstruct_fspace ({ fname; args; code; block_info; tmp_cnt; _ } : fspace)
   (*_ for each predecessor blocks *)
   let fdef_blocks = reconstruct_blocks l2instrs phies block_info in
   (* tmp count is undermined as we are already in ssa, so we do not care about temp count *)
-  { fname; args; fdef_blocks; tmp_cnt }
+  { fname; args; fdef_blocks; tmp_cnt; ret_size }
 ;;
 
 let de_ssa (prog : program) : AS.program = List.map prog ~f:reconstruct_fspace
@@ -778,7 +828,7 @@ let pp_block ({ label; lines; jump; _ } : block) (code : instr IH.t) : string =
     (AS.format_jump_tag jump)
 ;;
 
-(* let pp_tuse (tuse : IS.t TH.t) : string =
+let pp_tuse (tuse : IS.t TH.t) : string =
   let stuff = TH.to_alist tuse in
   let stuff = List.map stuff ~f:(fun (t, lset) -> t, IS.to_list lset) in
   List.map stuff ~f:(fun (t, ilst) ->
@@ -787,17 +837,19 @@ let pp_block ({ label; lines; jump; _ } : block) (code : instr IH.t) : string =
         (Temp.name t)
         (List.map ilst ~f:Int.to_string |> String.concat ~sep:", "))
   |> String.concat ~sep:"\n"
-;; *)
+;;
 
-let pp_fspace ({ fname; args; code; block_info; _ } : fspace) : string =
+let pp_fspace ({ fname; args; code; block_info; tuse; _ } : fspace) : string =
   sprintf
     "===================================\n\
      fspace %s(%s):\n\
      %s\n\
-    \     ===================================\n"
+     [tuse]: [%s]\n\
+    \         ===================================\n"
     (Symbol.name fname)
     (pp_args args)
     (List.map block_info ~f:(fun b -> pp_block b code) |> String.concat ~sep:"\n")
+    (pp_tuse tuse)
 ;;
 
 (* (pp_tuse tuse) *)

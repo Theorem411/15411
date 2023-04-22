@@ -50,6 +50,7 @@ type fspace_ssa =
   ; cfg_pred : LS.t LM.t
   ; l2jtag : jtag LM.t
   ; tmp_cnt : int
+  ; ret_size : AS.size option
   }
 
 type program_ssa = fspace_ssa list
@@ -71,6 +72,8 @@ type fspace_phi =
   ; args : (Temp.t * AS.size) list
   ; fdef : block_phi list
   ; tmp_cnt : int
+  ; ret_size : AS.size option
+  ; cfg_pred : LS.t LM.t
   }
 
 type program_phi = fspace_phi list
@@ -89,6 +92,8 @@ type fspace =
   ; block_info : block list
   ; tuse : IS.t TH.t
   ; tmp_cnt : int
+  ; ret_size : AS.size option
+  ; cfg_pred : LS.t LM.t
   }
 
 type program = fspace list

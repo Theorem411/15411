@@ -169,32 +169,6 @@ type instr =
   | Directive of string
   (* Human-friendly comment. *)
   | Comment of string
-  | LLVM_Jmp of Label.t
-  | LLVM_Ret of (operand * size) option
-  | LLVM_IF of
-      { cond : operand
-      ; tl : Label.t
-      ; fl : Label.t
-      }
-  | LLVM_Call of
-      { dest : (operand * size) option
-      ; fname : Symbol.t
-      ; args : (operand * size) list
-      }
-  | LLVM_Cmp of
-      { size : size
-      ; lhs : operand
-      ; rhs : operand
-      ; typ : set_t
-      ; dest : operand
-      }
-  | LLVM_Set of
-      { size : size
-      ; lhs : operand
-      ; rhs : operand
-      ; typ : set_t
-      ; dest : operand
-      }
 [@@deriving equal, sexp, compare, hash]
 
 type assem_jump_tag_t =
@@ -229,7 +203,6 @@ type fspace =
   ; args : (Temp.t * size) list
   ; fdef_blocks : block list
   ; tmp_cnt : int
-  ; ret_size : size option
   }
 [@@deriving equal, sexp, compare]
 
@@ -288,8 +261,7 @@ let format_instr' = function
       (format_operand binop.lhs)
       (format_efkt_operation binop.op)
       (format_operand binop.rhs)
-  | Unop { dest; op; src } ->
-    sprintf "%s <-s- %s%s" (format_operand dest) (format_unop op) (format_operand src)
+  | Unop {dest; op; src} -> sprintf "%s <-s- %s%s" (format_operand dest) (format_unop op) (format_operand src)
   | Mov { dest; src; size } ->
     sprintf "%s <-%s- %s" (format_operand dest) (format_size size) (format_operand src)
   | MovSxd { dest; src } ->
@@ -340,50 +312,6 @@ let format_instr' = function
       (format_operand index)
       scale
       offset
-  | LLVM_Jmp l -> sprintf "LLVM: %s" (Label.name l)
-  | LLVM_Ret None -> "ret void"
-  | LLVM_Ret (Some (src, ret_size)) ->
-    sprintf "ret %s[%s]" (format_operand src) (format_size ret_size)
-  | LLVM_Call { dest = None; fname; args } ->
-    sprintf
-      "LLVM: %s(%s);"
-      (Symbol.name fname)
-      (String.concat
-         ~sep:","
-         (List.map args ~f:(fun (r, s) ->
-              sprintf "%s[%s]" (format_operand r) (format_size s))))
-  | LLVM_Call { dest = Some (dest, ret_size); fname; args } ->
-    sprintf
-      "LLVM: %s = %s(%s)[%s]"
-      (format_operand dest)
-      (Symbol.name fname)
-      (String.concat
-         ~sep:","
-         (List.map args ~f:(fun (r, s) ->
-              sprintf "%s[%s]" (format_operand r) (format_size s))))
-      (format_size ret_size)
-  | LLVM_IF { cond; tl; fl } ->
-    sprintf
-      "LLVM: if %s then %s else %s"
-      (format_operand cond)
-      (Label.name tl)
-      (Label.name fl)
-  | LLVM_Cmp { dest; typ; lhs; rhs; size } ->
-    sprintf
-      "LLVM: %s <- cmp[%s] %s: %s ? %s"
-      (format_operand dest)
-      (format_size size)
-      (typ |> sexp_of_set_t |> string_of_sexp)
-      (format_operand lhs)
-      (format_operand rhs)
-      | LLVM_Set { dest; typ; lhs; rhs; size } ->
-        sprintf
-          "LLVM: %s <- set(that on before if)[%s] %s: %s ? %s"
-          (format_operand dest)
-          (format_size size)
-          (typ |> sexp_of_set_t |> string_of_sexp)
-          (format_operand lhs)
-          (format_operand rhs)
 ;;
 
 let format_instr i = format_instr' i
@@ -404,15 +332,14 @@ let format_block ({ label; block; jump; depth } : block) : string =
 ;;
 
 let format_program prog_block =
-  let format_fspace { fname; args; fdef_blocks; tmp_cnt; ret_size : size option } =
+  let format_fspace { fname; args; fdef_blocks; tmp_cnt } =
     sprintf
-      "%s(%s): \n%s [uses %d temps, returns %s]"
+      "%s(%s): \n%s [uses %d temps]"
       (Symbol.name fname)
       (List.map args ~f:(fun (t, s) -> sprintf "%s%s" (Temp.name t) (format_size s))
       |> String.concat)
       (List.map fdef_blocks ~f:format_block |> String.concat)
       tmp_cnt
-      (Option.value_map ret_size ~default:"void" ~f:format_size)
   in
   List.map prog_block ~f:format_fspace |> String.concat
 ;;

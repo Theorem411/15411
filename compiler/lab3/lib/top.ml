@@ -209,11 +209,18 @@ let elaboration_step (ast, ast_h) cmd =
 
 (* The main driver for the compiler: runs each phase. *)
 let compile (cmd : cmd_line_args) : unit =
+  let llvm_off =
+    match cmd.emit with
+    | LLVM -> false
+    | _ -> true
+  in
+  Singlepass.set_llvm_off llvm_off;
+  Codegen_l4.set_llvm_off llvm_off;
   (* ***********************************************************)
   (* ssa + global copy-const *)
   (* let ssa_off = false in *)
   (* register coalescing *)
-  Coalesce.set_coalesce_off true;
+  Coalesce.set_coalesce_off false;
   (* COMMON GROUP *)
   let common_off = false in
   (* peephole *)
@@ -268,13 +275,14 @@ let compile (cmd : cmd_line_args) : unit =
   say_if cmd.verbose (fun () -> "Starting ssa...");
   let assem_ssa' = Ssa.ssa assem' in
   (* print_endline "after all ssa"; *)
-  (* print_endline (Ssa.pp_program assem_ssa'); *)
+  print_endline (Ssa.pp_program assem_ssa');
   say_if cmd.verbose (fun () -> "Starting propogation ...");
   let assem_ssa_prop = Propagation.propagate assem_ssa' in
   (* print_endline (Ssa.pp_program assem_ssa_prop); *)
-  say_if cmd.verbose (fun () -> "Doing phi_opt");
+  (* say_if cmd.verbose (fun () -> "Doing phi_opt"); *)
   let assem_ssa_phi_opt = Propagation.phiopt assem_ssa_prop in
   (* print_endline "assem_ssa_phi_opt"; *)
+  (* let assem_ssa_phi_opt = assem_ssa' in *)
   print_endline (Ssa.pp_program assem_ssa_phi_opt);
   say_if cmd.verbose (fun () -> "Starting de-ssa ...");
   let assem = Ssa.de_ssa assem_ssa_phi_opt in
@@ -298,7 +306,9 @@ let compile (cmd : cmd_line_args) : unit =
     say_if cmd.verbose (fun () -> sprintf "Writing llvm assem to %s..." file);
     let assem_llvm = LLVM_custom.create assem_ssa_phi_opt in
     Out_channel.with_file file ~f:(fun out ->
-        Out_channel.fprintf out "%s" (LLVM_custom.format_program assem_llvm))
+        Out_channel.fprintf out "%s\n" (LLVM_custom.get_pre file);
+        Out_channel.fprintf out "%s" (LLVM_custom.format_program assem_llvm);
+        Out_channel.fprintf out "%s\n" (LLVM_custom.get_post file))
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);

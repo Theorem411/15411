@@ -8,14 +8,14 @@ type pbop =
   | BitAnd
   | BitOr
   | BitXor
-  [@@deriving equal]
+[@@deriving equal]
 
 type ebop =
   | Div
   | Mod
   | ShftL
   | ShftR
-  [@@deriving equal]
+[@@deriving equal]
 
 type ibop =
   | Pure of pbop
@@ -144,6 +144,7 @@ type fspace_block =
   { fname : Symbol.t
   ; args : (Temp.t * int) list
   ; fdef : block list
+  ; ret_size : int option
   }
 
 type program = fspace_block list
@@ -298,12 +299,13 @@ module Print = struct
       (pp_jump jump)
   ;;
 
-  let pp_fspace ({ fname; args; fdef } : fspace_block) =
+  let pp_fspace ({ fname; args; fdef; ret_size : int option } : fspace_block) =
     sprintf
-      "func %s(%s):\n%s"
+      "func %s(%s)[%s]:\n%s"
       (Symbol.name fname)
       (List.map args ~f:(fun (t, i) -> sprintf "%s[%s]" (Temp.name t) (Int.to_string i))
       |> String.concat ~sep:", ")
+      (Option.value_map ret_size ~default:"void" ~f:Int.to_string)
       (List.map fdef ~f:pp_block |> String.concat ~sep:"\n")
   ;;
 

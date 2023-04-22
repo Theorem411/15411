@@ -25,6 +25,7 @@ let bt (l : t) : bt = BlockLbl l
 ;;
 
 let name t = ".L" ^ string_of_int t
+let number (t:t):int = t
 
 let name_bt = function 
   | BlockLbl l -> name l

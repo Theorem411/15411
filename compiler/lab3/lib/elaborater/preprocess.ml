@@ -67,13 +67,13 @@ and rename_stm (ctx : Symbol.Set.t) (stm : Asts.stm) : Asts.stm =
 
 let rename_glob (ctx : Symbol.Set.t) (glob : Asts.glob) : Asts.glob =
   match glob with
-  | { f; args; fdef } ->
+  | { f; args; fdef; ret_size } ->
     if lookup ctx f (* if lookup succes then do not rename *)
     then glob
     else (
       (* rename the function declaration*)
       let newname = Symbol.symbol ("_c0_" ^ Symbol.name glob.f) in
-      { f = newname; args; fdef = rename_stm ctx fdef })
+      { f = newname; args; fdef = rename_stm ctx fdef; ret_size })
 ;;
 
 let rename (header : AstElab.program) (source : Asts.program) : Asts.program =
