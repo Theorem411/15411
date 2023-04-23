@@ -154,7 +154,7 @@ let format_instr' : AS.instr -> string = function
     sprintf "; %s %s" (c.typ |> AS.sexp_of_set_t |> string_of_sexp) (format_operand c.src)
   | Cmp { size; lhs; rhs } ->
     sprintf "; cmp%s %s, %s" (format_size size) (format_operand lhs) (format_operand rhs)
-  | AssertFail -> "call __assert_fail"
+  | AssertFail -> "call void @raise(i32 6) ;"
   | Call { fname; args_in_regs; args_overflow; tail_call } ->
     sprintf
       ";call %s(%s|%s)[tail call - %b]"
