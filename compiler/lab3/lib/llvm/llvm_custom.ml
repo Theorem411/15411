@@ -442,7 +442,7 @@ let format_shr () =
 
 let format_pre () =
   [ ""
-  ; "declare dso_local i32 @raise(i32) #1"
+  ; "declare dso_local void @raise(i32) #1"
   ; format_div ()
   ; format_mod ()
   ; format_shl ()
