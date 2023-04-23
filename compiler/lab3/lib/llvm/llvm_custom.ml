@@ -11,8 +11,18 @@ let glob_rm_block_set = ref LS.empty
 let add_to_rm_block l = glob_rm_block_set := LS.add !glob_rm_block_set l
 let is_rm_block l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_rm_block_set)
 let glob_boolean = ref TS.empty
-let add_to_boolean l = glob_boolean := TS.add !glob_boolean l
-let is_bool t = Option.is_some (TS.find ~f:(Temp.equal t) !glob_boolean)
+
+let add_to_boolean l =
+  (* prerr_endline ("adding" ^ Temp.name l); *)
+  glob_boolean := TS.add !glob_boolean l
+;;
+
+let is_bool t =
+  let v = Option.is_some (TS.find ~f:(Temp.equal t) !glob_boolean) in
+  (* let () = prerr_endline (sprintf "%s is %b" (Temp.name t) v) in *)
+  v
+;;
+
 let rem_name = "____JAVAWAY_rem"
 let div_name = "____JAVAWAY_div"
 let shl_name = "____JAVAWAY_shl"
@@ -56,6 +66,12 @@ let format_label (l : Label.t) = "%L" ^ Int.to_string (Label.number l)
 let format_label_raw (l : Label.t) = "L" ^ Int.to_string (Label.number l)
 
 let is_bool_cmp (dest, lhs, rhs) =
+  (* sprintf
+    "called is_bool_cmp with (%s, %s, %s)"
+    (format_operand dest)
+    (format_operand lhs)
+    (format_operand rhs)
+  |> prerr_endline; *)
   let () =
     match dest with
     | AS.Temp d -> add_to_boolean d
@@ -228,10 +244,20 @@ let format_bt (l : Label.bt) =
 ;;
 
 let pp_phi ({ self; alt_selves } : SSA.phi) : string =
+  let is_bool_phi =
+    List.exists alt_selves ~f:(fun inp ->
+        match inp with
+        | _, AS.Temp t -> is_bool t
+        | _ -> false)
+  in
+  if is_bool_phi then add_to_boolean self;
+  (* TODO *)
+  let phi_size = "i32" in
   sprintf
-    "\t%s = phi i32 %s"
+    "\t%s = phi %s %s"
     (* "\t%s = phi (phi_size) %s" *)
     (Temp.name self)
+    (if is_bool_phi then "i1" else phi_size)
     (List.filter_map alt_selves ~f:(fun (l, op) ->
          if is_rm_block l
          then None
