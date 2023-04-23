@@ -55,6 +55,15 @@ let cmp_to_set_t = function
   | T.Geq -> A.Setge
 ;;
 
+let cmp_to_set_t_rev = function
+  | T.Eq -> A.Setne
+  | T.Neq -> A.Sete
+  | T.Less -> A.Setge
+  | T.Leq -> A.Setg
+  | T.Greater -> A.Setle
+  | T.Geq -> A.Setl
+;;
+
 let munch_efkt_op = function
   | T.Div -> A.Div
   | T.Mod -> A.Mod
@@ -312,7 +321,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
       ; munch_exp ~unsafe t2 e2 ~mfl
       ; [ A.Cmp { lhs = t1; size = sz; rhs = t2 }
         ; A.LLVM_Set
-            { dest = t_llvm; lhs = t1; size = sz; rhs = t2; typ = cmp_to_set_t cmp }
+            { dest = t_llvm; lhs = t1; size = sz; rhs = t2; typ = cmp_to_set_t_rev cmp }
         ; A.LLVM_IF { cond = t_llvm; tl = lt; fl = lf }
         ; A.Cjmp { typ = jmptyp; l = lf }
         ; A.Jmp lt
