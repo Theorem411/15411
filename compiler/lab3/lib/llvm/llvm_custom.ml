@@ -57,7 +57,7 @@ let format_set_typ = function
   | AS.Sete -> "eq"
   | AS.Setne -> "ne"
   | AS.Setg -> "sgt"
-  | AS.Setge -> "sgt"
+  | AS.Setge -> "sge"
   | AS.Setl -> "slt"
   | AS.Setle -> "sle"
 ;;
