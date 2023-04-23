@@ -302,13 +302,19 @@ let compile (cmd : cmd_line_args) : unit =
     Out_channel.with_file file ~f:(fun out ->
         Out_channel.fprintf out "%s" (AssemM.format_program assem))
   | LLVM ->
-    let file = cmd.filename ^ ".ll" in
-    say_if cmd.verbose (fun () -> sprintf "Writing llvm assem to %s..." file);
+    let splitted = String.split ~on:'/' cmd.filename in
+    let parent_folder, fname_list = List.split_n splitted (List.length splitted - 1) in
+    let fname = List.nth_exn fname_list 0 in
+    let (_ : string) = String.concat ~sep:"/" parent_folder ^ "/llvm/" ^ fname ^ ".ll" in
+    (* let llfile = if true then "llvm/" ^ fname ^ ".ll" else cmd.filename ^ ".ll" in *)
+    let llfile = "llvm/" ^ fname ^ ".ll" in
+    (* let shfile = cmd.filename ^ ".sh" in *)
+    say_if cmd.verbose (fun () -> sprintf "Writing llvm assem to %s..." llfile);
     let assem_llvm = LLVM_custom.create assem_ssa_phi_opt in
-    Out_channel.with_file file ~f:(fun out ->
-        Out_channel.fprintf out "%s\n" (LLVM_custom.get_pre file);
+    Out_channel.with_file llfile ~f:(fun out ->
+        Out_channel.fprintf out "%s\n" (LLVM_custom.get_pre llfile);
         Out_channel.fprintf out "%s" (LLVM_custom.format_program assem_llvm);
-        Out_channel.fprintf out "%s\n" (LLVM_custom.get_post file))
+        Out_channel.fprintf out "%s\n" (LLVM_custom.get_post llfile))
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
     say_if cmd.verbose (fun () -> sprintf "Writing x86 assem to %s..." file);

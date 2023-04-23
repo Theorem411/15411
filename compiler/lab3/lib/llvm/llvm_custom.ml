@@ -9,19 +9,8 @@ module LT = Live.LT
 let glob_rem_set = ref LS.empty
 let add_to_rem l = glob_rem_set := LS.add !glob_rem_set l
 let is_rem l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_rem_set)
-(* TODO *)
-(* 
-  1. Do sth with sizes of temps, we need them at least for phi functions 
-     (may be create a hash table on the trans level and when ssa-ing also use 
-     that table to look-up and update it along the way)
-  2. Change how return works, especially with size or sth ...
-     Add a size of return functions, now we can not just translate things into  
-  3. Change how Cmp behaves, may be we have to create some llvm specific 
-     commands that are ignored on the orginal path
-  4. Change how call works
-
-
-*)
+let rem_name = "___remainder_JAVAWAY"
+let div_name = "___div_JAVAWAY"
 
 type program = SSA.program
 
@@ -36,22 +25,18 @@ let format_operand = function
 
 let format_pure_operation = function
   | AS.Add -> "add"
-  | AS.Sub -> "-"
-  | AS.Mul -> "*"
-  | AS.BitAnd -> "&"
-  | AS.BitXor -> "^"
-  | AS.BitOr -> "|"
+  | AS.Sub -> "sub"
+  | AS.Mul -> "mul"
+  | AS.BitAnd -> "and"
+  | AS.BitXor -> "xor"
+  | AS.BitOr -> "or"
 ;;
 
 let format_efkt_operation = function
-  | AS.Div -> "/"
-  | AS.Mod -> "%"
-  | AS.ShiftL -> "<<"
-  | AS.ShiftR -> ">>"
-;;
-
-let format_unop = function
-  | AS.BitNot -> "~"
+  | AS.Div -> "sdiv exact"
+  | AS.Mod -> "srem exact"
+  | AS.ShiftL -> "shl exact"
+  | AS.ShiftR -> "ashr exact"
 ;;
 
 let format_size = function
@@ -80,15 +65,34 @@ let format_instr' : AS.instr -> string = function
       (format_size binop.size)
       (format_operand binop.lhs)
       (format_operand binop.rhs)
+  | EfktBinop { op = AS.Mod; dest; lhs; rhs } ->
+    sprintf
+      "%s = call i32 @%s(i32 %s, i32 %s)"
+      (format_operand dest)
+      rem_name
+      (format_operand lhs)
+      (format_operand rhs)
+  | EfktBinop { op = AS.Div; dest; lhs; rhs } ->
+    sprintf
+      "%s = call i32 @%s(i32 %s, i32 %s)"
+      (format_operand dest)
+      div_name
+      (format_operand lhs)
+      (format_operand rhs)
   | EfktBinop binop ->
     sprintf
-      "%s <-- %s %s %s"
+      "%s = %s %s %s, %s"
       (format_operand binop.dest)
-      (format_operand binop.lhs)
       (format_efkt_operation binop.op)
+      (format_size AS.S)
+      (format_operand binop.lhs)
       (format_operand binop.rhs)
-  | Unop { dest; op; src } ->
-    sprintf "%s <-s- %s%s" (format_operand dest) (format_unop op) (format_operand src)
+  | Unop { dest; src; _ } ->
+    sprintf
+      "%s = xor %s %s, -1"
+      (format_operand dest)
+      (format_size AS.S)
+      (format_operand src)
   | Mov { dest = AS.Reg _ as dest; src; size } ->
     sprintf "; %s <-%s- %s" (format_operand dest) (format_size size) (format_operand src)
   | Mov { src = AS.Reg _ as src; dest; size } ->
@@ -328,14 +332,69 @@ let format_program (prog : program) : string =
 
 let mac = true
 
+let format_mod () =
+  "\n; Safe division function\ndefine i32 @"
+  ^ rem_name
+  ^ "(i32 %a, i32 %b) {\n\
+     entry:\n\
+    \  ; Check if b is 0\n\
+    \  %is_zero = icmp eq i32 %b, 0\n\n\
+    \  ; Check if a is INT_MIN and b is -1\n\
+    \  %is_int_min = icmp eq i32 %a, -2147483648\n\
+    \  %is_minus_one = icmp eq i32 %b, -1\n\
+    \  %is_int_min_div_minus_one = and i1 %is_int_min, %is_minus_one\n\n\
+    \  ; Combine the two checks\n\
+    \  %invalid_division = or i1 %is_zero, %is_int_min_div_minus_one\n\n\
+    \  ; If either check is true, call raise(8)\n\
+    \  br i1 %invalid_division, label %call_raise, label %continue\n\n\
+     call_raise:\n\
+    \  call void @raise(i32 8)\n\
+    \  unreachable\n\n\
+     continue:\n\
+     %result = srem i32 %a, %b\n\
+     ret i32 %result\n\
+     }"
+;;
+
+let format_div () =
+  "\n; Safe division function\ndefine i32 @"
+  ^ div_name
+  ^ "(i32 %a, i32 %b) {\n\
+     entry:\n\
+    \  ; Check if b is 0\n\
+    \  %is_zero = icmp eq i32 %b, 0\n\n\
+    \  ; Check if a is INT_MIN and b is -1\n\
+    \  %is_int_min = icmp eq i32 %a, -2147483648\n\
+    \  %is_minus_one = icmp eq i32 %b, -1\n\
+    \  %is_int_min_div_minus_one = and i1 %is_int_min, %is_minus_one\n\n\
+    \  ; Combine the two checks\n\
+    \  %invalid_division = or i1 %is_zero, %is_int_min_div_minus_one\n\n\
+    \  ; If either check is true, call raise(8)\n\
+    \  br i1 %invalid_division, label %call_raise, label %continue\n\n\
+     call_raise:\n\
+    \  call void @raise(i32 8)\n\
+    \  unreachable\n\n\
+     continue:\n\
+    \  %result = sdiv i32 %a, %b\n\
+    \  ret i32 %result\n\
+     }"
+;;
+
+let format_pre () =
+  [ ""; "declare dso_local i32 @raise(i32) #1"; format_div (); format_mod () ]
+  |> String.concat ~sep:"\n"
+;;
+
 let get_pre (file : string) : string =
   if mac
   then
     sprintf
       "; ModuleID = '%s'\n\
        target datalayout = \"e-m:o-i64:64-i128:128-n32:64-S128\"\n\
-       target triple = \"arm64-apple-macosx12.0.0\""
+       target triple = \"arm64-apple-macosx12.0.0\"\n\
+       %s"
       file
+      (format_pre ())
   else
     sprintf
       "; ModuleID = '%s'\n\
@@ -350,13 +409,13 @@ let get_pre (file : string) : string =
 let get_post (_ : string) : string =
   if mac
   then
-    "\n  attributes #1 = { nofree norecurse nosync nounwind readnone ssp uwtable \
+    "\n\
+    \  attributes #1 = { nofree norecurse nosync nounwind readnone ssp uwtable \
      \"frame-pointer\"=\"non-leaf\" \"min-legal-vector-width\"=\"0\" \
      \"no-trapping-math\"=\"true\" \"probe-stack\"=\"__chkstk_darwin\" \
      \"stack-protector-buffer-size\"=\"8\" \"target-cpu\"=\"apple-m1\" \
      \"target-features\"=\"+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.5a,+zcm,+zcz\" \
-     }\n\
-    \n\
+     }\n\n\
     \  !llvm.module.flags = !{!0, !1, !2, !3, !4, !5, !6, !7, !8}\n\
     \  !llvm.ident = !{!9}\n\
     \  \n\
@@ -380,7 +439,8 @@ let get_post (_ : string) : string =
      \"no-trapping-math\"=\"false\" \"stack-protector-buffer-size\"=\"8\" \
      \"target-cpu\"=\"x86-64\" \"target-features\"=\"+cx8,+fxsr,+mmx,+sse,+sse2,+x87\" \
      \"unsafe-fp-math\"=\"false\" \"use-soft-float\"=\"false\" }\n\
-     !llvm.module.flags = !{!0}\n\
+     attributes #1 = { nounwind }\n\
+    \     !llvm.module.flags = !{!0}\n\
      !llvm.ident = !{!1}\n\
      !0 = !{i32 1, !\"wchar_size\", i32 4}\n\
      !1 = !{!\"clang version 10.0.0-4ubuntu1 \"}"
