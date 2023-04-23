@@ -493,7 +493,7 @@ let munch_arg_moves (args : (Temp.t * A.size) list) =
 ;;
 
 let munch_block
-    ({ label; block; jump; loop_depth } : T.block)
+    ({ label; block; jump; loop_depth; is_empty } : T.block)
     ~(mfl : Label.t)
     ~(unsafe : bool)
     ~(args : (Temp.t * A.size) list)
@@ -511,7 +511,7 @@ let munch_block
     | Label.BlockLbl _ -> []
     | Label.FunName _ -> munch_arg_moves args
   in
-  { label; block = arg_moves @ block'; jump; depth = loop_depth }
+  { label; block = arg_moves @ block'; jump; depth = loop_depth;is_empty }
 ;;
 
 let codegen (prog : T.program) ~(mfl : Label.t) ~(unsafe : bool) : A.program =

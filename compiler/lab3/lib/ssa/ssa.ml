@@ -57,6 +57,7 @@ type block_ssa =
   ; code : AS.instr list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
+  ; is_empty: bool
   ; bparams : params
   ; jtag : jtag
   }
@@ -78,6 +79,7 @@ type block_phi =
   ; code : instr list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
+  ; is_empty: bool
   }
 
 type fspace_phi =
@@ -349,6 +351,7 @@ let block_rename (block : AS.block) (told2new : told2new) (lparams : lparams) : 
   ; jump = block.jump
   ; depth = block.depth
   ; bparams = params
+  ;is_empty = block.is_empty
   ; jtag
   }
 ;;
@@ -406,7 +409,7 @@ let global_rename (prog : AS.program) : program_ssa = List.map prog ~f:fspace_re
 let block_phi
     (cfg_pred : LS.t LM.t)
     (l2jtag : jtag LM.t)
-    ({ label = lcur; code; jump; depth; bparams; _ } : block_ssa)
+    ({ label = lcur; code; jump; depth; bparams; is_empty; _ } : block_ssa)
     : block_phi
   =
   (*_ block_phi:
@@ -464,7 +467,7 @@ let block_phi
     List.map phies ~f:(fun instr -> Phi instr)
     @ List.map code ~f:(fun instr -> ASInstr instr)
   in
-  { label = lcur; code; jump; depth }
+  { label = lcur; code; jump; depth;  is_empty }
 ;;
 
 let fspace_phi
@@ -495,6 +498,7 @@ type block =
   ; lines : int list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
+  ; is_empty: bool
   }
 
 type fspace =
@@ -562,7 +566,7 @@ let blocks_lining (fdef : block_phi list) : instr IH.t * block list =
   let lined_codes : instr IH.t = IH.of_alist_exn [] in
   let to_blocks
       ((blocks, acc) : block list * int)
-      ({ label; code; jump; depth } : block_phi)
+      ({ label; code; jump; depth; is_empty } : block_phi)
       : block list * int
     =
     (*_ annote this blocks' codes with line numbers *)
@@ -573,7 +577,7 @@ let blocks_lining (fdef : block_phi list) : instr IH.t * block list =
       List.iter code_line ~f:(fun (i, instr) ->
           IH.update lined_codes i ~f:(fun _ -> instr))
     in
-    { label; lines; jump; depth } :: blocks, acc + List.length lines
+    { label; lines; jump; depth; is_empty } :: blocks, acc + List.length lines
   in
   let block_info, _ = List.fold_left fdef ~init:([], 0) ~f:to_blocks in
   let block_info = List.rev block_info in
@@ -683,8 +687,8 @@ let reconstruct_blocks
   in
   let () = LM.iteri extra_moves ~f:assemble in
   (*_ construct AS.block using l2instrs and block_info *)
-  List.map block_info ~f:(fun { label; jump; depth; _ } : AS.block ->
-      { label; block = LT.find_exn l2instrs label; jump; depth })
+  List.map block_info ~f:(fun { label; jump; depth; is_empty;_ } : AS.block ->
+      { label; block = LT.find_exn l2instrs label; jump; depth;is_empty })
 ;;
 
 let reconstruct_fspace

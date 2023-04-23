@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module Tree = Tree_l4
 
 module T = struct
@@ -17,10 +17,11 @@ type entry =
   ; jtag : Tree.jump_t
   ; idx : int
   ; depth : int
+  ; is_empty L
   }
 
 let lh_init (fdef : Tree.block list) : entry LH.t =
-  let mapf idx ({ label; block; jump; loop_depth } : Tree.block) =
+  let mapf idx ({ label; block; jump; loop_depth; _ } : Tree.block) =
     label, { idx; code = block; jtag = jump; depth = loop_depth }
   in
   let fdef' = List.mapi fdef ~f:mapf in
@@ -282,4 +283,4 @@ let rmjmp_fspace (fspace : Tree.fspace_block) : Tree.fspace_block =
   res
 ;;
 
-let rmjmp = List.map ~f:rmjmp_fspace
+let rmjmp = List.map ~f:rmjmp_fspace *)

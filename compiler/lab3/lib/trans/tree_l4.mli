@@ -7,14 +7,14 @@ type pbop =
   | BitAnd
   | BitOr
   | BitXor
-  [@@deriving equal]
+[@@deriving equal]
 
 type ebop =
   | Div
   | Mod
   | ShftL
   | ShftR
-  [@@deriving equal]
+[@@deriving equal]
 
 type ibop =
   | Pure of pbop
@@ -105,7 +105,7 @@ type stm =
       { dest : (Temp.t * int) option
       ; fname : Symbol.t
       ; args : mpexp list
-      ; tail_call: bool
+      ; tail_call : bool
       }
   | Alloc of
       { dest : Temp.t
@@ -136,7 +136,8 @@ type block =
   { label : Label.bt
   ; block : stm list
   ; jump : jump_t
-  ; loop_depth: int
+  ; loop_depth : int
+  ; is_empty : bool
   }
 
 type fspace_block =

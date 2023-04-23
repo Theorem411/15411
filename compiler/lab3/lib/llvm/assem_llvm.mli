@@ -177,6 +177,7 @@ type block =
   ; block : instr list
   ; jump : assem_jump_tag_t
   ; depth : int
+  ; is_empty: bool
   }
 [@@deriving equal, sexp, compare, hash]
 

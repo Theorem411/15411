@@ -60,7 +60,7 @@ let wq_init ({ fdef_blocks; _ } : B.fspace) =
 let cfg_pred_init ({ fdef_blocks; _ } : B.fspace) : cfg_pred =
   let labs = List.map fdef_blocks ~f:(fun blc -> blc.label, []) in
   let cfg_pred = LT.of_alist_exn labs in
-  let iterf ({ label; jump; _ } : B.block) =
+  let iterf ({ label; jump; _ }  : B.block) =
     match jump with
     | B.JCon { jt; jf } ->
       let () =

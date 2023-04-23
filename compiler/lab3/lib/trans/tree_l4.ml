@@ -138,6 +138,7 @@ type block =
   ; block : stm list
   ; jump : jump_t
   ; loop_depth : int
+  ; is_empty: bool
   }
 
 type fspace_block =
@@ -290,13 +291,14 @@ module Print = struct
     | JUncon l -> sprintf "goto %s" (Label.name l)
   ;;
 
-  let pp_block ({ label; block; jump; loop_depth } : block) =
+  let pp_block ({ label; block; jump; loop_depth; is_empty } : block) =
     sprintf
-      "------d=%i------\n%s\n%s\n-------[%s]---------"
+      "------d=%i------\n%s\n%s\n-------[%s]---------[%s]"
       loop_depth
       (Label.name_bt label)
       (List.map block ~f:pp_stm |> String.concat ~sep:"\n")
       (pp_jump jump)
+      (if is_empty then "empty" else "")
   ;;
 
   let pp_fspace ({ fname; args; fdef; ret_size : int option } : fspace_block) =

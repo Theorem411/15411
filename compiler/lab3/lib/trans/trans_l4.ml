@@ -49,7 +49,12 @@ let to_block ({ l; code; depth } : block_tobe) ~(finisher : T.stm) : T.block =
     | T.Goto l -> T.JUncon l
     | _ -> failwith "ur kidding right?"
   in
-  { label = l; block = List.rev (finisher :: code); jump = jtag; loop_depth = depth }
+  { label = l
+  ; block = List.rev (finisher :: code)
+  ; jump = jtag
+  ; loop_depth = depth
+  ; is_empty = false
+  }
 ;;
 
 let update acc b ~(finisher : T.stm) ~(newlab : Label.t) =
@@ -500,12 +505,14 @@ let tr_stm (env : Temp.t S.t) (dep : int) (stm : A.stm) (binit : block_tobe)
   in
   (* do not create an empty block *)
   let acc_rev =
-    if not is_empty
-    then
-      ({ label = bleft.l; block = rem_intrs; jump = T.JRet; loop_depth = bleft.depth }
-        : T.block)
-      :: acc_rev
-    else acc_rev
+    ({ label = bleft.l
+     ; block = rem_intrs
+     ; jump = T.JRet
+     ; loop_depth = bleft.depth
+     ; is_empty
+     }
+      : T.block)
+    :: acc_rev
   in
   (*_ reminder: blocks are in original order; blocks are in reverse order *)
   let acc = List.rev acc_rev in

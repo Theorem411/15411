@@ -259,7 +259,7 @@ let format_parents ~(cfg_pred : LS.t LM.t) (l : Label.bt) =
 let pp_block
     ?(drop_before = None)
     ~(cfg_pred : LS.t LM.t)
-    ({ label; lines; _ } : SSA.block)
+    ({ label; lines; is_empty; _ } : SSA.block)
     (code : SSA.instr SSA.IH.t)
     : string
   =
@@ -278,7 +278,7 @@ let pp_block
   match label with
   | Label.BlockLbl l ->
     let parent_set = LM.find_exn cfg_pred label in
-    if LS.length parent_set = 0
+    if LS.length parent_set = 0 || is_empty
     then (
       let () = add_to_rm_block label in
       "")

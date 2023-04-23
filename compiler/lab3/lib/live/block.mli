@@ -13,6 +13,7 @@ type block =
   ; block : (int * AS.instr) list
   ; jump : jump_tag_t
   ; depth : int
+  ; is_empty: bool
   }
   [@@derive compare, equal, sexp, hash]
 

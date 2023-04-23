@@ -39,6 +39,7 @@ type block_ssa =
   ; code : AS.instr list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
+  ; is_empty: bool
   ; bparams : params
   ; jtag : jtag
   }
@@ -65,6 +66,7 @@ type block_phi =
   ; code : instr list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
+  ; is_empty: bool
   }
 
 type fspace_phi =
@@ -83,6 +85,7 @@ type block =
   ; lines : int list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
+  ; is_empty: bool
   }
 
 type fspace =
