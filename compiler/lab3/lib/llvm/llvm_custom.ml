@@ -465,7 +465,7 @@ let format_shr () =
     \  call void @raise(i32 8)\n\
     \  unreachable\n\n\
      valid:\n\
-    \  %result = shl i32 %value, %shift_amount\n\
+    \  %result = ashr i32 %value, %shift_amount\n\
     \  ret i32 %result\n\
      }"
 ;;
