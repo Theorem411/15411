@@ -6,6 +6,7 @@ module LM = Live.LM
 module LS = Live.LS
 module TS = Temp.Set
 
+let mac = false
 let glob_rm_block_set = ref LS.empty
 let add_to_rm_block l = glob_rm_block_set := LS.add !glob_rm_block_set l
 let is_rm_block l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_rm_block_set)
@@ -354,8 +355,6 @@ let format_program (prog : program) : string =
   let prog_string = List.map prog ~f:pp_fspace |> String.concat ~sep:"\n" in
   prog_string
 ;;
-
-let mac = true
 
 let format_mod () =
   "\n; Safe division function\ndefine i32 @"
