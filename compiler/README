@@ -152,3 +152,9 @@ We iterate through the input 3-addr abstract assembly looking for lines like thi
 and translate into this format:
   dst <- lhs
   dst <- op (dst, rhs)
+
+
+
+
+## LLVM:
+in the dist folder: run `python3 compiler/compiler/lab3/run_tests.py tests/l1-basic`
