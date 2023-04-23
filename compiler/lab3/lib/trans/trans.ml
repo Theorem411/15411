@@ -1,4 +1,4 @@
-open Core
+(* open Core
 module T = Tree
 module Typ = Ctype
 module A = Aste
@@ -94,7 +94,7 @@ and tr_exp_ternary genv env e1 e2 e3 =
     ; [ T.Label l2 ]
     ; T.Goto l3 :: T.MovPureExp { dest = t; src = exp2 } :: cmd2
     ; [ T.Label l1 ]
-    ; [ T.If { cond; lt = l1; lf = l2 } ]
+    ; [ T.If { cond; lt = l1; lf = l2; ternary = true} ]
     ; cmd1
     ]
     |> List.concat
@@ -354,4 +354,4 @@ let translate_block (tprog : T.program) : T.program_block =
     { fname; args; fdef = break_into_blocks fdef }
   in
   List.map tprog ~f:map_f
-;;
+;; *)

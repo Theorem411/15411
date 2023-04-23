@@ -82,6 +82,7 @@ type cond =
       { cmp : cbop
       ; p1 : mpexp
       ; p2 : mpexp
+      ; ternary : bool
       }
 
 type stm =
@@ -138,7 +139,7 @@ type block =
   ; block : stm list
   ; jump : jump_t
   ; loop_depth : int
-  ; is_empty: bool
+  ; is_empty : bool
   }
 
 type fspace_block =
@@ -226,8 +227,14 @@ module Print = struct
   let pp_if_cond = function
     | LCond { cmp; p1; p2 } ->
       sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "large" (pp_mpexp p2)
-    | SCond { cmp; p1; p2 } ->
-      sprintf "(%s %s(%s) %s)" (pp_mpexp p1) (pp_cbop cmp) "small" (pp_mpexp p2)
+    | SCond { cmp; p1; p2; ternary } ->
+      sprintf
+        "(%s %s(%s) %s %b)"
+        (pp_mpexp p1)
+        (pp_cbop cmp)
+        "small"
+        (pp_mpexp p2)
+        ternary
   ;;
 
   (* 

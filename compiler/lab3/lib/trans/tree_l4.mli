@@ -81,6 +81,7 @@ type cond =
       { cmp : cbop
       ; p1 : mpexp
       ; p2 : mpexp
+      ; ternary : bool
       }
 
 type stm =

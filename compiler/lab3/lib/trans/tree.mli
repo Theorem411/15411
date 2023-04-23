@@ -61,6 +61,7 @@ and stm =
       { cond : cond
       ; lt : Label.t
       ; lf : Label.t
+      ; ternary: bool
       }
   | Goto of Label.t
   | Label of Label.t

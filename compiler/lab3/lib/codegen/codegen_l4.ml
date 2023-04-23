@@ -55,14 +55,14 @@ let cmp_to_set_t = function
   | T.Geq -> A.Setge
 ;;
 
-(* let cmp_to_set_t_rev = function
+let cmp_to_set_t_rev = function
   | T.Eq -> A.Setne
   | T.Neq -> A.Sete
   | T.Less -> A.Setge
   | T.Leq -> A.Setg
   | T.Greater -> A.Setle
   | T.Geq -> A.Setl
-;; *)
+;;
 
 let munch_efkt_op = function
   | T.Div -> A.Div
@@ -306,10 +306,10 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     ]
     |> List.concat
   | T.If { cond; lt; lf } ->
-    let sz, cmp, e1, e2 =
+    let sz, cmp, e1, e2, is_tern =
       match cond with
-      | LCond cond -> A.L, cond.cmp, cond.p1, cond.p2
-      | SCond cond -> A.S, cond.cmp, cond.p1, cond.p2
+      | LCond cond -> A.L, cond.cmp, cond.p1, cond.p2, false
+      | SCond cond -> A.S, cond.cmp, cond.p1, cond.p2, cond.ternary
     in
     let jmptyp = if_cond_to_rev_jump_t cmp in
     let t1 = A.Temp (Temp.create ()) in
@@ -321,7 +321,12 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
       ; munch_exp ~unsafe t2 e2 ~mfl
       ; [ A.Cmp { lhs = t1; size = sz; rhs = t2 }
         ; A.LLVM_Set
-            { dest = t_llvm; lhs = t1; size = sz; rhs = t2; typ = cmp_to_set_t cmp }
+            { dest = t_llvm
+            ; lhs = t1
+            ; size = sz
+            ; rhs = t2
+            ; typ = (if is_tern then cmp_to_set_t_rev else cmp_to_set_t) cmp
+            }
         ; A.LLVM_IF { cond = t_llvm; tl = lt; fl = lf }
         ; A.Cjmp { typ = jmptyp; l = lf }
         ; A.Jmp lt
@@ -520,7 +525,7 @@ let munch_block
     | Label.BlockLbl _ -> []
     | Label.FunName _ -> munch_arg_moves args
   in
-  { label; block = arg_moves @ block'; jump; depth = loop_depth;is_empty }
+  { label; block = arg_moves @ block'; jump; depth = loop_depth; is_empty }
 ;;
 
 let codegen (prog : T.program) ~(mfl : Label.t) ~(unsafe : bool) : A.program =

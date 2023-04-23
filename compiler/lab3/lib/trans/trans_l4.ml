@@ -94,7 +94,12 @@ let rec tr_exp_rev
     let cond : T.cond =
       match T.size ec with
       | 4 ->
-        SCond { cmp = T.Neq; p1 = T.Temp tl, 4; p2 = T.Const (Int32.of_int_exn 0), 4 }
+        SCond
+          { ternary = true
+          ; cmp = T.Neq
+          ; p1 = T.Temp tl, 4
+          ; p2 = T.Const (Int32.of_int_exn 0), 4
+          }
       | _ ->
         failwith
           "trans: ternary loop guard encounters exp of size not 4, it must be a boolean"
@@ -337,7 +342,7 @@ let rec tr_stm_rev
     let er, acc, b = tr_exp_rev env dep rhs acc b in
     let cond =
       match size with
-      | 4 -> T.SCond { cmp = intop_to_cbop op; p1 = el; p2 = er }
+      | 4 -> T.SCond { cmp = intop_to_cbop op; p1 = el; p2 = er; ternary = false }
       | 8 -> T.LCond { cmp = intop_to_cbop op; p1 = el; p2 = er }
       | _ -> failwith "trans: encounter cmp size not 4 or 8"
     in
@@ -365,7 +370,9 @@ let rec tr_stm_rev
     let ec, acc, b = tr_exp_rev env dep cond acc_rev block_rev in
     let cond =
       match T.size ec with
-      | 4 -> T.SCond { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4 }
+      | 4 ->
+        T.SCond
+          { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4; ternary = false }
       | _ -> failwith "trans: encounter cond of size not 4, it must be boolean"
     in
     let finisher = T.If { cond; lt = l1; lf = l2 } in
@@ -411,7 +418,7 @@ let rec tr_stm_rev
     let er, acc, b = tr_exp_rev env dep rhs acc b in
     let cond : T.cond =
       match size with
-      | 4 -> T.SCond { cmp = intop_to_cbop op; p1 = el; p2 = er }
+      | 4 -> T.SCond { cmp = intop_to_cbop op; p1 = el; p2 = er; ternary = false }
       | 8 -> T.LCond { cmp = intop_to_cbop op; p1 = el; p2 = er }
       | _ -> failwith "trans: encounter cmp argument size not 4 or 8"
     in
@@ -436,7 +443,7 @@ let rec tr_stm_rev
     let ec, acc, b = tr_exp_rev env dep cond acc b in
     let cond : T.cond =
       match T.size ec with
-      | 4 -> T.SCond { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4 }
+      | 4 -> T.SCond { cmp = T.Neq; p1 = ec; p2 = T.Const (Int32.of_int_exn 0), 4;ternary = false }
       | _ ->
         failwith "trans: while cannot have loop guard of size >= 8. It must be Boolean"
     in
