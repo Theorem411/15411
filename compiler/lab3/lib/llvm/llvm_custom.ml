@@ -13,13 +13,13 @@ let is_rm_block l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_rm_block
 let glob_boolean = ref TS.empty
 
 let add_to_boolean l =
-  (* prerr_endline ("adding" ^ Temp.name l); *)
+  prerr_endline ("adding" ^ Temp.name l);
   glob_boolean := TS.add !glob_boolean l
 ;;
 
 let is_bool t =
   let v = Option.is_some (TS.find ~f:(Temp.equal t) !glob_boolean) in
-  (* let () = prerr_endline (sprintf "%s is %b" (Temp.name t) v) in *)
+  let () = prerr_endline (sprintf "%s is %b" (Temp.name t) v) in
   v
 ;;
 
@@ -91,33 +91,38 @@ let is_bool_binop (dest, lhs, rhs) =
     (format_operand lhs)
     (format_operand rhs)
   |> prerr_endline; *)
-  let res =
-    match lhs, rhs with
-    | AS.Temp l, AS.Temp r -> is_bool l && is_bool r
-    | AS.Temp l, _ -> is_bool l
-    | _, AS.Temp r -> is_bool r
-    | _, _ -> false
+  let t_d =
+    match dest with
+    | AS.Temp td -> td
+    | _ -> failwith "is_bool_res dest is not temp"
   in
-  (* add the dest into bool if res is true *)
-  (match res, dest with
-  | false, _ -> ()
-  | true, AS.Temp d -> add_to_boolean d
-  | _, _ -> failwith "is_bool_res dest is not temp");
-  res
+  if is_bool t_d
+  then true
+  else (
+    let res =
+      match lhs, rhs with
+      | AS.Temp l, AS.Temp r -> is_bool l && is_bool r
+      | AS.Temp l, _ -> is_bool l
+      | _, AS.Temp r -> is_bool r
+      | _, _ -> false
+    in
+    (* add the dest into bool if res is true *)
+    (match res, dest with
+    | false, _ -> ()
+    | true, AS.Temp d -> add_to_boolean d
+    | _, _ -> failwith "is_bool_res dest is not temp");
+    res)
 ;;
 
 let format_instr' : AS.instr -> string = function
   | PureBinop ({ op = AS.BitAnd | AS.BitOr | AS.BitXor; _ } as binop) ->
-    let t_dest =
-      match binop.dest with
-      | AS.Temp t -> t
-      | _ -> failwith "pure binop, got not temp on dest "
-    in
     sprintf
       "%s = %s %s %s, %s"
       (format_operand binop.dest)
       (format_pure_operation binop.op)
-      (if is_bool t_dest then "i1" else format_size binop.size)
+      (if is_bool_binop (binop.dest, binop.lhs, binop.rhs)
+      then "i1"
+      else format_size binop.size)
       (format_operand binop.lhs)
       (format_operand binop.rhs)
   | PureBinop binop ->
@@ -395,6 +400,14 @@ let preprocess_blocks (code : SSA.instr SSA.IH.t) (block_info : SSA.block list) 
           let instr = SSA.IH.find_exn code l in
           match instr with
           | Nop -> ()
+          | Phi { self; alt_selves; _ } ->
+            let is_bool_phi =
+              List.exists alt_selves ~f:(fun inp ->
+                  match inp with
+                  | _, AS.Temp t -> is_bool t
+                  | _ -> false)
+            in
+            if is_bool_phi then add_to_boolean self
           | ASInstr (LLVM_Cmp { dest = AS.Temp t; _ }) -> add_to_boolean t
           | ASInstr (LLVM_Set { dest = AS.Temp t; _ }) -> add_to_boolean t
           | ASInstr (PureBinop { dest = AS.Temp t as dest; lhs; rhs; _ }) ->
@@ -412,6 +425,7 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
   glob_rm_block_set := LS.empty;
   glob_boolean := TS.empty;
   preprocess_blocks code block_info;
+  prerr_endline "preprocess done -----------------------------------------------";
   let drop_before, args = get_args fspace in
   sprintf
     "; Function Attrs: norecurse nounwind readnone\n\
