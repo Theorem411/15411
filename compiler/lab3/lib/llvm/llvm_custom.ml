@@ -303,7 +303,11 @@ let pp_block
   let format_parent_blocks = format_parents ~cfg_pred in
   match label with
   | Label.BlockLbl l ->
-    let parent_set = LM.find_exn cfg_pred label in
+    let parent_set =
+      LS.filter (LM.find_exn cfg_pred label) ~f:(function
+          | Label.BlockLbl _ as lpt -> not (is_rm_block lpt)
+          | _ -> true)
+    in
     if LS.length parent_set = 0 || is_empty
     then (
       let () = add_to_rm_block label in
