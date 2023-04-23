@@ -306,9 +306,8 @@ let compile (cmd : cmd_line_args) : unit =
     let parent_folder, fname_list = List.split_n splitted (List.length splitted - 1) in
     let fname = List.nth_exn fname_list 0 in
     let (_ : string) = String.concat ~sep:"/" parent_folder ^ "/llvm/" ^ fname ^ ".ll" in
-    (* let llfile = if true then "llvm/" ^ fname ^ ".ll" else cmd.filename ^ ".ll" in *)
-    let llfile = "llvm/" ^ fname ^ ".ll" in
-    (* let shfile = cmd.filename ^ ".sh" in *)
+    (* let llfile = "llvm/" ^ fname ^ ".ll" in *)
+    let llfile = cmd.filename ^ ".ll" in
     say_if cmd.verbose (fun () -> sprintf "Writing llvm assem to %s..." llfile);
     let assem_llvm = LLVM_custom.create assem_ssa_phi_opt in
     Out_channel.with_file llfile ~f:(fun out ->

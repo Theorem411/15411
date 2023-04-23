@@ -4,13 +4,18 @@ module AS = Assem_l4
 module Live = Live_faster
 module LM = Live.LM
 module LS = Live.LS
-module LT = Live.LT
+module TS = Temp.Set
 
-let glob_rem_set = ref LS.empty
-let add_to_rem l = glob_rem_set := LS.add !glob_rem_set l
-let is_rem l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_rem_set)
-let rem_name = "___remainder_JAVAWAY"
-let div_name = "___div_JAVAWAY"
+let glob_rm_block_set = ref LS.empty
+let add_to_rm_block l = glob_rm_block_set := LS.add !glob_rm_block_set l
+let is_rm_block l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_rm_block_set)
+let glob_boolean = ref TS.empty
+let add_to_boolean l = glob_boolean := TS.add !glob_boolean l
+let is_bool t = Option.is_some (TS.find ~f:(Temp.equal t) !glob_boolean)
+let rem_name = "____JAVAWAY_rem"
+let div_name = "____JAVAWAY_div"
+let shl_name = "____JAVAWAY_shl"
+let shr_name = "____JAVAWAY_shr"
 
 type program = SSA.program
 
@@ -32,13 +37,6 @@ let format_pure_operation = function
   | AS.BitOr -> "or"
 ;;
 
-let format_efkt_operation = function
-  | AS.Div -> "sdiv exact"
-  | AS.Mod -> "srem exact"
-  | AS.ShiftL -> "shl exact"
-  | AS.ShiftR -> "ashr exact"
-;;
-
 let format_size = function
   | AS.L -> "i32*"
   | AS.S -> "i32"
@@ -56,7 +54,28 @@ let format_set_typ = function
 let format_label (l : Label.t) = "%L" ^ Int.to_string (Label.number l)
 let format_label_raw (l : Label.t) = "L" ^ Int.to_string (Label.number l)
 
+let is_bool_cmp (dest, lhs, rhs) =
+  let () =
+    match dest with
+    | AS.Temp d -> add_to_boolean d
+    | _ -> failwith "is_bool_cmp dest is not temp"
+  in
+  match lhs, rhs with
+  | AS.Temp l, AS.Temp r -> is_bool l && is_bool r
+  | AS.Temp l, _ -> is_bool l
+  | _, AS.Temp r -> is_bool r
+  | _, _ -> false
+;;
+
 let format_instr' : AS.instr -> string = function
+  | PureBinop ({ op = AS.BitAnd | AS.BitOr | AS.BitXor; _ } as binop) ->
+    sprintf
+      "%s = %s %s %s, %s"
+      (format_operand binop.dest)
+      (format_pure_operation binop.op)
+      (format_size binop.size)
+      (format_operand binop.lhs)
+      (format_operand binop.rhs)
   | PureBinop binop ->
     sprintf
       "%s = %s nsw %s %s, %s"
@@ -79,14 +98,20 @@ let format_instr' : AS.instr -> string = function
       div_name
       (format_operand lhs)
       (format_operand rhs)
-  | EfktBinop binop ->
+  | EfktBinop { op = AS.ShiftL; dest; lhs; rhs } ->
     sprintf
-      "%s = %s %s %s, %s"
-      (format_operand binop.dest)
-      (format_efkt_operation binop.op)
-      (format_size AS.S)
-      (format_operand binop.lhs)
-      (format_operand binop.rhs)
+      "%s = call i32 @%s(i32 %s, i32 %s)"
+      (format_operand dest)
+      shl_name
+      (format_operand lhs)
+      (format_operand rhs)
+  | EfktBinop { op = AS.ShiftR; dest; lhs; rhs } ->
+    sprintf
+      "%s = call i32 @%s(i32 %s, i32 %s)"
+      (format_operand dest)
+      shr_name
+      (format_operand lhs)
+      (format_operand rhs)
   | Unop { dest; src; _ } ->
     sprintf
       "%s = xor %s %s, -1"
@@ -154,7 +179,7 @@ let format_instr' : AS.instr -> string = function
       "%s = icmp %s %s %s, %s"
       (format_operand dest)
       (format_set_typ typ)
-      (format_size size)
+      (if is_bool_cmp (dest, lhs, rhs) then "i1" else format_size size)
       (format_operand lhs)
       (format_operand rhs)
   | LLVM_Set { dest; lhs; rhs; typ; size } ->
@@ -162,7 +187,7 @@ let format_instr' : AS.instr -> string = function
       "%s = icmp %s %s %s, %s"
       (format_operand dest)
       (format_set_typ typ)
-      (format_size size)
+      (if is_bool_cmp (dest, lhs, rhs) then "i1" else format_size size)
       (format_operand lhs)
       (format_operand rhs)
   | LLVM_IF { cond; tl; fl } ->
@@ -207,7 +232,7 @@ let pp_phi ({ self; alt_selves } : SSA.phi) : string =
     (* "\t%s = phi (phi_size) %s" *)
     (Temp.name self)
     (List.filter_map alt_selves ~f:(fun (l, op) ->
-         if is_rem l
+         if is_rm_block l
          then None
          else Some (sprintf "[%s, %s]" (format_operand op) (format_bt l)))
     |> String.concat ~sep:", ")
@@ -227,7 +252,7 @@ let format_parents ~(cfg_pred : LS.t LM.t) (l : Label.bt) =
     (String.concat
        ~sep:", "
        (List.filter_map (LS.to_list parent_set) ~f:(fun l ->
-            if is_rem l then None else Some (format_bt l))))
+            if is_rm_block l then None else Some (format_bt l))))
 ;;
 
 let pp_block
@@ -254,7 +279,7 @@ let pp_block
     let parent_set = LM.find_exn cfg_pred label in
     if LS.length parent_set = 0
     then (
-      let () = add_to_rem label in
+      let () = add_to_rm_block label in
       "")
     else
       sprintf
@@ -380,8 +405,50 @@ let format_div () =
      }"
 ;;
 
+let format_shl () =
+  "define i32 @"
+  ^ shl_name
+  ^ "(i32 %value, i32 %shift_amount) {\n\
+    \  %is_negative = icmp slt i32 %shift_amount, 0\n\
+    \  %is_large = icmp ugt i32 %shift_amount, 31\n\
+    \  %invalid = or i1 %is_negative, %is_large\n\
+    \  br i1 %invalid, label %error, label %valid\n\n\
+     error:\n\
+    \  ; Raise SIGFPE\n\
+    \  call void @raise(i32 8)\n\
+    \  unreachable\n\n\
+     valid:\n\
+    \  %result = shl i32 %value, %shift_amount\n\
+    \  ret i32 %result\n\
+     }"
+;;
+
+let format_shr () =
+  "define i32 @"
+  ^ shr_name
+  ^ "(i32 %value, i32 %shift_amount) {\n\
+    \  %is_negative = icmp slt i32 %shift_amount, 0\n\
+    \  %is_large = icmp ugt i32 %shift_amount, 31\n\
+    \  %invalid = or i1 %is_negative, %is_large\n\
+    \  br i1 %invalid, label %error, label %valid\n\n\
+     error:\n\
+    \  ; Raise SIGFPE\n\
+    \  call void @raise(i32 8)\n\
+    \  unreachable\n\n\
+     valid:\n\
+    \  %result = shl i32 %value, %shift_amount\n\
+    \  ret i32 %result\n\
+     }"
+;;
+
 let format_pre () =
-  [ ""; "declare dso_local i32 @raise(i32) #1"; format_div (); format_mod () ]
+  [ ""
+  ; "declare dso_local i32 @raise(i32) #1"
+  ; format_div ()
+  ; format_mod ()
+  ; format_shl ()
+  ; format_shr ()
+  ]
   |> String.concat ~sep:"\n"
 ;;
 
