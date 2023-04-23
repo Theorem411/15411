@@ -321,7 +321,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
       ; munch_exp ~unsafe t2 e2 ~mfl
       ; [ A.Cmp { lhs = t1; size = sz; rhs = t2 }
         ; A.LLVM_Set
-            { dest = t_llvm; lhs = t1; size = sz; rhs = t2; typ = cmp_to_set_t_rev cmp }
+            { dest = t_llvm; lhs = t1; size = sz; rhs = t2; typ = cmp_to_set_t cmp }
         ; A.LLVM_IF { cond = t_llvm; tl = lt; fl = lf }
         ; A.Cjmp { typ = jmptyp; l = lf }
         ; A.Jmp lt
