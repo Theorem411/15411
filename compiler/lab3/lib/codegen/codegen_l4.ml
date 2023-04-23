@@ -55,14 +55,14 @@ let cmp_to_set_t = function
   | T.Geq -> A.Setge
 ;;
 
-let cmp_to_set_t_rev = function
+(* let cmp_to_set_t_rev = function
   | T.Eq -> A.Setne
   | T.Neq -> A.Sete
   | T.Less -> A.Setge
   | T.Leq -> A.Setg
   | T.Greater -> A.Setle
   | T.Geq -> A.Setl
-;;
+;; *)
 
 let munch_efkt_op = function
   | T.Div -> A.Div
