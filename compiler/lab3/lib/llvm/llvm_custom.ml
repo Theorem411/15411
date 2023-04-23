@@ -84,13 +84,40 @@ let is_bool_cmp (dest, lhs, rhs) =
   | _, _ -> false
 ;;
 
+let is_bool_binop (dest, lhs, rhs) =
+  (* sprintf
+    "called is_bool_binop with (%s, %s, %s)"
+    (format_operand dest)
+    (format_operand lhs)
+    (format_operand rhs)
+  |> prerr_endline; *)
+  let res =
+    match lhs, rhs with
+    | AS.Temp l, AS.Temp r -> is_bool l && is_bool r
+    | AS.Temp l, _ -> is_bool l
+    | _, AS.Temp r -> is_bool r
+    | _, _ -> false
+  in
+  (* add the dest into bool if res is true *)
+  (match res, dest with
+  | false, _ -> ()
+  | true, AS.Temp d -> add_to_boolean d
+  | _, _ -> failwith "is_bool_res dest is not temp");
+  res
+;;
+
 let format_instr' : AS.instr -> string = function
   | PureBinop ({ op = AS.BitAnd | AS.BitOr | AS.BitXor; _ } as binop) ->
+    let t_dest =
+      match binop.dest with
+      | AS.Temp t -> t
+      | _ -> failwith "pure binop, got not temp on dest "
+    in
     sprintf
       "%s = %s %s %s, %s"
       (format_operand binop.dest)
       (format_pure_operation binop.op)
-      (format_size binop.size)
+      (if is_bool t_dest then "i1" else format_size binop.size)
       (format_operand binop.lhs)
       (format_operand binop.rhs)
   | PureBinop binop ->
@@ -129,12 +156,13 @@ let format_instr' : AS.instr -> string = function
       shr_name
       (format_operand lhs)
       (format_operand rhs)
-  | Unop { dest; src; _ } ->
+  | Unop { dest = AS.Temp t as dest; src; _ } ->
     sprintf
       "%s = xor %s %s, -1"
       (format_operand dest)
-      (format_size AS.S)
+      (if is_bool t then "i1" else format_size AS.S)
       (format_operand src)
+  | Unop _ -> failwith "got unop with dest != temp"
   | Mov { dest = AS.Reg _ as dest; src; size } ->
     sprintf "; %s <-%s- %s" (format_operand dest) (format_size size) (format_operand src)
   | Mov { src = AS.Reg _ as src; dest; size } ->
@@ -360,9 +388,30 @@ let format_ret_size (ret_size : AS.size option) =
   Option.value_map ret_size ~default:"void" ~f:format_size
 ;;
 
+let preprocess_blocks (code : SSA.instr SSA.IH.t) (block_info : SSA.block list) : unit =
+  (* iterate over all instructions *)
+  List.iter block_info ~f:(fun { lines; _ } ->
+      List.iter lines ~f:(fun l ->
+          let instr = SSA.IH.find_exn code l in
+          match instr with
+          | Nop -> ()
+          | ASInstr (LLVM_Cmp { dest = AS.Temp t; _ }) -> add_to_boolean t
+          | ASInstr (LLVM_Set { dest = AS.Temp t; _ }) -> add_to_boolean t
+          | ASInstr (PureBinop { dest = AS.Temp t as dest; lhs; rhs; _ }) ->
+            let b = is_bool_binop (dest, lhs, rhs) in
+            if b then add_to_boolean t
+          | ASInstr (Unop { dest = AS.Temp t as dest; src; _ }) ->
+            let b = is_bool_binop (dest, src, src) in
+            if b then add_to_boolean t
+          | _ -> ()))
+;;
+
 let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SSA.fspace)
     : string
   =
+  glob_rm_block_set := LS.empty;
+  glob_boolean := TS.empty;
+  preprocess_blocks code block_info;
   let drop_before, args = get_args fspace in
   sprintf
     "; Function Attrs: norecurse nounwind readnone\n\
