@@ -46,7 +46,7 @@ let reset_temp () =
   temps_type_ref := TT.create ()
 ;;
 
-let print_off = true
+let print_off = false
 
 let print_todo_set () =
   let s = get_todo_set () in
@@ -94,16 +94,14 @@ let format_get_size_temp t =
   match get_type t with
   | Some Bool -> "i1"
   | Some Int -> "i32"
-  | None -> "failed to get type of " ^ Temp.name t
+  | None ->
+    prerr_endline ("failed to get type of " ^ Temp.name t);
+    "i32"
 ;;
 
 let format_get_size_op_exn o =
   match o with
-  | AS.Temp t ->
-    (match get_type t with
-    | Some Bool -> "i1"
-    | Some Int -> "i32"
-    | None -> "failed to get type of " ^ Temp.name t)
+  | AS.Temp t -> format_get_size_temp t
   | _ -> "format_get_size_op_exn got no temp " ^ AS.format_operand o
 ;;
 
