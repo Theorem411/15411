@@ -8,7 +8,7 @@ module TS = Temp.Set
 module TT = Hashtbl.Make (Temp)
 module HeaderAst = Ast
 
-let print_off = false
+let print_off = true
 
 type temp_type =
   | Bool
@@ -165,7 +165,7 @@ let print_fun_list_debug () =
     in
     String.concat ~sep:";\n" (List.map s ~f:print_f)
   in
-  if print_off then () else prerr_endline r
+  if print_off then () else prerr_endline ("[" ^ r ^ "]")
 ;;
 
 let process_dest_lhs_rhs (dest : AS.operand option) (lhs : AS.operand) (rhs : AS.operand) =
@@ -650,8 +650,6 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
     : string
   =
   preprocess_blocks code block_info;
-  (* remove fun from the list of the functions that have to be declared, as this is a defintion *)
-  remove_fun (Symbol.name fname);
   List.iter
     ~f:(fun i ->
       if not print_off then prerr_endline (sprintf "%d's loop" i);
@@ -700,10 +698,12 @@ let pp_declare () =
 
 let pp_program (prog : program) : string =
   let prog_string = pp_program_helper prog in
+  (* remove fun from the list of the functions that have to be declared, as this is a defintion *)
+  List.iter prog ~f:(fun { fname; _ } -> remove_fun (Symbol.name fname));
   let declare_string = pp_declare () in
   String.concat
     ~sep:"\n"
-    [ "; DECLARING FUNCTIONS"; declare_string; "; BODY `"; prog_string ]
+    [ "; DECLARING FUNCTIONS"; declare_string; "; BODY "; prog_string ]
 ;;
 
 let get_pre = Custom_functions.get_pre
