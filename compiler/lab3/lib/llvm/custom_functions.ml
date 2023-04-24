@@ -1,7 +1,7 @@
 open Core
 module AS = Assem_l4
 
-let mac = true
+let mac = false
 
 let get_efkt_name = function
   | AS.Div -> "____JAVAWAY_div"
