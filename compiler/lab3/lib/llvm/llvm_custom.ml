@@ -7,9 +7,10 @@ module LS = Live.LS
 module TS = Temp.Set
 
 let mac = false
-let glob_rm_block_set = ref LS.empty
-let add_to_rm_block l = glob_rm_block_set := LS.add !glob_rm_block_set l
-let is_rm_block l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_rm_block_set)
+
+(* let glob_rm_block_set = ref LS.empty *)
+(* let add_to_rm_block l = glob_rm_block_set := LS.add !glob_rm_block_set l *)
+(* let is_rm_block l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_rm_block_set) *)
 let glob_boolean = ref TS.empty
 
 let add_to_boolean l =
@@ -23,6 +24,9 @@ let is_bool t =
   v
 ;;
 
+let glob_goodblock_set = ref LS.empty
+let add_to_goodblock l = glob_goodblock_set := LS.add !glob_goodblock_set l
+let is_goodblock l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_goodblock_set)
 let rem_name = "____JAVAWAY_rem"
 let div_name = "____JAVAWAY_div"
 let shl_name = "____JAVAWAY_shl"
@@ -66,19 +70,24 @@ let format_label (l : Label.t) = "%L" ^ Int.to_string (Label.number l)
 let format_label_raw (l : Label.t) = "L" ^ Int.to_string (Label.number l)
 
 let is_bool_cmp (dest, lhs, rhs) =
-  (* sprintf
+  sprintf
     "called is_bool_cmp with (%s, %s, %s)"
     (format_operand dest)
     (format_operand lhs)
     (format_operand rhs)
-  |> prerr_endline; *)
+  |> prerr_endline;
   let () =
     match dest with
     | AS.Temp d -> add_to_boolean d
     | _ -> failwith "is_bool_cmp dest is not temp"
   in
   match lhs, rhs with
-  | AS.Temp l, AS.Temp r -> is_bool l && is_bool r
+  | AS.Temp l, AS.Temp r ->
+    let res_or = is_bool l || is_bool r in
+    let res_and = is_bool l && is_bool r in
+    if not (Bool.( = ) res_or res_and)
+    then prerr_endline "two sides in a bool are different, be careful :)";
+    res_or
   | AS.Temp l, _ -> is_bool l
   | _, AS.Temp r -> is_bool r
   | _, _ -> false
@@ -292,7 +301,7 @@ let pp_phi ({ self; alt_selves } : SSA.phi) : string =
     (Temp.name self)
     (if is_bool_phi then "i1" else phi_size)
     (List.filter_map alt_selves ~f:(fun (l, op) ->
-         if is_rm_block l
+         if not (is_goodblock l)
          then None
          else Some (sprintf "[%s, %s]" (format_operand op) (format_bt l)))
     |> String.concat ~sep:", ")
@@ -312,13 +321,13 @@ let format_parents ~(cfg_pred : LS.t LM.t) (l : Label.bt) =
     (String.concat
        ~sep:", "
        (List.filter_map (LS.to_list parent_set) ~f:(fun l ->
-            if is_rm_block l then None else Some (format_bt l))))
+            if not (is_goodblock l) then None else Some (format_bt l))))
 ;;
 
 let pp_block
     ?(drop_before = None)
     ~(cfg_pred : LS.t LM.t)
-    ({ label; lines; is_empty; _ } : SSA.block)
+    ({ label; lines; _ } : SSA.block)
     (code : SSA.instr SSA.IH.t)
     : string
   =
@@ -336,22 +345,14 @@ let pp_block
   let format_parent_blocks = format_parents ~cfg_pred in
   match label with
   | Label.BlockLbl l ->
-    let parent_set =
-      LS.filter (LM.find_exn cfg_pred label) ~f:(function
-          | Label.BlockLbl _ as lpt -> not (is_rm_block lpt)
-          | _ -> true)
-    in
-    if LS.length parent_set = 0 || is_empty
-    then (
-      let () = add_to_rm_block label in
-      "")
-    else
+    if is_goodblock label
+    then
       sprintf
         "%s:\t\t\t\t\t\t\t\t\t\t\t\t%s\n%s\n"
         (format_label_raw l)
         (format_parent_blocks label)
         (String.concat l2code ~sep:"\n")
-    (* (AS.format_jump_tag jump) *)
+    else ""
   | Label.FunName _ -> sprintf "%s\n" (String.concat l2code ~sep:"\n")
 ;;
 
@@ -393,7 +394,9 @@ let format_ret_size (ret_size : AS.size option) =
   Option.value_map ret_size ~default:"void" ~f:format_size
 ;;
 
-let preprocess_blocks (code : SSA.instr SSA.IH.t) (block_info : SSA.block list) : unit =
+let preprocess_blocks_instrs (code : SSA.instr SSA.IH.t) (block_info : SSA.block list)
+    : unit
+  =
   (* iterate over all instructions *)
   List.iter block_info ~f:(fun { lines; _ } ->
       List.iter lines ~f:(fun l ->
@@ -419,12 +422,33 @@ let preprocess_blocks (code : SSA.instr SSA.IH.t) (block_info : SSA.block list) 
           | _ -> ()))
 ;;
 
+let preprocess_blocks (blocks : SSA.block list) : unit =
+  let child_labels = function
+    | AS.JRet -> []
+    | AS.JCon { jt; jf } -> [ Label.BlockLbl jt; Label.BlockLbl jf ]
+    | AS.JUncon l -> [ Label.BlockLbl l ]
+  in
+  let root = List.nth_exn blocks 0 in
+  let block_map = LM.of_alist_exn (List.map blocks ~f:(fun b -> b.label, b)) in
+  let rec dfs block_map (lbl : Label.bt) =
+    prerr_endline ("doing label: " ^ Label.format_bt lbl);
+    if not (is_goodblock lbl)
+    then (
+      add_to_goodblock lbl;
+      let b : SSA.block = LM.find_exn block_map lbl in
+      let children = child_labels b.jump in
+      List.iter ~f:(dfs block_map) children)
+  in
+  dfs block_map root.label
+;;
+
 let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SSA.fspace)
     : string
   =
-  glob_rm_block_set := LS.empty;
+  (* glob_rm_block_set := LS.empty; *)
   glob_boolean := TS.empty;
-  preprocess_blocks code block_info;
+  preprocess_blocks block_info;
+  preprocess_blocks_instrs code block_info;
   prerr_endline "preprocess done -----------------------------------------------";
   let drop_before, args = get_args fspace in
   sprintf
