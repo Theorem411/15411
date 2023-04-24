@@ -8,7 +8,7 @@ module TS = Temp.Set
 module TT = Hashtbl.Make (Temp)
 
 let mac = false
-let print_off = true
+let print_off = false
 
 (* let glob_rm_block_set = ref LS.empty *)
 (* let add_to_rm_block l = glob_rm_block_set := LS.add !glob_rm_block_set l *)
@@ -484,8 +484,11 @@ let process_dest_lhs_rhs (dest : AS.operand option) (lhs : AS.operand) (rhs : AS
         then failwith "process_dest_lhs_rhs diff types"
         else Some x)
     | AS.Temp l, AS.Imm n | AS.Imm n, AS.Temp l ->
-      if not_zero_one n then set_type l Int;
-      Some Int
+      if not_zero_one n
+      then (
+        set_type l Int;
+        Some Int)
+      else get_type l
     | AS.Imm a, AS.Imm b -> if not_zero_one a || not_zero_one b then Some Int else None
   in
   match dest, dest_typ_opt with
