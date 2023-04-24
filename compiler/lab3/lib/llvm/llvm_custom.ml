@@ -6,9 +6,10 @@ module LM = Live.LM
 module LS = Live.LS
 module TS = Temp.Set
 module TT = Hashtbl.Make (Temp)
+module ST = Hashtbl.Make (String)
 module HeaderAst = Ast
 
-let print_off = true
+let print_off = false
 
 type temp_type =
   | Bool
@@ -21,6 +22,15 @@ let equal_temp_typ a b =
   | Int, Int -> true
   (* | Pointer, Pointer -> true *)
   | _ -> false
+;;
+
+let cur_fun_ref = ref ""
+let get_cur_fun () = !cur_fun_ref
+let set_cur_fun s = cur_fun_ref := s
+let defined_tbl : AS.operand option list ST.t ref = ref (ST.create ())
+
+let add_ret_defined (fname : string) (r : AS.operand option) =
+  ST.add_multi !defined_tbl ~key:fname ~data:r
 ;;
 
 let temps_type_ref : temp_type TT.t ref = ref (TT.create ())
@@ -42,6 +52,14 @@ let add_fun f =
   if List.mem !functions_list_ref f ~equal:(fun (a, _, _) (b, _, _) -> String.equal a b)
   then ()
   else set_funs (f :: !functions_list_ref)
+;;
+
+let edit_ret (s : string) (ret_opt : AS.operand option) =
+  let name, args, _ =
+    List.find_exn !functions_list_ref ~f:(fun (fname, _, _) -> String.equal s fname)
+  in
+  let new_f = name, args, ret_opt in
+  add_fun new_f
 ;;
 
 let reset_temp () =
@@ -133,6 +151,23 @@ let pp_get_size_op_opt o =
   | _ -> None
 ;;
 
+let get_function_ret_size (fname : string) =
+  let ret_list = ST.find_multi !defined_tbl fname in
+  if List.length ret_list = 0
+  then failwith "fname has empty ret values, very strange"
+  else (
+    let res =
+      match List.nth_exn ret_list 0 with
+      | None -> "void"
+      (* return entry exists *)
+      | Some op ->
+        (match pp_get_size_op_opt op with
+        | None -> "i32"
+        | Some typ -> typ)
+    in
+    res)
+;;
+
 let get_op_type o =
   match pp_get_size_op_opt o with
   | Some x -> x
@@ -146,7 +181,21 @@ let pp_size_withop (op, size) =
   | _, AS.S -> "i32"
 ;;
 
-let pp_ret = function
+let pp_ret ((s, size) : string * AS.size option) =
+  match List.find ~f:(fun (a, _, _) -> String.equal a s) !functions_list_ref with
+  | None ->
+    (match size with
+    | Some AS.L -> "i32*"
+    | Some AS.S -> "i32"
+    | None -> "void")
+  | Some (_, _, ret_opt) ->
+    ret_opt
+    |> (function
+    | None -> "void"
+    | Some op -> get_op_type op)
+;;
+
+let debug_pp_ret = function
   | None -> "void"
   | Some op -> get_op_type op
 ;;
@@ -159,7 +208,7 @@ let print_fun_list_debug () =
     let print_f (name, args, ret_opt) =
       sprintf
         "%s %s(%s)"
-        (pp_ret ret_opt)
+        (debug_pp_ret ret_opt)
         name
         (String.concat ~sep:", " (print_args_types args))
     in
@@ -486,10 +535,6 @@ let get_args ({ code; block_info; _ } : SSA.fspace) =
 (* let pp_entry_lbl fname = "entry_" ^ Symbol.name fname ^ ":" *)
 let pp_entry_lbl _ = "entry:"
 
-let pp_ret_size (ret_size : AS.size option) =
-  Option.value_map ret_size ~default:"void" ~f:pp_size
-;;
-
 let add_to_todo l =
   let l =
     List.filter_map l ~f:(fun o ->
@@ -541,6 +586,13 @@ let preprocess_call instr =
     add_fun (name, args, ret_opt);
     add_to_todo args
   | _ -> failwith ("preprocess_call is got " ^ AS.format_instr instr)
+;;
+
+let preprocess_ret instr =
+  match instr with
+  | AS.LLVM_Ret None -> add_ret_defined (get_cur_fun ()) None
+  | AS.LLVM_Ret (Some (op, _)) -> add_ret_defined (get_cur_fun ()) (Some op)
+  | _ -> failwith ("preprocess_ret is got " ^ AS.format_instr instr)
 ;;
 
 let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : unit =
@@ -650,6 +702,8 @@ let preprocess_blocks_phi (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) 
 let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SSA.fspace)
     : string
   =
+  (* add_fun (Symbol.name fname, (List.map args ~f:(fun (t, _) -> AS.Temp t)), None); *)
+  set_cur_fun (Symbol.name fname);
   preprocess_blocks code block_info;
   List.iter
     ~f:(fun i ->
@@ -663,7 +717,7 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
        define dso_local %s @%s(%s) #0 {\n\
        %s\n\
        }\n"
-      (pp_ret_size ret_size)
+      (get_function_ret_size (Symbol.name fname))
       (Symbol.name fname)
       (pp_args args)
       (match block_info with
@@ -688,7 +742,7 @@ let pp_declare () =
     let print_f (name, args, ret_opt) =
       sprintf
         "declare dso_local %s @%s(%s) #1"
-        (pp_ret ret_opt)
+        (debug_pp_ret ret_opt)
         name
         (String.concat ~sep:", " (print_args_types args))
     in
