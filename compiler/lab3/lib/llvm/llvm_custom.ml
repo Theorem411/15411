@@ -54,13 +54,13 @@ let add_fun f =
   else set_funs (f :: !functions_list_ref)
 ;;
 
-let edit_ret (s : string) (ret_opt : AS.operand option) =
+(* let edit_ret (s : string) (ret_opt : AS.operand option) =
   let name, args, _ =
     List.find_exn !functions_list_ref ~f:(fun (fname, _, _) -> String.equal s fname)
   in
   let new_f = name, args, ret_opt in
   add_fun new_f
-;;
+;; *)
 
 let reset_temp () =
   todo_ref := TS.empty;
@@ -181,7 +181,7 @@ let pp_size_withop (op, size) =
   | _, AS.S -> "i32"
 ;;
 
-let pp_ret ((s, size) : string * AS.size option) =
+(* let pp_ret ((s, size) : string * AS.size option) =
   match List.find ~f:(fun (a, _, _) -> String.equal a s) !functions_list_ref with
   | None ->
     (match size with
@@ -193,7 +193,7 @@ let pp_ret ((s, size) : string * AS.size option) =
     |> (function
     | None -> "void"
     | Some op -> get_op_type op)
-;;
+;; *)
 
 let debug_pp_ret = function
   | None -> "void"
@@ -622,6 +622,7 @@ let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : un
         set_type_if_temp Int rhs;
         set_type_if_temp Int dest
       | ASInstr (LLVM_Call _ as ins) -> preprocess_call ins
+      | ASInstr (LLVM_Ret _ as ins) -> preprocess_ret ins
       | _ -> ());
   if print_off
   then ()
@@ -699,9 +700,7 @@ let preprocess_blocks_phi (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) 
     dfs block_map root.label)
 ;;
 
-let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SSA.fspace)
-    : string
-  =
+let pp_fspace ({ fname; code; block_info; cfg_pred; _ } as fspace : SSA.fspace) : string =
   (* add_fun (Symbol.name fname, (List.map args ~f:(fun (t, _) -> AS.Temp t)), None); *)
   set_cur_fun (Symbol.name fname);
   preprocess_blocks code block_info;
