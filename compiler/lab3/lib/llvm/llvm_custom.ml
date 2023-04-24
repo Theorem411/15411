@@ -8,6 +8,7 @@ module TS = Temp.Set
 module TT = Hashtbl.Make (Temp)
 
 let mac = false
+let print_off = true
 
 (* let glob_rm_block_set = ref LS.empty *)
 (* let add_to_rm_block l = glob_rm_block_set := LS.add !glob_rm_block_set l *)
@@ -45,8 +46,6 @@ let reset_temp () =
   todo_ref := TS.empty;
   temps_type_ref := TT.create ()
 ;;
-
-let print_off = false
 
 let print_todo_set () =
   let s = get_todo_set () in
