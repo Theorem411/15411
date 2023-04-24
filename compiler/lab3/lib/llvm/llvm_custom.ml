@@ -14,13 +14,13 @@ let mac = false
 let glob_boolean = ref TS.empty
 
 let add_to_boolean l =
-  prerr_endline ("adding" ^ Temp.name l);
+  (* prerr_endline ("adding" ^ Temp.name l); *)
   glob_boolean := TS.add !glob_boolean l
 ;;
 
 let is_bool t =
   let v = Option.is_some (TS.find ~f:(Temp.equal t) !glob_boolean) in
-  let () = prerr_endline (sprintf "%s is %b" (Temp.name t) v) in
+  (* let () = prerr_endline (sprintf "%s is %b" (Temp.name t) v) in *)
   v
 ;;
 
@@ -70,12 +70,12 @@ let format_label (l : Label.t) = "%L" ^ Int.to_string (Label.number l)
 let format_label_raw (l : Label.t) = "L" ^ Int.to_string (Label.number l)
 
 let is_bool_cmp (dest, lhs, rhs) =
-  sprintf
+  (* sprintf
     "called is_bool_cmp with (%s, %s, %s)"
     (format_operand dest)
     (format_operand lhs)
     (format_operand rhs)
-  |> prerr_endline;
+  |> prerr_endline; *)
   let () =
     match dest with
     | AS.Temp d -> add_to_boolean d
