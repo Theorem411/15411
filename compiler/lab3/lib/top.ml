@@ -312,7 +312,7 @@ let compile (cmd : cmd_line_args) : unit =
     let assem_llvm = LLVM_custom.create assem_ssa_phi_opt in
     Out_channel.with_file llfile ~f:(fun out ->
         Out_channel.fprintf out "%s\n" (LLVM_custom.get_pre llfile);
-        Out_channel.fprintf out "%s" (LLVM_custom.format_program assem_llvm);
+        Out_channel.fprintf out "%s" (LLVM_custom.pp_program assem_llvm);
         Out_channel.fprintf out "%s\n" (LLVM_custom.get_post llfile))
   | X86_64 ->
     let file = cmd.filename ^ ".s" in
