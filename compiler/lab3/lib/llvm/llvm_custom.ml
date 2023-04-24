@@ -152,23 +152,33 @@ let pp_get_size_op_opt o =
   | _ -> None
 ;;
 
-let get_function_ret_size (fname : string) =
+let get_function_ret_size ((fname, size_opt) : string * AS.size option) =
   prerr_endline ("reading " ^ fname);
   let ret_list = ST.find_multi !defined_tbl fname in
-  if List.length ret_list = 0
-     (* then failwith "fname has empty ret values, very strange" *)
-  then "void"
-  else (
-    let res =
-      match List.nth_exn ret_list 0 with
-      | None -> "void"
-      (* return entry exists *)
-      | Some op ->
-        (match pp_get_size_op_opt op with
-        | None -> "i32"
-        | Some typ -> typ)
-    in
-    res)
+  let res =
+    if List.length ret_list = 0
+       (* then failwith "fname has empty ret values, very strange" *)
+    then None
+    else
+      Some
+        (let res =
+           match List.nth_exn ret_list 0 with
+           | None -> "void"
+           (* return entry exists *)
+           | Some op ->
+             (match pp_get_size_op_opt op with
+             | None -> "i32"
+             | Some typ -> typ)
+         in
+         res)
+  in
+  match res with
+  | Some x -> x
+  | None ->
+    (match size_opt with
+    | None -> "void"
+    | Some AS.L -> "i32*"
+    | Some AS.S -> "i32")
 ;;
 
 let get_op_type o =
@@ -703,7 +713,9 @@ let preprocess_blocks_phi (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) 
     dfs block_map root.label)
 ;;
 
-let pp_fspace ({ fname; code; block_info; cfg_pred; _ } as fspace : SSA.fspace) : string =
+let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SSA.fspace)
+    : string
+  =
   (* add_fun (Symbol.name fname, (List.map args ~f:(fun (t, _) -> AS.Temp t)), None); *)
   set_cur_fun (Symbol.name fname);
   preprocess_blocks code block_info;
@@ -719,7 +731,7 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; _ } as fspace : SSA.fspace) 
        define dso_local %s @%s(%s) #0 {\n\
        %s\n\
        }\n"
-      (get_function_ret_size (Symbol.name fname))
+      (get_function_ret_size (Symbol.name fname, ret_size))
       (Symbol.name fname)
       (pp_args args)
       (match block_info with
