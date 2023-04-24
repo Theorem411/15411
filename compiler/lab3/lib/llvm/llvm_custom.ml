@@ -6,6 +6,7 @@ module LM = Live.LM
 module LS = Live.LS
 module TS = Temp.Set
 module TT = Hashtbl.Make (Temp)
+module HeaderAst = Ast
 
 let print_off = false
 
@@ -30,6 +31,18 @@ let set_todo_set s = todo_ref := s
 let add_todo (t : Temp.t) = set_todo_set (TS.add (get_todo_set ()) t)
 let is_empty_todo () = TS.is_empty !todo_ref
 let remove_todo (t : Temp.t) = set_todo_set (TS.remove (get_todo_set ()) t)
+let functions_list_ref : (string * AS.operand list * AS.operand option) list ref = ref []
+let set_funs l = functions_list_ref := l
+
+let remove_fun (s : string) =
+  set_funs (List.filter ~f:(fun (f, _, _) -> not (String.equal s f)) !functions_list_ref)
+;;
+
+let add_fun f =
+  if List.mem !functions_list_ref f ~equal:(fun (a, _, _) (b, _, _) -> String.equal a b)
+  then ()
+  else set_funs (f :: !functions_list_ref)
+;;
 
 let reset_temp () =
   todo_ref := TS.empty;
@@ -118,6 +131,41 @@ let pp_get_size_op_opt o =
     | None -> None)
   | AS.Imm n -> if not_zero_one n then Some "i32" else None
   | _ -> None
+;;
+
+let get_op_type o =
+  match pp_get_size_op_opt o with
+  | Some x -> x
+  | None -> "i32"
+;;
+
+let pp_size_withop (op, size) =
+  match pp_get_size_op_opt op, size with
+  | Some x, _ -> x
+  | _, AS.L -> "i32*"
+  | _, AS.S -> "i32"
+;;
+
+let pp_ret = function
+  | None -> "void"
+  | Some op -> get_op_type op
+;;
+
+let print_args_types args = List.map args ~f:get_op_type
+
+let print_fun_list_debug () =
+  let s = !functions_list_ref in
+  let r =
+    let print_f (name, args, ret_opt) =
+      sprintf
+        "%s %s(%s)"
+        (pp_ret ret_opt)
+        name
+        (String.concat ~sep:", " (print_args_types args))
+    in
+    String.concat ~sep:";\n" (List.map s ~f:print_f)
+  in
+  if print_off then () else prerr_endline r
 ;;
 
 let process_dest_lhs_rhs (dest : AS.operand option) (lhs : AS.operand) (rhs : AS.operand) =
@@ -315,15 +363,17 @@ and pp_instr' : AS.instr -> string = function
     sprintf
       "%s = call %s @%s(%s)"
       (pp_operand dest)
-      (pp_size sz)
+      (pp_size_withop (dest, sz))
       (Symbol.name fname)
-      (List.map args ~f:(fun (op, s) -> sprintf "%s %s" (pp_size s) (pp_operand op))
+      (List.map args ~f:(fun (op, s) ->
+           sprintf "%s %s" (pp_size_withop (op, s)) (pp_operand op))
       |> String.concat ~sep:", ")
   | LLVM_Call { dest = None; args; fname } ->
     sprintf
       "call void @%s(%s)"
       (Symbol.name fname)
-      (List.map args ~f:(fun (op, s) -> sprintf "%s %s" (pp_size s) (pp_operand op))
+      (List.map args ~f:(fun (op, s) ->
+           sprintf "%s %s" (pp_size_withop (op, s)) (pp_operand op))
       |> String.concat ~sep:", ")
 ;;
 
@@ -477,6 +527,21 @@ let preprocess_phi (s : SSA.instr) =
   | _ -> failwith "preprocess_phi got no phi"
 ;;
 
+let preprocess_call instr =
+  match instr with
+  | AS.LLVM_Call c ->
+    let name = Symbol.name c.fname in
+    let args = List.map ~f:(fun (o, _) -> o) c.args in
+    let ret_opt =
+      match c.dest with
+      | None -> None
+      | Some (op, _) -> Some op
+    in
+    add_fun (name, args, ret_opt);
+    add_to_todo args
+  | _ -> failwith ("preprocess_call is got " ^ AS.format_instr instr)
+;;
+
 let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : unit =
   List.iter block.lines ~f:(fun l ->
       let instr = SSA.IH.find_exn code l in
@@ -503,12 +568,14 @@ let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : un
         set_type_if_temp Int lhs;
         set_type_if_temp Int rhs;
         set_type_if_temp Int dest
+      | ASInstr (LLVM_Call _ as ins) -> preprocess_call ins
       | _ -> ());
   if print_off
   then ()
   else prerr_endline (sprintf "done with block %s" (Label.format_bt block.label));
   print_todo_set ();
-  print_types ()
+  print_types ();
+  print_fun_list_debug ()
 ;;
 
 let preprocess_blocks (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) : unit =
@@ -583,6 +650,8 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
     : string
   =
   preprocess_blocks code block_info;
+  (* remove fun from the list of the functions that have to be declared, as this is a defintion *)
+  remove_fun (Symbol.name fname);
   List.iter
     ~f:(fun i ->
       if not print_off then prerr_endline (sprintf "%d's loop" i);
@@ -610,9 +679,31 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
   res
 ;;
 
+let pp_program_helper (prog : program) : string =
+  List.map prog ~f:pp_fspace |> String.concat ~sep:"\n"
+;;
+
+let pp_declare () =
+  let s = !functions_list_ref in
+  let r =
+    let print_f (name, args, ret_opt) =
+      sprintf
+        "declare dso_local %s @%s(%s) #1"
+        (pp_ret ret_opt)
+        name
+        (String.concat ~sep:", " (print_args_types args))
+    in
+    String.concat ~sep:";\n" (List.map s ~f:print_f)
+  in
+  r
+;;
+
 let pp_program (prog : program) : string =
-  let prog_string = List.map prog ~f:pp_fspace |> String.concat ~sep:"\n" in
-  prog_string
+  let prog_string = pp_program_helper prog in
+  let declare_string = pp_declare () in
+  String.concat
+    ~sep:"\n"
+    [ "; DECLARING FUNCTIONS"; declare_string; "; BODY `"; prog_string ]
 ;;
 
 let get_pre = Custom_functions.get_pre
