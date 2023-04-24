@@ -8,7 +8,7 @@ module TS = Temp.Set
 module TT = Hashtbl.Make (Temp)
 
 let mac = false
-let print_off = false
+let print_off = true
 
 (* let glob_rm_block_set = ref LS.empty *)
 (* let add_to_rm_block l = glob_rm_block_set := LS.add !glob_rm_block_set l *)
@@ -98,6 +98,12 @@ let format_get_size_temp t =
     "i32"
 ;;
 
+let str_to_typ = function
+  | "i1" -> Bool
+  | "i32" -> Int
+  | s -> failwith ("str_to_typ got " ^ s)
+;;
+
 let format_get_size_op_exn o =
   match o with
   | AS.Temp t -> format_get_size_temp t
@@ -112,6 +118,17 @@ let set_type_if_temp (typ : temp_type) (o : AS.operand) =
 
 let not_zero_one n =
   if Int64.equal n Int64.one then false else not (Int64.equal n Int64.zero)
+;;
+
+let format_get_size_op_opt o =
+  match o with
+  | AS.Temp t ->
+    (match get_type t with
+    | Some Bool -> Some "i1"
+    | Some Int -> Some "i32"
+    | None -> None)
+  | AS.Imm n -> if not_zero_one n then Some "i32" else None
+  | _ -> None
 ;;
 
 (* 
@@ -366,6 +383,16 @@ let format_bt (l : Label.bt) =
 let pp_phi ({ self; alt_selves } : SSA.phi) : string =
   (* TODO *)
   let phi_size = format_get_size_temp self in
+  let from_alt_selves_opt =
+    List.find_map ~f:(fun (_, op) -> format_get_size_op_opt op) alt_selves
+  in
+  let phi_size =
+    match from_alt_selves_opt with
+    | None -> phi_size
+    | Some x ->
+      set_type self (str_to_typ x);
+      x
+  in
   sprintf
     "\t%s = phi %s %s"
     (* "\t%s = phi (phi_size) %s" *)
@@ -621,6 +648,7 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
   (* glob_boolean := TS.empty; *)
   preprocess_blocks code block_info;
   preprocess_blocks_again code block_info;
+  (* preprocess_blocks_again code block_info; *)
   prerr_endline "preprocess done -----------------------------------------------";
   let drop_before, args = get_args fspace in
   let res =
