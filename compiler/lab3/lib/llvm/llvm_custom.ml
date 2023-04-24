@@ -30,6 +30,7 @@ let set_cur_fun s = cur_fun_ref := s
 let defined_tbl : AS.operand option list ST.t ref = ref (ST.create ())
 
 let add_ret_defined (fname : string) (r : AS.operand option) =
+  prerr_endline ("added " ^ fname);
   ST.add_multi !defined_tbl ~key:fname ~data:r
 ;;
 
@@ -152,9 +153,11 @@ let pp_get_size_op_opt o =
 ;;
 
 let get_function_ret_size (fname : string) =
+  prerr_endline ("reading " ^ fname);
   let ret_list = ST.find_multi !defined_tbl fname in
   if List.length ret_list = 0
-  then failwith "fname has empty ret values, very strange"
+     (* then failwith "fname has empty ret values, very strange" *)
+  then "void"
   else (
     let res =
       match List.nth_exn ret_list 0 with
