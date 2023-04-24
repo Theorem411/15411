@@ -5,32 +5,135 @@ module Live = Live_faster
 module LM = Live.LM
 module LS = Live.LS
 module TS = Temp.Set
+module TT = Hashtbl.Make (Temp)
 
 let mac = false
 
 (* let glob_rm_block_set = ref LS.empty *)
 (* let add_to_rm_block l = glob_rm_block_set := LS.add !glob_rm_block_set l *)
 (* let is_rm_block l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_rm_block_set) *)
-let glob_boolean = ref TS.empty
+(* let glob_boolean = ref TS.empty
 
 let add_to_boolean l =
   (* prerr_endline ("adding" ^ Temp.name l); *)
   glob_boolean := TS.add !glob_boolean l
+;; *)
+
+type temp_type =
+  | Bool
+  | Int
+(* | Pointer [@deriving equal] *)
+
+let equal_temp_typ a b =
+  match a, b with
+  | Bool, Bool -> true
+  | Int, Int -> true
+  (* | Pointer, Pointer -> true *)
+  | _ -> false
 ;;
 
+let temps_type_ref : temp_type TT.t ref = ref (TT.create ())
+let get_temps_tbl () = !temps_type_ref
+let todo_ref : TS.t ref = ref TS.empty
+let get_todo_set () = !todo_ref
+let set_todo_set s = todo_ref := s
+let add_todo (t : Temp.t) = set_todo_set (TS.add (get_todo_set ()) t)
+let is_empty_todo () = TS.is_empty !todo_ref
+let remove_todo (t : Temp.t) = set_todo_set (TS.remove (get_todo_set ()) t)
+
+let reset_temp () =
+  todo_ref := TS.empty;
+  temps_type_ref := TT.create ()
+;;
+
+let print_off = true
+
+let print_todo_set () =
+  let s = get_todo_set () in
+  let r =
+    sprintf "{%s}" (String.concat ~sep:", " (List.map (TS.to_list s) ~f:Temp.name))
+  in
+  if print_off then () else prerr_endline r
+;;
+
+let format_typ = function
+  | Bool -> "B"
+  | Int -> "I"
+;;
+
+(* | Pointer -> "L" *)
+
+let print_types () =
+  let tbl = get_temps_tbl () in
+  let kv = TT.to_alist tbl in
+  let r =
+    sprintf
+      "[%s]"
+      (String.concat
+         ~sep:", "
+         (List.map kv ~f:(fun (t, typ) -> sprintf "%s:%s" (Temp.name t) (format_typ typ))))
+  in
+  if print_off then () else prerr_endline r
+;;
+
+let set_type (t : Temp.t) typ =
+  let tbl = get_temps_tbl () in
+  remove_todo t;
+  match TT.find tbl t with
+  | None -> TT.add_exn tbl ~key:t ~data:typ
+  | Some old ->
+    if equal_temp_typ typ old then () else failwith ("not equal type for" ^ Temp.name t)
+;;
+
+let get_type (t : Temp.t) =
+  let tbl = get_temps_tbl () in
+  TT.find tbl t
+;;
+
+let format_get_size_temp t =
+  match get_type t with
+  | Some Bool -> "i1"
+  | Some Int -> "i32"
+  | None -> "failed to get type of " ^ Temp.name t
+;;
+
+let format_get_size_op_exn o =
+  match o with
+  | AS.Temp t ->
+    (match get_type t with
+    | Some Bool -> "i1"
+    | Some Int -> "i32"
+    | None -> "failed to get type of " ^ Temp.name t)
+  | _ -> "format_get_size_op_exn got no temp " ^ AS.format_operand o
+;;
+
+let set_type_if_temp (typ : temp_type) (o : AS.operand) =
+  match o with
+  | Temp t -> set_type t typ
+  | _ -> ()
+;;
+
+let not_zero_one n =
+  if Int64.equal n Int64.one then false else not (Int64.equal n Int64.zero)
+;;
+
+(* 
 let is_bool t =
   let v = Option.is_some (TS.find ~f:(Temp.equal t) !glob_boolean) in
   (* let () = prerr_endline (sprintf "%s is %b" (Temp.name t) v) in *)
   v
-;;
+;; *)
 
 let glob_goodblock_set = ref LS.empty
 let add_to_goodblock l = glob_goodblock_set := LS.add !glob_goodblock_set l
 let is_goodblock l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_goodblock_set)
-let rem_name = "____JAVAWAY_rem"
-let div_name = "____JAVAWAY_div"
-let shl_name = "____JAVAWAY_shl"
-let shr_name = "____JAVAWAY_shr"
+
+let get_efkt_name = function
+  | AS.Div -> "____JAVAWAY_div"
+  | AS.Mod -> "____JAVAWAY_rem"
+  | AS.ShiftL -> "____JAVAWAY_shl"
+  | AS.ShiftR -> "____JAVAWAY_shr"
+;;
 
 type program = SSA.program
 
@@ -66,10 +169,17 @@ let format_set_typ = function
   | AS.Setle -> "sle"
 ;;
 
+let format_get_cmp_size (size, lhs, rhs) =
+  match lhs, rhs with
+  | AS.Temp _, _ -> format_get_size_op_exn lhs
+  | _, AS.Temp _ -> format_get_size_op_exn rhs
+  | _, _ -> format_size size
+;;
+
 let format_label (l : Label.t) = "%L" ^ Int.to_string (Label.number l)
 let format_label_raw (l : Label.t) = "L" ^ Int.to_string (Label.number l)
 
-let is_bool_cmp (dest, lhs, rhs) =
+(* let is_bool_cmp (dest, lhs, rhs) =
   (* sprintf
     "called is_bool_cmp with (%s, %s, %s)"
     (format_operand dest)
@@ -85,15 +195,16 @@ let is_bool_cmp (dest, lhs, rhs) =
   | AS.Temp l, AS.Temp r ->
     let res_or = is_bool l || is_bool r in
     let res_and = is_bool l && is_bool r in
-    if not (Bool.( = ) res_or res_and)
-    then prerr_endline "two sides in a bool are different, be careful :)";
+    if not (Bool.( = ) res_or res_and) then add_to_boolean r;
+    add_to_boolean l;
+    prerr_endline "two sides in a bool are different, be careful :)";
     res_or
   | AS.Temp l, _ -> is_bool l
   | _, AS.Temp r -> is_bool r
   | _, _ -> false
-;;
+;; *)
 
-let is_bool_binop (dest, lhs, rhs) =
+(* let is_bool_binop (dest, lhs, rhs) =
   (* sprintf
     "called is_bool_binop with (%s, %s, %s)"
     (format_operand dest)
@@ -121,7 +232,7 @@ let is_bool_binop (dest, lhs, rhs) =
     | true, AS.Temp d -> add_to_boolean d
     | _, _ -> failwith "is_bool_res dest is not temp");
     res)
-;;
+;; *)
 
 let format_instr' : AS.instr -> string = function
   | PureBinop ({ op = AS.BitAnd | AS.BitOr | AS.BitXor; _ } as binop) ->
@@ -129,9 +240,7 @@ let format_instr' : AS.instr -> string = function
       "%s = %s %s %s, %s"
       (format_operand binop.dest)
       (format_pure_operation binop.op)
-      (if is_bool_binop (binop.dest, binop.lhs, binop.rhs)
-      then "i1"
-      else format_size binop.size)
+      (format_get_size_op_exn binop.dest)
       (format_operand binop.lhs)
       (format_operand binop.rhs)
   | PureBinop binop ->
@@ -142,39 +251,18 @@ let format_instr' : AS.instr -> string = function
       (format_size binop.size)
       (format_operand binop.lhs)
       (format_operand binop.rhs)
-  | EfktBinop { op = AS.Mod; dest; lhs; rhs } ->
+  | EfktBinop { op; dest; lhs; rhs } ->
     sprintf
       "%s = call i32 @%s(i32 %s, i32 %s)"
       (format_operand dest)
-      rem_name
+      (get_efkt_name op)
       (format_operand lhs)
       (format_operand rhs)
-  | EfktBinop { op = AS.Div; dest; lhs; rhs } ->
-    sprintf
-      "%s = call i32 @%s(i32 %s, i32 %s)"
-      (format_operand dest)
-      div_name
-      (format_operand lhs)
-      (format_operand rhs)
-  | EfktBinop { op = AS.ShiftL; dest; lhs; rhs } ->
-    sprintf
-      "%s = call i32 @%s(i32 %s, i32 %s)"
-      (format_operand dest)
-      shl_name
-      (format_operand lhs)
-      (format_operand rhs)
-  | EfktBinop { op = AS.ShiftR; dest; lhs; rhs } ->
-    sprintf
-      "%s = call i32 @%s(i32 %s, i32 %s)"
-      (format_operand dest)
-      shr_name
-      (format_operand lhs)
-      (format_operand rhs)
-  | Unop { dest = AS.Temp t as dest; src; _ } ->
+  | Unop { dest = AS.Temp _ as dest; src; _ } ->
     sprintf
       "%s = xor %s %s, -1"
       (format_operand dest)
-      (if is_bool t then "i1" else format_size AS.S)
+      (format_get_size_op_exn dest)
       (format_operand src)
   | Unop _ -> failwith "got unop with dest != temp"
   | Mov { dest = AS.Reg _ as dest; src; size } ->
@@ -233,20 +321,13 @@ let format_instr' : AS.instr -> string = function
       scale
       offset
   | LLVM_Jmp l -> sprintf "br label %s" (format_label l)
-  | LLVM_Cmp { dest; lhs; rhs; typ; size } ->
-    sprintf
-      "%s = icmp %s %s %s, %s"
-      (format_operand dest)
-      (format_set_typ typ)
-      (if is_bool_cmp (dest, lhs, rhs) then "i1" else format_size size)
-      (format_operand lhs)
-      (format_operand rhs)
+  | LLVM_Cmp { dest; lhs; rhs; typ; size } (*next line*)
   | LLVM_Set { dest; lhs; rhs; typ; size } ->
     sprintf
       "%s = icmp %s %s %s, %s"
       (format_operand dest)
       (format_set_typ typ)
-      (if is_bool_cmp (dest, lhs, rhs) then "i1" else format_size size)
+      (format_get_cmp_size (size, lhs, rhs))
       (format_operand lhs)
       (format_operand rhs)
   | LLVM_IF { cond; tl; fl } ->
@@ -286,20 +367,13 @@ let format_bt (l : Label.bt) =
 ;;
 
 let pp_phi ({ self; alt_selves } : SSA.phi) : string =
-  let is_bool_phi =
-    List.exists alt_selves ~f:(fun inp ->
-        match inp with
-        | _, AS.Temp t -> is_bool t
-        | _ -> false)
-  in
-  if is_bool_phi then add_to_boolean self;
   (* TODO *)
-  let phi_size = "i32" in
+  let phi_size = format_get_size_temp self in
   sprintf
     "\t%s = phi %s %s"
     (* "\t%s = phi (phi_size) %s" *)
     (Temp.name self)
-    (if is_bool_phi then "i1" else phi_size)
+    phi_size
     (List.filter_map alt_selves ~f:(fun (l, op) ->
          if not (is_goodblock l)
          then None
@@ -394,35 +468,112 @@ let format_ret_size (ret_size : AS.size option) =
   Option.value_map ret_size ~default:"void" ~f:format_size
 ;;
 
-let preprocess_blocks_instrs (code : SSA.instr SSA.IH.t) (block_info : SSA.block list)
-    : unit
-  =
-  (* iterate over all instructions *)
-  List.iter block_info ~f:(fun { lines; _ } ->
-      List.iter lines ~f:(fun l ->
-          let instr = SSA.IH.find_exn code l in
-          match instr with
-          | Nop -> ()
-          | Phi { self; alt_selves; _ } ->
-            let is_bool_phi =
-              List.exists alt_selves ~f:(fun inp ->
-                  match inp with
-                  | _, AS.Temp t -> is_bool t
-                  | _ -> false)
-            in
-            if is_bool_phi then add_to_boolean self
-          | ASInstr (LLVM_Cmp { dest = AS.Temp t; _ }) -> add_to_boolean t
-          | ASInstr (LLVM_Set { dest = AS.Temp t; _ }) -> add_to_boolean t
-          | ASInstr (PureBinop { dest = AS.Temp t as dest; lhs; rhs; _ }) ->
-            let b = is_bool_binop (dest, lhs, rhs) in
-            if b then add_to_boolean t
-          | ASInstr (Unop { dest = AS.Temp t as dest; src; _ }) ->
-            let b = is_bool_binop (dest, src, src) in
-            if b then add_to_boolean t
-          | _ -> ()))
+let process_dest_lhs_rhs (dest : AS.operand option) (lhs : AS.operand) (rhs : AS.operand) =
+  let dest_typ_opt =
+    match lhs, rhs with
+    | AS.Reg _, _ -> None
+    | _, AS.Reg _ -> None
+    | AS.Temp l, AS.Temp r ->
+      (match get_type l, get_type r with
+      | None, None -> None
+      | Some x, None ->
+        set_type r x;
+        Some x
+      | None, Some x ->
+        set_type l x;
+        Some x
+      | Some y, Some x ->
+        if equal_temp_typ x y |> not
+        then failwith "process_dest_lhs_rhs diff types"
+        else Some x)
+    | AS.Temp l, AS.Imm n | AS.Imm n, AS.Temp l ->
+      if not_zero_one n then set_type l Int;
+      Some Int
+    | AS.Imm a, AS.Imm b -> if not_zero_one a || not_zero_one b then Some Int else None
+  in
+  match dest, dest_typ_opt with
+  | None, _ -> ()
+  | _, None -> ()
+  | Some (AS.Temp d), Some t -> set_type d t
+  | _ ->
+    failwith
+      (sprintf
+         "process_dest_lhs_rhs got strange dest: %s"
+         (Option.value ~default:"None" (Option.map dest ~f:AS.format_operand)))
 ;;
 
-let preprocess_blocks (blocks : SSA.block list) : unit =
+let add_to_todo l =
+  let l =
+    List.filter_map l ~f:(fun o ->
+        match o with
+        | AS.Temp t -> Some t
+        | _ -> None)
+  in
+  List.iter l ~f:(fun t ->
+      match get_type t with
+      | None -> add_todo t
+      | Some _ -> ())
+;;
+
+let if_any_typ (o : AS.operand) =
+  match o with
+  | AS.Temp t -> get_type t
+  | AS.Reg _ -> None
+  | AS.Imm n -> if not_zero_one n then Some Int else None
+;;
+
+let preprocess_phi (s : SSA.instr) =
+  match s with
+  | Phi { self; alt_selves } ->
+    let useful_parents =
+      List.filter_map alt_selves ~f:(fun (p, o) ->
+          if is_goodblock p then Some o else None)
+    in
+    let typ_opt = List.find_map useful_parents ~f:if_any_typ in
+    (match typ_opt with
+    | None -> add_to_todo (AS.Temp self :: useful_parents)
+    | Some t ->
+      set_type self t;
+      List.iter ~f:(set_type_if_temp t) useful_parents);
+    ()
+  | _ -> failwith "preprocess_phi got no phi"
+;;
+
+let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : unit =
+  List.iter block.lines ~f:(fun l ->
+      let instr = SSA.IH.find_exn code l in
+      match instr with
+      | Nop -> ()
+      | Phi _ -> preprocess_phi instr
+      | ASInstr (LLVM_Cmp { dest = AS.Temp t; lhs; rhs; _ })
+      | ASInstr (LLVM_Set { dest = AS.Temp t; lhs; rhs; _ }) ->
+        add_to_todo [ lhs; rhs ];
+        set_type t Bool;
+        process_dest_lhs_rhs None lhs rhs
+      | ASInstr (PureBinop { op = BitAnd | BitOr | Add | Sub | Mul; dest; lhs; rhs; _ })
+        ->
+        set_type_if_temp Int lhs;
+        set_type_if_temp Int rhs;
+        set_type_if_temp Int dest
+      | ASInstr (PureBinop { dest = AS.Temp _ as dest; lhs; rhs; _ }) ->
+        add_to_todo [ dest; lhs; rhs ];
+        process_dest_lhs_rhs (Some dest) lhs rhs
+      | ASInstr (Unop { dest = AS.Temp _ as dest; src; _ }) ->
+        add_to_todo [ src; dest ];
+        process_dest_lhs_rhs (Some dest) src src
+      | ASInstr (EfktBinop { dest; lhs; rhs; _ }) ->
+        set_type_if_temp Int lhs;
+        set_type_if_temp Int rhs;
+        set_type_if_temp Int dest
+      | _ -> ());
+  if print_off
+  then ()
+  else prerr_endline (sprintf "done with block %s" (Label.format_bt block.label));
+  print_todo_set ();
+  print_types ()
+;;
+
+let preprocess_blocks (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) : unit =
   let child_labels = function
     | AS.JRet -> []
     | AS.JCon { jt; jf } -> [ Label.BlockLbl jt; Label.BlockLbl jf ]
@@ -431,13 +582,34 @@ let preprocess_blocks (blocks : SSA.block list) : unit =
   let root = List.nth_exn blocks 0 in
   let block_map = LM.of_alist_exn (List.map blocks ~f:(fun b -> b.label, b)) in
   let rec dfs block_map (lbl : Label.bt) =
-    prerr_endline ("doing label: " ^ Label.format_bt lbl);
     if not (is_goodblock lbl)
     then (
       add_to_goodblock lbl;
       let b : SSA.block = LM.find_exn block_map lbl in
-      let children = child_labels b.jump in
-      List.iter ~f:(dfs block_map) children)
+      preprocess_block_instrs code b;
+      List.iter ~f:(dfs block_map) (child_labels b.jump))
+  in
+  dfs block_map root.label
+;;
+
+let preprocess_blocks_again (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) : unit =
+  let child_labels = function
+    | AS.JRet -> []
+    | AS.JCon { jt; jf } -> [ Label.BlockLbl jt; Label.BlockLbl jf ]
+    | AS.JUncon l -> [ Label.BlockLbl l ]
+  in
+  let root = List.nth_exn blocks 0 in
+  let block_map = LM.of_alist_exn (List.map blocks ~f:(fun b -> b.label, b)) in
+  let local_visited_set = ref LS.empty in
+  let add_to_visited l = local_visited_set := LS.add !local_visited_set l in
+  let is_visited l = Option.is_some (LS.find ~f:(Label.equal_bt l) !local_visited_set) in
+  let rec dfs block_map (lbl : Label.bt) =
+    if (not (is_visited lbl)) && not (is_empty_todo ())
+    then (
+      add_to_visited lbl;
+      let b : SSA.block = LM.find_exn block_map lbl in
+      preprocess_block_instrs code b;
+      List.iter ~f:(dfs block_map) (child_labels b.jump))
   in
   dfs block_map root.label
 ;;
@@ -446,26 +618,30 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
     : string
   =
   (* glob_rm_block_set := LS.empty; *)
-  glob_boolean := TS.empty;
-  preprocess_blocks block_info;
-  preprocess_blocks_instrs code block_info;
+  (* glob_boolean := TS.empty; *)
+  preprocess_blocks code block_info;
+  preprocess_blocks_again code block_info;
   prerr_endline "preprocess done -----------------------------------------------";
   let drop_before, args = get_args fspace in
-  sprintf
-    "; Function Attrs: norecurse nounwind readnone\n\
-     define dso_local %s @%s(%s) #0 {\n\
-     %s\n\
-     }\n"
-    (format_ret_size ret_size)
-    (Symbol.name fname)
-    (pp_args args)
-    (match block_info with
-    | first_block :: rest ->
-      format_entry_lbl fname
-      :: pp_block ~drop_before ~cfg_pred first_block code
-      :: List.map rest ~f:(fun b -> pp_block ~cfg_pred b code)
-      |> String.concat ~sep:"\n"
-    | _ -> failwith "fspace can not be empty")
+  let res =
+    sprintf
+      "; Function Attrs: norecurse nounwind readnone\n\
+       define dso_local %s @%s(%s) #0 {\n\
+       %s\n\
+       }\n"
+      (format_ret_size ret_size)
+      (Symbol.name fname)
+      (pp_args args)
+      (match block_info with
+      | first_block :: rest ->
+        format_entry_lbl fname
+        :: pp_block ~drop_before ~cfg_pred first_block code
+        :: List.map rest ~f:(fun b -> pp_block ~cfg_pred b code)
+        |> String.concat ~sep:"\n"
+      | _ -> failwith "fspace can not be empty")
+  in
+  reset_temp ();
+  res
 ;;
 
 let format_program (prog : program) : string =
@@ -475,7 +651,7 @@ let format_program (prog : program) : string =
 
 let format_mod () =
   "\n; Safe division function\ndefine i32 @"
-  ^ rem_name
+  ^ get_efkt_name AS.Mod
   ^ "(i32 %a, i32 %b) {\n\
      entry:\n\
     \  ; Check if b is 0\n\
@@ -499,7 +675,7 @@ let format_mod () =
 
 let format_div () =
   "\n; Safe division function\ndefine i32 @"
-  ^ div_name
+  ^ get_efkt_name AS.Div
   ^ "(i32 %a, i32 %b) {\n\
      entry:\n\
     \  ; Check if b is 0\n\
@@ -523,7 +699,7 @@ let format_div () =
 
 let format_shl () =
   "define i32 @"
-  ^ shl_name
+  ^ get_efkt_name AS.ShiftL
   ^ "(i32 %value, i32 %shift_amount) {\n\
     \  %is_negative = icmp slt i32 %shift_amount, 0\n\
     \  %is_large = icmp ugt i32 %shift_amount, 31\n\
@@ -541,7 +717,7 @@ let format_shl () =
 
 let format_shr () =
   "define i32 @"
-  ^ shr_name
+  ^ get_efkt_name AS.ShiftR
   ^ "(i32 %value, i32 %shift_amount) {\n\
     \  %is_negative = icmp slt i32 %shift_amount, 0\n\
     \  %is_large = icmp ugt i32 %shift_amount, 31\n\
