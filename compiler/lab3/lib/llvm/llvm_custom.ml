@@ -150,12 +150,6 @@ let get_op_type o =
   | None -> "i32"
 ;;
 
-let pp_size_withop (op, size) =
-  match pp_get_size_op_opt op, size with
-  | Some x, _ -> x
-  | _, AS.L -> "i32*"
-  | _, AS.S -> "i32"
-;;
 
 let debug_pp_ret = function
   | None -> "void"
@@ -206,6 +200,23 @@ let pp_pure_operation = function
 let pp_size = function
   | AS.L -> "i32*"
   | AS.S -> "i32"
+;;
+
+let fun_ret_size_ref : AS.size option ST.t ref = ref (ST.create ())
+
+let get_size_str_opt_fun (s : string) =
+  let size_opt_opt = ST.find !fun_ret_size_ref s in
+  match size_opt_opt with
+  | None -> None
+  | Some None -> Some "void"
+  | Some (Some x) -> Some (pp_size x)
+;;
+
+let add_fun_ret (s : Symbol.t) r =
+  let (_ : [ `Duplicate | `Ok ]) =
+    ST.add ~key:(Symbol.name s) ~data:r !fun_ret_size_ref
+  in
+  ()
 ;;
 
 let pp_set_typ = function
@@ -368,15 +379,14 @@ and pp_instr' : AS.instr -> string = function
       (pp_operand dest)
       (pp_size sz)
       (Symbol.name fname)
-      (List.map args ~f:(fun (op, s) ->
-           sprintf "%s %s" (pp_size_withop (op, s)) (pp_operand op))
+      (List.map args ~f:(fun (op, s) -> sprintf "%s %s" (pp_size s) (pp_operand op))
       |> String.concat ~sep:", ")
   | LLVM_Call { dest = None; args; fname } ->
     sprintf
-      "call void @%s(%s)"
+      "call %s @%s(%s)"
+      (Option.value (get_size_str_opt_fun (Symbol.name fname)) ~default:"void")
       (Symbol.name fname)
-      (List.map args ~f:(fun (op, s) ->
-           sprintf "%s %s" (pp_size_withop (op, s)) (pp_operand op))
+      (List.map args ~f:(fun (op, s) -> sprintf "%s %s" (pp_size s) (pp_operand op))
       |> String.concat ~sep:", ")
 ;;
 
@@ -524,12 +534,13 @@ let preprocess_call instr =
   | AS.LLVM_Call c ->
     let name = Symbol.name c.fname in
     let args = List.map ~f:(fun (o, _) -> o) c.args in
-    let ret_opt =
+    let ret_opt, sz =
       match c.dest with
-      | None -> None
-      | Some (op, _) -> Some op
+      | None -> None, None
+      | Some (op, sz) -> Some op, Some sz
     in
-    add_fun (name, args, ret_opt)
+    add_fun (name, args, ret_opt);
+    add_fun_ret c.fname sz
   | _ -> failwith ("preprocess_call is got " ^ AS.format_instr instr)
 ;;
 
@@ -623,6 +634,7 @@ let preprocess_blocks_phi (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) 
 let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SSA.fspace)
     : string
   =
+  add_fun_ret fname ret_size;
   preprocess_blocks code block_info;
   (* preprocess_blocks code block_info; *)
   List.iter
