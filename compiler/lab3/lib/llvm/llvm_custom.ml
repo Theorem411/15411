@@ -9,7 +9,7 @@ module TT = Hashtbl.Make (Temp)
 module ST = Hashtbl.Make (String)
 module HeaderAst = Ast
 
-let print_off = false
+let print_off = true
 
 type temp_type =
   | Bool
@@ -30,7 +30,11 @@ let set_cur_fun s = cur_fun_ref := s
 let defined_tbl : AS.operand option list ST.t ref = ref (ST.create ())
 
 let add_ret_defined (fname : string) (r : AS.operand option) =
-  prerr_endline ("added " ^ fname);
+  prerr_endline
+    ("added "
+    ^ fname
+    ^ "with "
+    ^ Option.value ~default:"VOID" (Option.map ~f:AS.format_operand r));
   ST.add_multi !defined_tbl ~key:fname ~data:r
 ;;
 
@@ -63,10 +67,10 @@ let add_fun f =
   add_fun new_f
 ;; *)
 
-let reset_temp () =
+(* let reset_temp () =
   todo_ref := TS.empty;
   temps_type_ref := TT.create ()
-;;
+;; *)
 
 let print_todo_set () =
   let s = get_todo_set () in
@@ -141,6 +145,13 @@ let not_zero_one n =
   if Int64.equal n Int64.one then false else not (Int64.equal n Int64.zero)
 ;;
 
+let if_any_typ (o : AS.operand) =
+  match o with
+  | AS.Temp t -> get_type t
+  | AS.Reg _ -> None
+  | AS.Imm n -> if not_zero_one n then Some Int else None
+;;
+
 let pp_get_size_op_opt o =
   match o with
   | AS.Temp t ->
@@ -150,6 +161,28 @@ let pp_get_size_op_opt o =
     | None -> None)
   | AS.Imm n -> if not_zero_one n then Some "i32" else None
   | _ -> None
+;;
+
+let if_any_ret_type (fname : string) =
+  let ret_list = ST.find_multi !defined_tbl fname in
+  let res =
+    if List.length ret_list = 0
+       (* then failwith "fname has empty ret values, very strange" *)
+    then None
+    else (
+      let res =
+        match List.nth_exn ret_list 0 with
+        | None -> None
+        | Some op -> if_any_typ op
+      in
+      res)
+  in
+  prerr_endline
+    ("reading "
+    ^ fname
+    ^ " and got "
+    ^ Option.value (Option.map ~f:pp_typ res) ~default:"NONE");
+  res
 ;;
 
 let get_function_ret_size ((fname, size_opt) : string * AS.size option) =
@@ -561,13 +594,6 @@ let add_to_todo l =
       | Some _ -> ())
 ;;
 
-let if_any_typ (o : AS.operand) =
-  match o with
-  | AS.Temp t -> get_type t
-  | AS.Reg _ -> None
-  | AS.Imm n -> if not_zero_one n then Some Int else None
-;;
-
 let preprocess_phi (s : SSA.instr) =
   match s with
   | Phi { self; alt_selves } ->
@@ -594,10 +620,20 @@ let preprocess_call instr =
     let ret_opt =
       match c.dest with
       | None -> None
-      | Some (op, _) -> Some op
+      | Some (op, _) ->
+        (match if_any_ret_type name with
+        | Some typ -> set_type_if_temp typ op
+        | _ -> ());
+        Some op
     in
     add_fun (name, args, ret_opt);
-    add_to_todo args
+    add_to_todo args;
+    (match c.dest with
+    | None -> ()
+    | Some (op, _) ->
+      (match if_any_ret_type name with
+      | Some typ -> set_type_if_temp typ op
+      | _ -> ()))
   | _ -> failwith ("preprocess_call is got " ^ AS.format_instr instr)
 ;;
 
@@ -719,6 +755,7 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
   (* add_fun (Symbol.name fname, (List.map args ~f:(fun (t, _) -> AS.Temp t)), None); *)
   set_cur_fun (Symbol.name fname);
   preprocess_blocks code block_info;
+  (* preprocess_blocks code block_info; *)
   List.iter
     ~f:(fun i ->
       if not print_off then prerr_endline (sprintf "%d's loop" i);
@@ -742,7 +779,7 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
         |> String.concat ~sep:"\n"
       | _ -> failwith "fspace can not be empty")
   in
-  reset_temp ();
+  (* reset_temp (); *)
   res
 ;;
 
