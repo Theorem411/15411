@@ -150,7 +150,6 @@ let get_op_type o =
   | None -> "i32"
 ;;
 
-
 let debug_pp_ret = function
   | None -> "void"
   | Some op -> get_op_type op
@@ -213,10 +212,17 @@ let get_size_str_opt_fun (s : string) =
 ;;
 
 let add_fun_ret (s : Symbol.t) r =
-  let (_ : [ `Duplicate | `Ok ]) =
-    ST.add ~key:(Symbol.name s) ~data:r !fun_ret_size_ref
-  in
-  ()
+  prerr_endline
+    ("adding "
+    ^ Symbol.name s
+    ^ ":"
+    ^ (Option.map r ~f:pp_size |> Option.value ~default:"None"));
+  let name = Symbol.name s in
+  match r, ST.find !fun_ret_size_ref name with
+  | _, None -> ST.add_exn ~key:name ~data:r !fun_ret_size_ref
+  | Some sz, Some None -> ST.update !fun_ret_size_ref name ~f:(fun _ -> Some sz)
+  | None, Some None -> ()
+  | _ -> ()
 ;;
 
 let pp_set_typ = function
@@ -634,14 +640,6 @@ let preprocess_blocks_phi (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) 
 let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SSA.fspace)
     : string
   =
-  add_fun_ret fname ret_size;
-  preprocess_blocks code block_info;
-  (* preprocess_blocks code block_info; *)
-  List.iter
-    ~f:(fun i ->
-      if not print_off then prerr_endline (sprintf "%d's loop" i);
-      preprocess_blocks_phi code block_info)
-    [];
   let drop_before, args = get_args fspace in
   let res =
     sprintf
@@ -683,7 +681,18 @@ let pp_declare () =
   r
 ;;
 
+let preprocess_prog ({ block_info; fname; ret_size; code; _ } : SSA.fspace) =
+  add_fun_ret fname ret_size;
+  preprocess_blocks code block_info;
+  List.iter
+    ~f:(fun i ->
+      if not print_off then prerr_endline (sprintf "%d's loop" i);
+      preprocess_blocks_phi code block_info)
+    []
+;;
+
 let pp_program (prog : program) : string =
+  List.iter prog ~f:preprocess_prog;
   let prog_string = pp_program_helper prog in
   (* remove fun from the list of the functions that have to be declared, as this is a defintion *)
   List.iter prog ~f:(fun { fname; _ } -> remove_fun (Symbol.name fname));
