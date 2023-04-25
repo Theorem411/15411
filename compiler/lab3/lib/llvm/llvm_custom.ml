@@ -285,7 +285,7 @@ and pp_instr' : AS.instr -> string = function
       (pp_operand lhs)
       (pp_operand rhs)
   | Unop { dest = AS.Temp _ as dest; src; _ } ->
-    sprintf "%s = xor int32 %s, -1" (pp_operand dest) (pp_operand src)
+    sprintf "%s = xor i32 %s, -1" (pp_operand dest) (pp_operand src)
   | Unop _ -> failwith "got unop with dest != temp"
   | Mov { dest = AS.Reg _ as dest; src; size } ->
     sprintf "; %s <-%s- %s" (pp_operand dest) (pp_size size) (pp_operand src)
