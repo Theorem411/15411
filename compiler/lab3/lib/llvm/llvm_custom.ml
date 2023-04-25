@@ -10,6 +10,7 @@ module ST = Hashtbl.Make (String)
 module HeaderAst = Ast
 
 let print_off = true
+let preproc_instr_off = true
 
 type temp_type =
   | Bool
@@ -22,20 +23,6 @@ let equal_temp_typ a b =
   | Int, Int -> true
   (* | Pointer, Pointer -> true *)
   | _ -> false
-;;
-
-let cur_fun_ref = ref ""
-let get_cur_fun () = !cur_fun_ref
-let set_cur_fun s = cur_fun_ref := s
-let defined_tbl : AS.operand option list ST.t ref = ref (ST.create ())
-
-let add_ret_defined (fname : string) (r : AS.operand option) =
-  prerr_endline
-    ("added "
-    ^ fname
-    ^ "with "
-    ^ Option.value ~default:"VOID" (Option.map ~f:AS.format_operand r));
-  ST.add_multi !defined_tbl ~key:fname ~data:r
 ;;
 
 let temps_type_ref : temp_type TT.t ref = ref (TT.create ())
@@ -116,10 +103,10 @@ let get_type (t : Temp.t) =
 
 let pp_get_size_temp t =
   match get_type t with
-  | Some Bool -> "i1"
+  | Some Bool -> "i32"
   | Some Int -> "i32"
   | None ->
-    prerr_endline ("failed to get type of " ^ Temp.name t);
+    if not print_off then prerr_endline (Temp.name t ^ " defaulted to i32");
     "i32"
 ;;
 
@@ -127,12 +114,6 @@ let str_to_typ = function
   | "i1" -> Bool
   | "i32" -> Int
   | s -> failwith ("str_to_typ got " ^ s)
-;;
-
-let pp_get_size_op_exn o =
-  match o with
-  | AS.Temp t -> pp_get_size_temp t
-  | _ -> "pp_get_size_op_exn got no temp " ^ AS.format_operand o
 ;;
 
 let set_type_if_temp (typ : temp_type) (o : AS.operand) =
@@ -156,62 +137,11 @@ let pp_get_size_op_opt o =
   match o with
   | AS.Temp t ->
     (match get_type t with
-    | Some Bool -> Some "i1"
+    | Some Bool -> Some "i32"
     | Some Int -> Some "i32"
     | None -> None)
   | AS.Imm n -> if not_zero_one n then Some "i32" else None
   | _ -> None
-;;
-
-let if_any_ret_type (fname : string) =
-  let ret_list = ST.find_multi !defined_tbl fname in
-  let res =
-    if List.length ret_list = 0
-       (* then failwith "fname has empty ret values, very strange" *)
-    then None
-    else (
-      let res =
-        match List.nth_exn ret_list 0 with
-        | None -> None
-        | Some op -> if_any_typ op
-      in
-      res)
-  in
-  prerr_endline
-    ("reading "
-    ^ fname
-    ^ " and got "
-    ^ Option.value (Option.map ~f:pp_typ res) ~default:"NONE");
-  res
-;;
-
-let get_function_ret_size ((fname, size_opt) : string * AS.size option) =
-  prerr_endline ("reading " ^ fname);
-  let ret_list = ST.find_multi !defined_tbl fname in
-  let res =
-    if List.length ret_list = 0
-       (* then failwith "fname has empty ret values, very strange" *)
-    then None
-    else
-      Some
-        (let res =
-           match List.nth_exn ret_list 0 with
-           | None -> "void"
-           (* return entry exists *)
-           | Some op ->
-             (match pp_get_size_op_opt op with
-             | None -> "i32"
-             | Some typ -> typ)
-         in
-         res)
-  in
-  match res with
-  | Some x -> x
-  | None ->
-    (match size_opt with
-    | None -> "void"
-    | Some AS.L -> "i32*"
-    | Some AS.S -> "i32")
 ;;
 
 let get_op_type o =
@@ -263,43 +193,6 @@ let print_fun_list_debug () =
   if print_off then () else prerr_endline ("[" ^ r ^ "]")
 ;;
 
-let process_dest_lhs_rhs (dest : AS.operand option) (lhs : AS.operand) (rhs : AS.operand) =
-  let dest_typ_opt =
-    match lhs, rhs with
-    | AS.Reg _, _ -> None
-    | _, AS.Reg _ -> None
-    | AS.Temp l, AS.Temp r ->
-      (match get_type l, get_type r with
-      | None, None -> None
-      | Some x, None ->
-        set_type r x;
-        Some x
-      | None, Some x ->
-        set_type l x;
-        Some x
-      | Some y, Some x ->
-        if equal_temp_typ x y |> not
-        then failwith "process_dest_lhs_rhs diff types"
-        else Some x)
-    | AS.Temp l, AS.Imm n | AS.Imm n, AS.Temp l ->
-      if not_zero_one n
-      then (
-        set_type l Int;
-        Some Int)
-      else get_type l
-    | AS.Imm a, AS.Imm b -> if not_zero_one a || not_zero_one b then Some Int else None
-  in
-  match dest, dest_typ_opt with
-  | None, _ -> ()
-  | _, None -> ()
-  | Some (AS.Temp d), Some t -> set_type d t
-  | _ ->
-    failwith
-      (sprintf
-         "process_dest_lhs_rhs got strange dest: %s"
-         (Option.value ~default:"None" (Option.map dest ~f:AS.format_operand)))
-;;
-
 let glob_goodblock_set = ref LS.empty
 let add_to_goodblock l = glob_goodblock_set := LS.add !glob_goodblock_set l
 let is_goodblock l = Option.is_some (LS.find ~f:(Label.equal_bt l) !glob_goodblock_set)
@@ -338,12 +231,12 @@ let pp_set_typ = function
   | AS.Setle -> "sle"
 ;;
 
-let pp_get_cmp_size (size, lhs, rhs) =
+(* let pp_get_cmp_size (size, lhs, rhs) =
   match lhs, rhs with
   | AS.Temp _, _ -> pp_get_size_op_exn lhs
   | _, AS.Temp _ -> pp_get_size_op_exn rhs
   | _, _ -> pp_size size
-;;
+;; *)
 
 let pp_label (l : Label.t) = "%L" ^ Int.to_string (Label.number l)
 let pp_label_raw (l : Label.t) = "L" ^ Int.to_string (Label.number l)
@@ -355,14 +248,39 @@ and pp_bt (l : Label.bt) =
   | FunName _ -> "%entry"
   | BlockLbl l -> pp_label l
 
+and pp_xor = function
+  | AS.PureBinop ({ op = AS.BitXor; size; rhs = AS.Imm n; _ } as binop) ->
+    if Int64.equal Int64.one n
+    then
+      sprintf
+        "%s = %s %s %s, %s\n\t%s_i = %s i1 %s_i, %s"
+        (pp_operand binop.dest)
+        (pp_pure_operation binop.op)
+        (pp_size size)
+        (pp_operand binop.lhs)
+        (pp_operand binop.rhs)
+        (pp_operand binop.dest)
+        (pp_pure_operation binop.op)
+        (pp_operand binop.lhs)
+        (pp_operand binop.rhs)
+    else
+      sprintf
+        "%s = %s %s %s, %s"
+        (pp_operand binop.dest)
+        (pp_pure_operation binop.op)
+        (pp_size size)
+        (pp_operand binop.lhs)
+        (pp_operand binop.rhs)
+  | _ -> failwith "pp+xor got not imm xor"
+
 and pp_instr' : AS.instr -> string = function
-  | PureBinop ({ op = AS.BitAnd | AS.BitOr | AS.BitXor; lhs; rhs; dest; _ } as binop) ->
-    process_dest_lhs_rhs (Some dest) lhs rhs;
+  | PureBinop { op = AS.BitXor; rhs = AS.Imm _; _ } as instr -> pp_xor instr
+  | PureBinop ({ op = AS.BitAnd | AS.BitOr | AS.BitXor; size; _ } as binop) ->
     sprintf
       "%s = %s %s %s, %s"
       (pp_operand binop.dest)
       (pp_pure_operation binop.op)
-      (pp_get_size_op_exn binop.dest)
+      (pp_size size)
       (pp_operand binop.lhs)
       (pp_operand binop.rhs)
   | PureBinop binop ->
@@ -381,11 +299,7 @@ and pp_instr' : AS.instr -> string = function
       (pp_operand lhs)
       (pp_operand rhs)
   | Unop { dest = AS.Temp _ as dest; src; _ } ->
-    sprintf
-      "%s = xor %s %s, -1"
-      (pp_operand dest)
-      (pp_get_size_op_exn dest)
-      (pp_operand src)
+    sprintf "%s = xor int32 %s, -1" (pp_operand dest) (pp_operand src)
   | Unop _ -> failwith "got unop with dest != temp"
   | Mov { dest = AS.Reg _ as dest; src; size } ->
     sprintf "; %s <-%s- %s" (pp_operand dest) (pp_size size) (pp_operand src)
@@ -444,22 +358,24 @@ and pp_instr' : AS.instr -> string = function
   | LLVM_Cmp { dest; lhs; rhs; typ; size } (*next line*)
   | LLVM_Set { dest; lhs; rhs; typ; size } ->
     sprintf
-      "%s = icmp %s %s %s, %s"
+      "%s_i = icmp %s %s %s, %s\n\t%s = zext i1 %s_i to %s"
       (pp_operand dest)
       (pp_set_typ typ)
-      (pp_get_cmp_size (size, lhs, rhs))
+      (pp_size size)
       (pp_operand lhs)
       (pp_operand rhs)
+      (pp_operand dest)
+      (pp_operand dest)
+      (pp_size size)
   | LLVM_IF { cond; tl; fl } ->
-    sprintf "br i1 %s, label %s, label %s" (pp_operand cond) (pp_label tl) (pp_label fl)
+    sprintf "br i1 %s_i, label %s, label %s" (pp_operand cond) (pp_label tl) (pp_label fl)
   | LLVM_Ret None -> "ret void"
-  | LLVM_Ret (Some (src, sz)) ->
-    sprintf "ret %s %s" (pp_size_withop (src, sz)) (pp_operand src)
+  | LLVM_Ret (Some (src, sz)) -> sprintf "ret %s %s" (pp_size sz) (pp_operand src)
   | LLVM_Call { dest = Some (dest, sz); args; fname } ->
     sprintf
       "%s = call %s @%s(%s)"
       (pp_operand dest)
-      (pp_size_withop (dest, sz))
+      (pp_size sz)
       (Symbol.name fname)
       (List.map args ~f:(fun (op, s) ->
            sprintf "%s %s" (pp_size_withop (op, s)) (pp_operand op))
@@ -620,65 +536,29 @@ let preprocess_call instr =
     let ret_opt =
       match c.dest with
       | None -> None
-      | Some (op, _) ->
-        (match if_any_ret_type name with
-        | Some typ -> set_type_if_temp typ op
-        | _ -> ());
-        Some op
+      | Some (op, _) -> Some op
     in
-    add_fun (name, args, ret_opt);
-    add_to_todo args;
-    (match c.dest with
-    | None -> ()
-    | Some (op, _) ->
-      (match if_any_ret_type name with
-      | Some typ -> set_type_if_temp typ op
-      | _ -> ()))
+    add_fun (name, args, ret_opt)
   | _ -> failwith ("preprocess_call is got " ^ AS.format_instr instr)
 ;;
 
-let preprocess_ret instr =
-  match instr with
-  | AS.LLVM_Ret None -> add_ret_defined (get_cur_fun ()) None
-  | AS.LLVM_Ret (Some (op, _)) -> add_ret_defined (get_cur_fun ()) (Some op)
-  | _ -> failwith ("preprocess_ret is got " ^ AS.format_instr instr)
-;;
-
 let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : unit =
-  List.iter block.lines ~f:(fun l ->
-      let instr = SSA.IH.find_exn code l in
-      match instr with
-      | Nop -> ()
-      | Phi _ -> preprocess_phi instr
-      | ASInstr (LLVM_Cmp { dest = AS.Temp t; lhs; rhs; _ })
-      | ASInstr (LLVM_Set { dest = AS.Temp t; lhs; rhs; _ }) ->
-        add_to_todo [ lhs; rhs ];
-        set_type t Bool;
-        process_dest_lhs_rhs None lhs rhs
-      | ASInstr (PureBinop { op = BitAnd | BitOr | Add | Sub | Mul; dest; lhs; rhs; _ })
-        ->
-        set_type_if_temp Int lhs;
-        set_type_if_temp Int rhs;
-        set_type_if_temp Int dest
-      | ASInstr (PureBinop { dest = AS.Temp _ as dest; lhs; rhs; _ }) ->
-        add_to_todo [ dest; lhs; rhs ];
-        process_dest_lhs_rhs (Some dest) lhs rhs
-      | ASInstr (Unop { dest = AS.Temp _ as dest; src; _ }) ->
-        add_to_todo [ src; dest ];
-        process_dest_lhs_rhs (Some dest) src src
-      | ASInstr (EfktBinop { dest; lhs; rhs; _ }) ->
-        set_type_if_temp Int lhs;
-        set_type_if_temp Int rhs;
-        set_type_if_temp Int dest
-      | ASInstr (LLVM_Call _ as ins) -> preprocess_call ins
-      | ASInstr (LLVM_Ret _ as ins) -> preprocess_ret ins
-      | _ -> ());
-  if print_off
+  if preproc_instr_off
   then ()
-  else prerr_endline (sprintf "done with block %s" (Label.format_bt block.label));
-  print_todo_set ();
-  print_types ();
-  print_fun_list_debug ()
+  else (
+    List.iter block.lines ~f:(fun l ->
+        let instr = SSA.IH.find_exn code l in
+        match instr with
+        | Nop -> ()
+        | Phi _ -> preprocess_phi instr
+        | ASInstr (LLVM_Call _ as ins) -> preprocess_call ins
+        | _ -> ());
+    if print_off
+    then ()
+    else prerr_endline (sprintf "done with block %s" (Label.format_bt block.label));
+    print_todo_set ();
+    print_types ();
+    print_fun_list_debug ())
 ;;
 
 let preprocess_blocks (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) : unit =
@@ -752,15 +632,13 @@ let preprocess_blocks_phi (code : SSA.instr SSA.IH.t) (blocks : SSA.block list) 
 let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SSA.fspace)
     : string
   =
-  (* add_fun (Symbol.name fname, (List.map args ~f:(fun (t, _) -> AS.Temp t)), None); *)
-  set_cur_fun (Symbol.name fname);
   preprocess_blocks code block_info;
   (* preprocess_blocks code block_info; *)
   List.iter
     ~f:(fun i ->
       if not print_off then prerr_endline (sprintf "%d's loop" i);
       preprocess_blocks_phi code block_info)
-    (List.range 1 10);
+    [];
   let drop_before, args = get_args fspace in
   let res =
     sprintf
@@ -768,7 +646,7 @@ let pp_fspace ({ fname; code; block_info; cfg_pred; ret_size; _ } as fspace : SS
        define dso_local %s @%s(%s) #0 {\n\
        %s\n\
        }\n"
-      (get_function_ret_size (Symbol.name fname, ret_size))
+      (Option.map ~f:pp_size ret_size |> Option.value ~default:"void")
       (Symbol.name fname)
       (pp_args args)
       (match block_info with
