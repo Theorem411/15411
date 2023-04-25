@@ -237,9 +237,14 @@ and pp_bt (l : Label.bt) =
 and pp_xor = function
   | AS.PureBinop ({ op = AS.BitXor; size; rhs = AS.Imm n; _ } as binop) ->
     if Int64.equal Int64.one n
-    then
+    then (
+      let lhs_final =
+        match binop.lhs with
+        | AS.Temp _ -> sprintf "%s_i" (pp_operand binop.lhs)
+        | _ -> pp_operand binop.lhs
+      in
       sprintf
-        "%s = %s %s %s, %s\n\t%s_i = %s i1 %s_i, %s"
+        "%s = %s %s %s, %s\n\t%s_i = %s i1 %s, %s"
         (pp_operand binop.dest)
         (pp_pure_operation binop.op)
         (pp_size size)
@@ -247,8 +252,8 @@ and pp_xor = function
         (pp_operand binop.rhs)
         (pp_operand binop.dest)
         (pp_pure_operation binop.op)
-        (pp_operand binop.lhs)
-        (pp_operand binop.rhs)
+        lhs_final
+        (pp_operand binop.rhs))
     else
       sprintf
         "%s = %s %s %s, %s"
