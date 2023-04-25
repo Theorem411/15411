@@ -10,7 +10,7 @@ module ST = Hashtbl.Make (String)
 module HeaderAst = Ast
 
 let print_off = true
-let preproc_instr_off = true
+let preproc_instr_off = false
 
 type temp_type =
   | Bool
@@ -156,20 +156,6 @@ let pp_size_withop (op, size) =
   | _, AS.L -> "i32*"
   | _, AS.S -> "i32"
 ;;
-
-(* let pp_ret ((s, size) : string * AS.size option) =
-  match List.find ~f:(fun (a, _, _) -> String.equal a s) !functions_list_ref with
-  | None ->
-    (match size with
-    | Some AS.L -> "i32*"
-    | Some AS.S -> "i32"
-    | None -> "void")
-  | Some (_, _, ret_opt) ->
-    ret_opt
-    |> (function
-    | None -> "void"
-    | Some op -> get_op_type op)
-;; *)
 
 let debug_pp_ret = function
   | None -> "void"
