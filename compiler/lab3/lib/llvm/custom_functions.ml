@@ -147,8 +147,8 @@ let format_alloc () =
      %cstm_8 = tail call i32 @raise(i32 noundef 2) #5\n\
      br label %c0_alloc9\n\n\
      c0_alloc9:                                                ; preds = %cstm_7, %cstm_1\n\
-     ret ptr %cstm_5\n}\
-    \ "
+     ret ptr %cstm_5\n\
+     } "
 ;;
 
 let format_alloc_array () =
@@ -179,13 +179,14 @@ let format_alloc_array () =
      %cstm_17 = tail call ptr @calloc(i64 noundef 1, i64 noundef %cstm_16) #4\n\
      store i32 %cstm_1, ptr %cstm_17, align 4\n\
      %cstm_18 = getelementptr inbounds ptr, ptr %cstm_17, i64 1\n\
-     ret ptr %cstm_18\n}"
+     ret ptr %cstm_18\n\
+     }"
 ;;
 
 let format_pre () =
   [ ""
   ; "declare dso_local void @raise(i32) #1"
-  ; "declare noalias noundef ptr @calloc(i64 noundef, i64 noundef) local_unnamed_addr #1"
+  ; "declare dso_local ptr @calloc(i64, i64) local_unnamed_addr #1"
   ; format_div ()
   ; format_mod ()
   ; format_shl ()
@@ -292,7 +293,6 @@ let get_post (_ : string) : string =
       \         !llvm.module.flags = !{!0}\n\
        !llvm.ident = !{!1}\n\
        !0 = !{i32 1, !\"wchar_size\", i32 4}\n\
-       !1 = !{!\"clang version 10.0.0-4ubuntu1 \"}
-       !5 = !{i32 1, !\"sign-return-address-with-bkey\", i32 0}\n\
-       "
+       !1 = !{!\"clang version 10.0.0-4ubuntu1 \"}\n\
+      \       !5 = !{i32 1, !\"sign-return-address-with-bkey\", i32 0}\n"
 ;;
