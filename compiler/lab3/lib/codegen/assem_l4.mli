@@ -187,7 +187,7 @@ type instr =
       ; typ : set_t
       ; dest : operand
       }
-  | LLVM_NullCheck of { dest : operand }
+  | LLVM_NullCheck of { dest : operand; size : size }
   | LLVM_MovTo of
       { dest : operand
       ; size : size

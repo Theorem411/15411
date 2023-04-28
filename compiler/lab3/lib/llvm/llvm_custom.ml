@@ -197,7 +197,7 @@ let pp_pure_operation = function
 ;;
 
 let pp_size = function
-  | AS.L -> "i32*"
+  | AS.L -> "i8"
   | AS.S -> "i32"
 ;;
 
@@ -394,10 +394,11 @@ and pp_instr' : AS.instr -> string = function
       (Symbol.name fname)
       (List.map args ~f:(fun (op, s) -> sprintf "%s %s" (pp_size s) (pp_operand op))
       |> String.concat ~sep:", ")
-  | LLVM_NullCheck { dest } ->
+  | LLVM_NullCheck { dest; size } ->
     sprintf
-      "call void @%s(i8* %s)"
+      "call void @%s(%s* %s)"
       (Custom_functions.get_efkt_name_ops "check_null")
+      (pp_size size)
       (pp_operand dest)
   | LLVM_ArrayIdxCheck { index; length } ->
     sprintf

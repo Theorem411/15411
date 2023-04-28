@@ -131,7 +131,7 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
           [ A.LLVM_MovFrom { dest; src = t2; size }
           ; A.MovFrom { dest; src = t2; size }
           ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
-          ; A.LLVM_NullCheck { dest }
+          ; A.LLVM_NullCheck { dest; size }
           ; A.Cjmp { typ = A.Je; l = mfl }
           ; A.Cmp { lhs = t1; rhs = zero8; size = A.L }
           ]
@@ -148,15 +148,12 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
           let chk_head_null_rev =
             [ A.Cmp { size = A.L; lhs = a; rhs = zero8 }
             ; A.Cjmp { typ = A.Je; l = mfl }
-            ; LLVM_NullCheck { dest = a }
+            ; LLVM_NullCheck { dest = a; size = A.L }
             ]
             |> List.rev
           in
           let chk_idx_pos_rev =
-            [ A.Cmp { size = A.S; lhs = b; rhs = zero8 }
-            ; A.Cjmp { typ = A.Jl; l = mfl }
-            ; LLVM_NullCheck { dest = b }
-            ]
+            [ A.Cmp { size = A.S; lhs = b; rhs = zero8 }; A.Cjmp { typ = A.Jl; l = mfl } ]
             |> List.rev
           in
           let t3 = A.Temp (Temp.create ()) in
@@ -353,7 +350,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
   | T.MovToMem { addr = T.Null; _ } ->
     if unsafe
     then []
-    else [ A.Jmp mfl; A.LLVM_NullCheck { dest = A.Imm (Int64.of_int_exn 0) } ]
+    else [ A.Jmp mfl; A.LLVM_NullCheck { dest = A.Imm (Int64.of_int_exn 0); size = A.L } ]
   | T.MovToMem { addr = T.Ptr { start; off }; src } ->
     let ts = A.Temp (Temp.create ()) in
     let codegen_start = munch_exp ~unsafe ts start ~mfl in
@@ -363,7 +360,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
       else
         [ A.Cmp { lhs = ts; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
         ; A.Cjmp { typ = A.Je; l = mfl }
-        ; A.LLVM_NullCheck { dest = ts }
+        ; A.LLVM_NullCheck { dest = ts; size = A.L }
         ]
     in
     let t = A.Temp (Temp.create ()) in
@@ -425,7 +422,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
       else
         [ A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
         ; A.Cjmp { typ = A.Je; l = mfl }
-        ; A.LLVM_NullCheck { dest = th }
+        ; A.LLVM_NullCheck { dest = th; size = A.L }
         ; A.MovSxd { dest = ti'; src = ti }
         ; A.Cmp { lhs = ti; size = A.S; rhs = A.Imm (Int64.of_int_exn 0) }
         ; A.Cjmp { typ = A.Jl; l = mfl }

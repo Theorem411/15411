@@ -195,7 +195,10 @@ type instr =
       ; typ : set_t
       ; dest : operand
       }
-  | LLVM_NullCheck of { dest : operand }
+  | LLVM_NullCheck of
+      { dest : operand
+      ; size : size
+      }
   | LLVM_MovTo of
       { dest : operand
       ; size : size
@@ -412,7 +415,7 @@ let format_instr' = function
       (format_operand dest)
       (format_size size)
       (format_operand src)
-  | LLVM_NullCheck { dest } -> sprintf "LLVM: Fail if NULL (%s)" (format_operand dest)
+  | LLVM_NullCheck { dest; size } -> sprintf "LLVM: Fail if NULL (%s)[%s]" (format_operand dest) (format_size size)
   | LLVM_ArrayIdxCheck { index; length } ->
     sprintf
       "LLVM: Fail if %s is not 0 <= %s < length"

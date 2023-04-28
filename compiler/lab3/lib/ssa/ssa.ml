@@ -307,7 +307,7 @@ let instr_rename (instr : AS.instr) (told2new : told2new) : AS.instr =
     let src = oper_rename_use movto.src told2new in
     let dest = oper_rename_use movto.dest told2new in
     LLVM_MovTo { movto with src; dest }
-  | LLVM_NullCheck { dest } -> LLVM_NullCheck { dest = oper_rename_use dest told2new }
+  | LLVM_NullCheck { dest; size } -> LLVM_NullCheck { dest = oper_rename_use dest told2new; size }
 ;;
 
 let block_param_rename_def (params : TS.t) (told2new : told2new) : params =
