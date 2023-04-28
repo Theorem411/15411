@@ -1,6 +1,7 @@
 module AS = Assem_l4
 val mac : bool
 val get_efkt_name : AS.efkt_operation -> string
+val get_efkt_name_ops : string -> string
 val format_mod : unit -> string
 val format_div : unit -> string
 val format_shl : unit -> string

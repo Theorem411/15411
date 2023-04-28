@@ -394,6 +394,17 @@ and pp_instr' : AS.instr -> string = function
       (Symbol.name fname)
       (List.map args ~f:(fun (op, s) -> sprintf "%s %s" (pp_size s) (pp_operand op))
       |> String.concat ~sep:", ")
+  | LLVM_NullCheck { dest } ->
+    sprintf
+      "call void @%s(i8* %s)"
+      (Custom_functions.get_efkt_name_ops "check_null")
+      (pp_operand dest)
+  | LLVM_ArrayIdxCheck { index; length } ->
+    sprintf
+      "call void @%s(i32 %s, i32 %s)"
+      (Custom_functions.get_efkt_name_ops "check_array")
+      (pp_operand index)
+      (pp_operand length)
 ;;
 
 let pp_phi ({ self; alt_selves } : SSA.phi) : string =

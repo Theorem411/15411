@@ -7,7 +7,6 @@ module Regalloc = Regalloc
 
 let get_temps_line instr : Temp.t list =
   let all_ops : AS.instr -> AS.operand list = function
-    | LLVM_IF _ | LLVM_Jmp _ | LLVM_Call _ | LLVM_Cmp _ | LLVM_Set _ | LLVM_Ret _ -> []
     | AS.Mov m -> [ m.dest; m.src ]
     | PureBinop b -> [ b.dest; b.lhs; b.rhs ]
     | EfktBinop b -> [ b.dest; b.lhs; b.rhs ]
@@ -22,6 +21,8 @@ let get_temps_line instr : Temp.t list =
     | AS.MovSxd m -> [ m.dest; m.src ]
     | AS.LeaPointer m -> [ m.base; m.dest ]
     | AS.LeaArray m -> [ m.base; m.dest; m.index ]
+    | LLVM_IF _ | LLVM_Jmp _ | LLVM_Call _ | LLVM_Cmp _ | LLVM_Set _ | LLVM_Ret _ -> []
+    | LLVM_ArrayIdxCheck _ | LLVM_NullCheck _ | LLVM_MovFrom _ | LLVM_MovTo _ -> []
   in
   List.filter_map (all_ops instr) ~f:(fun i ->
       match i with

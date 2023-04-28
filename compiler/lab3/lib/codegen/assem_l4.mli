@@ -187,6 +187,21 @@ type instr =
       ; typ : set_t
       ; dest : operand
       }
+  | LLVM_NullCheck of { dest : operand }
+  | LLVM_MovTo of
+      { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | LLVM_MovFrom of
+      { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | LLVM_ArrayIdxCheck of
+      { index : operand
+      ; length : operand
+      }
 [@@deriving equal, sexp, compare, hash]
 
 type assem_jump_tag_t =
@@ -203,7 +218,7 @@ type block =
   ; block : instr list
   ; jump : assem_jump_tag_t
   ; depth : int
-  ; is_empty: bool
+  ; is_empty : bool
   }
 [@@deriving equal, sexp, compare, hash]
 

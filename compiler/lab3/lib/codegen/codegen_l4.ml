@@ -123,12 +123,15 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
       let chck =
         if unsafe
         then
-          [ A.MovFrom { dest; src = t2; size }
+          [ A.LLVM_MovFrom { dest; src = t2; size }
+          ; A.MovFrom { dest; src = t2; size }
           ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
           ]
         else
-          [ A.MovFrom { dest; src = t2; size }
+          [ A.LLVM_MovFrom { dest; src = t2; size }
+          ; A.MovFrom { dest; src = t2; size }
           ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
+          ; A.LLVM_NullCheck { dest }
           ; A.Cjmp { typ = A.Je; l = mfl }
           ; A.Cmp { lhs = t1; rhs = zero8; size = A.L }
           ]
@@ -143,11 +146,17 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
         else (
           let zero8 = A.Imm (Int64.of_int_exn 0) in
           let chk_head_null_rev =
-            [ A.Cmp { size = A.L; lhs = a; rhs = zero8 }; A.Cjmp { typ = A.Je; l = mfl } ]
+            [ A.Cmp { size = A.L; lhs = a; rhs = zero8 }
+            ; A.Cjmp { typ = A.Je; l = mfl }
+            ; LLVM_NullCheck { dest = a }
+            ]
             |> List.rev
           in
           let chk_idx_pos_rev =
-            [ A.Cmp { size = A.S; lhs = b; rhs = zero8 }; A.Cjmp { typ = A.Jl; l = mfl } ]
+            [ A.Cmp { size = A.S; lhs = b; rhs = zero8 }
+            ; A.Cjmp { typ = A.Jl; l = mfl }
+            ; LLVM_NullCheck { dest = b }
+            ]
             |> List.rev
           in
           let t3 = A.Temp (Temp.create ()) in
@@ -156,8 +165,10 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
           let chk_idx_len_rev =
             [ A.PureBinop { op = A.Sub; size = A.L; dest = t3; lhs = a; rhs = eight8 }
             ; A.MovFrom { dest = t4; size = A.S; src = t3 }
+            ; A.LLVM_MovFrom { dest = t4; size = A.S; src = t3 }
             ; A.Cmp { size = A.S; lhs = b; rhs = t4 }
             ; A.Cjmp { typ = A.Jge; l = mfl }
+            ; A.LLVM_ArrayIdxCheck { index = b; length = t4 }
             ]
             |> List.rev
           in
@@ -171,6 +182,7 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
           [ A.LeaArray
               { dest = t1; base = a; index = b; scale = typ_size; offset = extra }
           ; A.MovFrom { dest; size = munch_size esize; src = t1 }
+          ; A.LLVM_MovFrom { dest; size = munch_size esize; src = t1 }
           ]
           |> List.rev
         else
@@ -192,6 +204,7 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
               ; rhs = A.Imm (Int64.of_int_exn extra)
               }
           ; A.MovFrom { dest; size = munch_size esize; src = t1 }
+          ; A.LLVM_MovFrom { dest; size = munch_size esize; src = t1 }
           ]
           |> List.rev
       in
@@ -309,7 +322,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     let sz, cmp, e1, e2 =
       match cond with
       | LCond cond -> A.L, cond.cmp, cond.p1, cond.p2
-      | SCond cond -> A.S, cond.cmp, cond.p1, cond.p2 
+      | SCond cond -> A.S, cond.cmp, cond.p1, cond.p2
     in
     let jmptyp = if_cond_to_rev_jump_t cmp in
     let t1 = A.Temp (Temp.create ()) in
@@ -321,12 +334,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
       ; munch_exp ~unsafe t2 e2 ~mfl
       ; [ A.Cmp { lhs = t1; size = sz; rhs = t2 }
         ; A.LLVM_Set
-            { dest = t_llvm
-            ; lhs = t1
-            ; size = sz
-            ; rhs = t2
-            ; typ = cmp_to_set_t cmp
-            }
+            { dest = t_llvm; lhs = t1; size = sz; rhs = t2; typ = cmp_to_set_t cmp }
         ; A.LLVM_IF { cond = t_llvm; tl = lt; fl = lf }
         ; A.Cjmp { typ = jmptyp; l = lf }
         ; A.Jmp lt
@@ -342,7 +350,10 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
         ]
       ]
       |> List.concat
-  | T.MovToMem { addr = T.Null; _ } -> if unsafe then [] else [ A.Jmp mfl ]
+  | T.MovToMem { addr = T.Null; _ } ->
+    if unsafe
+    then []
+    else [ A.Jmp mfl; A.LLVM_NullCheck { dest = A.Imm (Int64.of_int_exn 0) } ]
   | T.MovToMem { addr = T.Ptr { start; off }; src } ->
     let ts = A.Temp (Temp.create ()) in
     let codegen_start = munch_exp ~unsafe ts start ~mfl in
@@ -352,6 +363,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
       else
         [ A.Cmp { lhs = ts; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
         ; A.Cjmp { typ = A.Je; l = mfl }
+        ; A.LLVM_NullCheck { dest = ts }
         ]
     in
     let t = A.Temp (Temp.create ()) in
@@ -367,7 +379,11 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     in
     let tr = A.Temp (Temp.create ()) in
     let codegen_src = munch_exp ~unsafe tr src ~mfl in
-    let movr = [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ] in
+    let movr =
+      [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr }
+      ; A.LLVM_MovTo { dest = t; size = munch_size (T.size src); src = tr }
+      ]
+    in
     [ codegen_start; nullchk; movp; codegen_src; movr ] |> List.concat
   | T.MovToMem { addr = T.Arr { head; idx; typ_size; extra }; src } ->
     let th = A.Temp (Temp.create ()) in
@@ -409,6 +425,7 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
       else
         [ A.Cmp { lhs = th; size = A.L; rhs = A.Imm (Int64.of_int_exn 0) }
         ; A.Cjmp { typ = A.Je; l = mfl }
+        ; A.LLVM_NullCheck { dest = th }
         ; A.MovSxd { dest = ti'; src = ti }
         ; A.Cmp { lhs = ti; size = A.S; rhs = A.Imm (Int64.of_int_exn 0) }
         ; A.Cjmp { typ = A.Jl; l = mfl }
@@ -420,8 +437,10 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
             ; rhs = A.Imm (Int64.of_int_exn 8)
             }
         ; A.MovFrom { dest = tl; size = A.S; src = tm }
+        ; A.LLVM_MovFrom { dest = tl; size = A.S; src = tm }
         ; A.Cmp { lhs = ti; size = A.S; rhs = tl }
         ; A.Cjmp { typ = A.Jge; l = mfl }
+        ; A.LLVM_ArrayIdxCheck { index = ti; length = tl }
         ; A.PureBinop
             { dest = t1
             ; size = A.L
@@ -441,7 +460,11 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
     in
     let tr = A.Temp (Temp.create ()) in
     let codegen_src = munch_exp ~unsafe tr src ~mfl in
-    let mov = [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr } ] in
+    let mov =
+      [ A.MovTo { dest = t; size = munch_size (T.size src); src = tr }
+      ; A.LLVM_MovTo { dest = t; size = munch_size (T.size src); src = tr }
+      ]
+    in
     [ codegen_head; codegen_idx; adrs_calc; codegen_src; mov ] |> List.concat
   | T.MovFuncApp { dest; fname; args; tail_call } ->
     let cogen_arg ~unsafe e =

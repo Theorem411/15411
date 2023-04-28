@@ -57,7 +57,7 @@ type block_ssa =
   ; code : AS.instr list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
-  ; is_empty: bool
+  ; is_empty : bool
   ; bparams : params
   ; jtag : jtag
   }
@@ -79,7 +79,7 @@ type block_phi =
   ; code : instr list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
-  ; is_empty: bool
+  ; is_empty : bool
   }
 
 type fspace_phi =
@@ -296,6 +296,18 @@ let instr_rename (instr : AS.instr) (told2new : told2new) : AS.instr =
       ; args = List.map args ~f:(fun (op, sz) -> oper_rename_use op told2new, sz)
       ; fname
       }
+  | LLVM_ArrayIdxCheck { length; index } ->
+    LLVM_ArrayIdxCheck
+      { length = oper_rename_use length told2new; index = oper_rename_use index told2new }
+  | LLVM_MovFrom movfrom ->
+    let src = oper_rename_use movfrom.src told2new in
+    let dest = oper_rename_def movfrom.dest told2new in
+    LLVM_MovFrom { movfrom with src; dest }
+  | LLVM_MovTo movto ->
+    let src = oper_rename_use movto.src told2new in
+    let dest = oper_rename_use movto.dest told2new in
+    LLVM_MovTo { movto with src; dest }
+  | LLVM_NullCheck { dest } -> LLVM_NullCheck { dest = oper_rename_use dest told2new }
 ;;
 
 let block_param_rename_def (params : TS.t) (told2new : told2new) : params =
@@ -351,7 +363,7 @@ let block_rename (block : AS.block) (told2new : told2new) (lparams : lparams) : 
   ; jump = block.jump
   ; depth = block.depth
   ; bparams = params
-  ;is_empty = block.is_empty
+  ; is_empty = block.is_empty
   ; jtag
   }
 ;;
@@ -467,7 +479,7 @@ let block_phi
     List.map phies ~f:(fun instr -> Phi instr)
     @ List.map code ~f:(fun instr -> ASInstr instr)
   in
-  { label = lcur; code; jump; depth;  is_empty }
+  { label = lcur; code; jump; depth; is_empty }
 ;;
 
 let fspace_phi
@@ -498,7 +510,7 @@ type block =
   ; lines : int list
   ; jump : AS.assem_jump_tag_t
   ; depth : int
-  ; is_empty: bool
+  ; is_empty : bool
   }
 
 type fspace =
@@ -687,8 +699,8 @@ let reconstruct_blocks
   in
   let () = LM.iteri extra_moves ~f:assemble in
   (*_ construct AS.block using l2instrs and block_info *)
-  List.map block_info ~f:(fun { label; jump; depth; is_empty;_ } : AS.block ->
-      { label; block = LT.find_exn l2instrs label; jump; depth;is_empty })
+  List.map block_info ~f:(fun { label; jump; depth; is_empty; _ } : AS.block ->
+      { label; block = LT.find_exn l2instrs label; jump; depth; is_empty })
 ;;
 
 let reconstruct_fspace

@@ -10,6 +10,12 @@ let get_efkt_name = function
   | AS.ShiftR -> "____JAVAWAY_shr"
 ;;
 
+let get_efkt_name_ops = function
+  | "check_null" -> "_____JAVAWAY_failifnull"
+  | "check_array" -> "_____JAVAWAY_failifoutbounds"
+  | _ -> failwith "get_efkt_name_ops got sth strange."
+;;
+
 let format_mod () =
   "\n; Safe division function\ndefine i32 @"
   ^ get_efkt_name AS.Mod
@@ -94,6 +100,38 @@ let format_shr () =
      }"
 ;;
 
+let format_check_null () =
+  "define void @"
+  ^ get_efkt_name_ops "check_null"
+  ^ "(i8* %ptr) {\n\
+     entry:\n\
+    \ %is_null = icmp eq i8* %ptr, null\n\
+    \ br i1 %is_null, label %raise_error, label %exit\n\n\
+     raise_error:\n\
+    \ call void @raise(i32 2)\n\
+    \ unreachable\n\n\
+     exit:\n\
+    \ ret void\n\
+     }\n"
+;;
+
+let format_check_array () =
+  "\n\
+   declare void @raise(i32)\n\
+   define void @check_array_index(i32 %index, i32 %length) {\n\
+   entry:\n\
+  \ %is_ge_zero = icmp sge i32 %index, 0\n\
+  \ %is_lt_length = icmp slt i32 %index, %length\n\
+  \ %is_valid = and i1 %is_ge_zero, %is_lt_length\n\
+  \ br i1 %is_valid, label %exit, label %raise_error\n\n\
+   raise_error:\n\
+  \ call void @raise(i32 2)\n\
+  \ unreachable\n\n\
+   exit:\n\
+  \ ret void\n\
+   }\n"
+;;
+
 let format_pre () =
   [ ""
   ; "declare dso_local void @raise(i32) #1"
@@ -101,6 +139,8 @@ let format_pre () =
   ; format_mod ()
   ; format_shl ()
   ; format_shr ()
+  ; format_check_null ()
+  ; format_check_array ()
   ]
   |> String.concat ~sep:"\n"
 ;;

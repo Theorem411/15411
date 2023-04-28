@@ -516,7 +516,9 @@ let translate_line
   | MovSxd _ -> List.rev_append (translate_movsxd get_final line) prev_lines
   | AS.LeaArray _ -> List.rev_append (translate_lea_array get_final line) prev_lines
   | AS.LeaPointer _ -> failwith "lea pointer is not implemented"
-  | LLVM_Call _ | LLVM_Cmp _ | LLVM_IF _ | LLVM_Ret _ | LLVM_Jmp _ | LLVM_Set _ -> prev_lines
+  | LLVM_Call _ | LLVM_Cmp _ | LLVM_IF _ | LLVM_Ret _ | LLVM_Jmp _ | LLVM_Set _ ->
+    prev_lines
+  | LLVM_ArrayIdxCheck _ | LLVM_NullCheck _ | LLVM_MovFrom _ | LLVM_MovTo _ -> prev_lines
 ;;
 
 let get_error_block errLabel =

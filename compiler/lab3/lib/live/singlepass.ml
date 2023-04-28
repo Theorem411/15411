@@ -104,7 +104,7 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
     else (
       match instr with
       | LLVM_Jmp _ -> V.Set.empty, V.Set.empty
-      | LLVM_IF _ -> V.Set.empty,  V.Set.empty
+      | LLVM_IF _ -> V.Set.empty, V.Set.empty
       | LLVM_Ret None -> V.Set.empty, V.Set.empty
       | LLVM_Ret (Some (src, _)) -> V.Set.empty, op_to_vset src
       | LLVM_Call { dest = Some (dest, ret_size); args; _ } ->
@@ -131,6 +131,13 @@ let def_n_use (instr : AS.instr) : V.Set.t * V.Set.t =
         V.Set.empty, V.Set.union_list [ op_to_vset lhs; op_to_vset rhs ]
       | LLVM_Cmp { lhs; rhs; dest; _ } ->
         V.Set.empty, V.Set.union_list [ op_to_vset dest; op_to_vset lhs; op_to_vset rhs ]
+      | LLVM_ArrayIdxCheck { index; length } ->
+        V.Set.empty, V.Set.union_list [ op_to_vset index; op_to_vset length ]
+      | LLVM_NullCheck { dest } -> V.Set.empty, V.Set.union_list [ op_to_vset dest ]
+      | LLVM_MovFrom { dest; src; _ } ->
+        V.Set.empty, V.Set.union_list [ op_to_vset src; op_to_vset dest ]
+      | LLVM_MovTo { dest; src; _ } ->
+        V.Set.empty, V.Set.union_list [ op_to_vset src; op_to_vset dest ]
       | _ -> failwith (sprintf "%s is not LLVM operation" (AS.format_instr instr)))
 ;;
 

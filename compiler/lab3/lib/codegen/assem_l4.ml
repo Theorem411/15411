@@ -195,6 +195,21 @@ type instr =
       ; typ : set_t
       ; dest : operand
       }
+  | LLVM_NullCheck of { dest : operand }
+  | LLVM_MovTo of
+      { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | LLVM_MovFrom of
+      { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | LLVM_ArrayIdxCheck of
+      { index : operand
+      ; length : operand
+      }
 [@@deriving equal, sexp, compare, hash]
 
 type assem_jump_tag_t =
@@ -211,7 +226,7 @@ type block =
   ; block : instr list
   ; jump : assem_jump_tag_t
   ; depth : int
-  ; is_empty: bool
+  ; is_empty : bool
   }
 [@@deriving equal, sexp, compare, hash]
 
@@ -377,14 +392,32 @@ let format_instr' = function
       (typ |> sexp_of_set_t |> string_of_sexp)
       (format_operand lhs)
       (format_operand rhs)
-      | LLVM_Set { dest; typ; lhs; rhs; size } ->
-        sprintf
-          "LLVM: %s <- set(that on before if)[%s] %s: %s ? %s"
-          (format_operand dest)
-          (format_size size)
-          (typ |> sexp_of_set_t |> string_of_sexp)
-          (format_operand lhs)
-          (format_operand rhs)
+  | LLVM_Set { dest; typ; lhs; rhs; size } ->
+    sprintf
+      "LLVM: %s <- set(that on before if)[%s] %s: %s ? %s"
+      (format_operand dest)
+      (format_size size)
+      (typ |> sexp_of_set_t |> string_of_sexp)
+      (format_operand lhs)
+      (format_operand rhs)
+  | LLVM_MovFrom { dest; size; src } ->
+    sprintf
+      "LLVM: %s <-%s- (%s)"
+      (format_operand dest)
+      (format_size size)
+      (format_operand src)
+  | LLVM_MovTo { dest; size; src } ->
+    sprintf
+      "LLVM: (%s) <-%s- %s"
+      (format_operand dest)
+      (format_size size)
+      (format_operand src)
+  | LLVM_NullCheck { dest } -> sprintf "LLVM: Fail if NULL (%s)" (format_operand dest)
+  | LLVM_ArrayIdxCheck { index; length } ->
+    sprintf
+      "LLVM: Fail if %s is not 0 <= %s < length"
+      (format_operand index)
+      (format_operand length)
 ;;
 
 let format_instr i = format_instr' i
@@ -402,7 +435,7 @@ let format_block ({ label; block; jump; depth; is_empty } : block) : string =
     depth
     (List.map block ~f:format_instr |> String.concat ~sep:"\n")
     (format_jump_tag jump)
-    (is_empty)
+    is_empty
 ;;
 
 let format_program prog_block =
