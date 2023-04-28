@@ -405,6 +405,20 @@ and pp_instr' : AS.instr -> string = function
       (Custom_functions.get_efkt_name_ops "check_array")
       (pp_operand index)
       (pp_operand length)
+  | LLVM_MovTo { dest; size; src } ->
+    sprintf
+      "store %s %s, %s* %s"
+      (pp_size size)
+      (pp_operand src)
+      (pp_operand dest)
+      (pp_size size)
+  | LLVM_MovFrom { dest; size; src } ->
+    sprintf
+      "%s = load %s, %s* %s"
+      (pp_operand dest)
+      (pp_size size)
+      (pp_size size)
+      (pp_operand src)
 ;;
 
 let pp_phi ({ self; alt_selves } : SSA.phi) : string =
