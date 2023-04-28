@@ -113,13 +113,18 @@ let asinstr_prop
       ; rhs = op_prop rhs t sub
       }
   | LLVM_Set { dest; size; lhs; rhs; typ } ->
-    LLVM_Set
-      { dest 
-      ; size
-      ; typ
-      ; lhs = op_prop lhs t sub
-      ; rhs = op_prop rhs t sub
-      }
+    LLVM_Set { dest; size; typ; lhs = op_prop lhs t sub; rhs = op_prop rhs t sub }
+  | LLVM_ArrayIdxCheck { length; index } ->
+    LLVM_ArrayIdxCheck { length = op_prop length t sub; index = op_prop index t sub }
+  | LLVM_MovFrom movfrom ->
+    let src = op_prop movfrom.src t sub in
+    let dest = op_prop movfrom.dest t sub in
+    LLVM_MovFrom { movfrom with src; dest }
+  | LLVM_MovTo movto ->
+    let src = op_prop movto.src t sub in
+    let dest = op_prop movto.dest t sub in
+    LLVM_MovTo { movto with src; dest }
+  | LLVM_NullCheck { dest; size } -> LLVM_NullCheck { dest = op_prop dest t sub; size }
   | _ -> instr
 ;;
 

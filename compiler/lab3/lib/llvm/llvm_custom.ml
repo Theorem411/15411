@@ -197,7 +197,7 @@ let pp_pure_operation = function
 ;;
 
 let pp_size = function
-  | AS.L -> "i8"
+  | AS.L -> "ptr"
   | AS.S -> "i32"
 ;;
 
@@ -281,8 +281,19 @@ and pp_xor = function
         (pp_operand binop.rhs)
   | _ -> failwith "pp+xor got not imm xor"
 
+and pp_add_offset = function
+  | AS.PureBinop { op = AS.Add; size = AS.L; lhs; rhs = AS.Imm n; dest } ->
+    let offset_bytes = Int64.( / ) n (Int64.of_int 4) |> Int64.to_int_exn in
+    sprintf
+      "%s = getelementptr i8, ptr %s, i64 %d"
+      (pp_operand dest)
+      (pp_operand lhs)
+      offset_bytes
+  | __instr -> failwith ("pp_add_offset recieved weird input: " ^ AS.format_instr __instr)
+
 and pp_instr' : AS.instr -> string = function
   | PureBinop { op = AS.BitXor; rhs = AS.Imm _; _ } as instr -> pp_xor instr
+  | PureBinop { op = AS.Add; size = AS.L; _ } as instr -> pp_add_offset instr
   | PureBinop ({ op = AS.BitAnd | AS.BitOr | AS.BitXor; size; _ } as binop) ->
     sprintf
       "%s = %s %s %s, %s"
@@ -344,9 +355,9 @@ and pp_instr' : AS.instr -> string = function
       (List.map ts ~f:(fun (t, s) -> sprintf "%s%s" (Temp.name t) (pp_size s))
       |> String.concat ~sep:", ")
   | MovFrom { dest; size; src } ->
-    sprintf "%s <-%s- (%s)" (pp_operand dest) (pp_size size) (pp_operand src)
+    sprintf "; %s <-%s- (%s)" (pp_operand dest) (pp_size size) (pp_operand src)
   | MovTo { dest; size; src } ->
-    sprintf "(%s) <-%s- %s" (pp_operand dest) (pp_size size) (pp_operand src)
+    sprintf "; (%s) <-%s- %s" (pp_operand dest) (pp_size size) (pp_operand src)
   | LeaPointer { dest; base; offset; size } ->
     sprintf
       "%s <- lea: [%s] %s + %d"
@@ -394,11 +405,11 @@ and pp_instr' : AS.instr -> string = function
       (Symbol.name fname)
       (List.map args ~f:(fun (op, s) -> sprintf "%s %s" (pp_size s) (pp_operand op))
       |> String.concat ~sep:", ")
-  | LLVM_NullCheck { dest; size } ->
+  | LLVM_NullCheck { dest; _ } ->
     sprintf
-      "call void @%s(%s* %s)"
+      "call void @%s(%s %s)"
       (Custom_functions.get_efkt_name_ops "check_null")
-      (pp_size size)
+      (pp_size AS.L)
       (pp_operand dest)
   | LLVM_ArrayIdxCheck { index; length } ->
     sprintf
@@ -408,17 +419,17 @@ and pp_instr' : AS.instr -> string = function
       (pp_operand length)
   | LLVM_MovTo { dest; size; src } ->
     sprintf
-      "store %s %s, %s* %s"
+      "store %s %s, %s %s"
       (pp_size size)
       (pp_operand src)
+      (pp_size AS.L)
       (pp_operand dest)
-      (pp_size size)
   | LLVM_MovFrom { dest; size; src } ->
     sprintf
-      "%s = load %s, %s* %s"
+      "%s = load %s, %s %s"
       (pp_operand dest)
       (pp_size size)
-      (pp_size size)
+      (pp_size AS.L)
       (pp_operand src)
 ;;
 

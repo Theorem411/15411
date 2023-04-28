@@ -131,7 +131,7 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
           [ A.LLVM_MovFrom { dest; src = t2; size }
           ; A.MovFrom { dest; src = t2; size }
           ; A.PureBinop { dest = t2; size = A.L; lhs = t1; op = A.Add; rhs = off8 }
-          ; A.LLVM_NullCheck { dest; size }
+          ; A.LLVM_NullCheck { dest = t1; size }
           ; A.Cjmp { typ = A.Je; l = mfl }
           ; A.Cmp { lhs = t1; rhs = zero8; size = A.L }
           ]
@@ -146,7 +146,8 @@ let munch_exp ~(unsafe : bool) (dest : A.operand) (exp : T.mpexp) ~(mfl : Label.
         else (
           let zero8 = A.Imm (Int64.of_int_exn 0) in
           let chk_head_null_rev =
-            [ A.Cmp { size = A.L; lhs = a; rhs = zero8 }
+            [ 
+              A.Cmp { size = A.L; lhs = a; rhs = zero8 }
             ; A.Cjmp { typ = A.Je; l = mfl }
             ; LLVM_NullCheck { dest = a; size = A.L }
             ]
@@ -296,6 +297,11 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
         }
       (* dest <-8 rax *)
     ; A.Mov { dest = A.Temp dest; size = A.L; src = A.Reg A.EAX }
+    ; A.LLVM_Call
+        { dest = Some (A.Temp dest, A.L)
+        ; args = [ A.Imm (Int64.of_int_exn size), A.S ]
+        ; fname = Symbol.symbol (CustomAssembly.alloc_fname ~unsafe)
+        }
     ]
   | T.Calloc { dest; len; typ } ->
     let t1 = A.Temp (Temp.create ()) in
@@ -312,6 +318,11 @@ let munch_stm (stm : T.stm) ~(mfl : Label.t) ~(unsafe : bool) : A.instr list =
           }
         (* dest <-8 rax *)
       ; A.Mov { dest = A.Temp dest; size = A.L; src = A.Reg A.EAX }
+      ; A.LLVM_Call
+          { dest = Some (A.Temp dest, A.L)
+          ; args = [ A.Imm (Int64.of_int_exn typ), A.S; t1, A.S ]
+          ; fname = Symbol.symbol (CustomAssembly.alloc_array_fname ~unsafe)
+          }
       ]
     ]
     |> List.concat

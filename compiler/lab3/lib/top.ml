@@ -224,7 +224,8 @@ let compile (cmd : cmd_line_args) : unit =
   (* COMMON GROUP *)
   let common_off = false in
   (* peephole *)
-  Codegen_l4.set_lea_off common_off;
+  Codegen_l4.set_lea_off true;
+  (*turn off lea by default*)
   Translate.set_strength_off common_off;
   let strength_assem_off = common_off in
   (* const fold *)
