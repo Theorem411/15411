@@ -282,26 +282,48 @@ and pp_xor = function
   | _ -> failwith "pp+xor got not imm xor"
 
 and pp_add_offset = function
-  | AS.PureBinop { op = AS.Add | AS.Sub; size = AS.L; lhs; rhs = AS.Imm n; dest } ->
-    let offset_bytes = Int64.( / ) n (Int64.of_int 4) |> Int64.to_int_exn in
+  | AS.PureBinop { op = (AS.Add | AS.Sub) as op; size = AS.L; lhs; rhs = AS.Imm n; dest }
+    ->
     sprintf
-      "%s = getelementptr i8, ptr %s, i64 %d"
+      "%s_int_pbadd = ptrtoint ptr %s to i64\n\
+      \t%s_int_pbadd = mul i64 %s_int, %d\n\
+      \t%s = inttoptr i64 %s_int_pbadd to ptr"
       (pp_operand dest)
       (pp_operand lhs)
+      (match op with
+      | AS.Add -> ""
+      | _ -> "-")
       offset_bytes
   | AS.PureBinop { op = AS.Add; size = AS.L; lhs; rhs = AS.Temp _ as rhs; dest } ->
     sprintf
-      "%s_offset = udiv i32 %s, 8\n%s = getelementptr i8, ptr %s, i64 %s_offset"
+      "%s_int = ptrtoint ptr %s to i64\n\
+       \t%s_offset = udiv i64 %s_int, 8\n\
+       \t%s = getelementptr i8, ptr %s, i64 %s_offset"
+      (pp_operand rhs)
+      (pp_operand rhs)
       (pp_operand rhs)
       (pp_operand rhs)
       (pp_operand dest)
       (pp_operand lhs)
       (pp_operand rhs)
+  | AS.PureBinop { op = AS.Mul; size = AS.L; lhs; rhs = AS.Imm m; dest } ->
+    sprintf
+      "%s_int = ptrtoint ptr %s to i64\n\
+       \t%s_intmulted = mul i64 %s_int, %d\n\
+       \t%s = inttoptr i64 %s_intmulted to ptr"
+      (pp_operand lhs)
+      (pp_operand lhs)
+      (pp_operand lhs)
+      (pp_operand lhs)
+      (Int64.to_int_exn m)
+      (pp_operand dest)
+      (pp_operand lhs)
   | __instr -> failwith ("pp_add_offset recieved weird input: " ^ AS.format_instr __instr)
 
 and pp_instr' : AS.instr -> string = function
   | PureBinop { op = AS.BitXor; rhs = AS.Imm _; _ } as instr -> pp_xor instr
-  | PureBinop { op = AS.Add | AS.Sub; size = AS.L; _ } as instr -> pp_add_offset instr
+  | PureBinop { op = AS.Add | AS.Sub | AS.Mul; size = AS.L; _ } as instr ->
+    pp_add_offset instr
   | PureBinop ({ op = AS.BitAnd | AS.BitOr | AS.BitXor; size; _ } as binop) ->
     sprintf
       "%s = %s %s %s, %s"
@@ -334,7 +356,8 @@ and pp_instr' : AS.instr -> string = function
     sprintf "; %s <-%s- %s" (pp_operand dest) (pp_size size) (pp_operand src)
   | Mov { dest; src; size } ->
     sprintf "%s <-%s- %s" (pp_operand dest) (pp_size size) (pp_operand src)
-  | MovSxd { dest; src } -> sprintf "; movsxd %s <-- %s" (pp_operand dest) (pp_operand src)
+  | MovSxd { dest; src } ->
+    sprintf "%s = inttoptr i32 %s to ptr" (pp_operand dest) (pp_operand src)
   | Directive dir -> sprintf "%s" dir
   | Comment comment -> sprintf "/* %s */" comment
   | Jmp l -> "; jump " ^ pp_label l

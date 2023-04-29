@@ -119,7 +119,7 @@ let format_check_null () =
 
 let format_check_array () =
   "\n\
-  \   define void @check_array_index(i32 %index, i32 %length) {\n\
+  \   define void @" ^ get_efkt_name_ops "check_array" ^ "(i32 %index, i32 %length) {\n\
    entry:\n\
   \ %is_ge_zero = icmp sge i32 %index, 0\n\
   \ %is_lt_length = icmp slt i32 %index, %length\n\
