@@ -487,21 +487,23 @@ and pp_instr' : AS.instr -> string = function
       (pp_operand dest)
       (pp_size sz)
       (Symbol.name fname)
-      (List.map args ~f:(fun (op, s) -> sprintf "%s %s" (pp_size s) (pp_operand op))
+      (List.map args ~f:(fun (op, s) ->
+           sprintf "%s %s" (pp_size s) (pp_operand op ~size:s))
       |> String.concat ~sep:", ")
   | LLVM_Call { dest = None; args; fname } ->
     sprintf
       "call %s @%s(%s)"
       (Option.value (get_size_str_opt_fun (Symbol.name fname)) ~default:"void")
       (Symbol.name fname)
-      (List.map args ~f:(fun (op, s) -> sprintf "%s %s" (pp_size s) (pp_operand op))
+      (List.map args ~f:(fun (op, s) ->
+           sprintf "%s %s" (pp_size s) (pp_operand op ~size:s))
       |> String.concat ~sep:", ")
   | LLVM_NullCheck { dest; _ } ->
     sprintf
       "call void @%s(%s %s)"
       (Custom_functions.get_efkt_name_ops "check_null")
       (pp_size AS.L)
-      (pp_operand dest)
+      (pp_operand dest ~size:AS.L)
   | LLVM_ArrayIdxCheck { index; length } ->
     sprintf
       "call void @%s(i32 %s, i32 %s)"
@@ -521,7 +523,7 @@ and pp_instr' : AS.instr -> string = function
       (pp_operand dest)
       (pp_size size)
       (pp_size AS.L)
-      (pp_operand src)
+      (pp_operand src ~size:AS.L)
 ;;
 
 let pp_phi ({ self; alt_selves } : SSA.phi) : string =
