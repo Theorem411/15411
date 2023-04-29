@@ -54,19 +54,6 @@ let add_fun f =
   else set_funs (f :: !functions_list_ref)
 ;;
 
-(* let edit_ret (s : string) (ret_opt : AS.operand option) =
-  let name, args, _ =
-    List.find_exn !functions_list_ref ~f:(fun (fname, _, _) -> String.equal s fname)
-  in
-  let new_f = name, args, ret_opt in
-  add_fun new_f
-;; *)
-
-(* let reset_temp () =
-  todo_ref := TS.empty;
-  temps_type_ref := TT.create ()
-;; *)
-
 let print_todo_set () =
   let s = get_todo_set () in
   let r =
@@ -163,7 +150,7 @@ let get_op_type o =
   | None -> "i32"
 ;;
 
-let debug_pp_ret = function
+let opr_opt2str = function
   | None -> "void"
   | Some op -> get_op_type op
 ;;
@@ -176,7 +163,7 @@ let print_fun_list_debug () =
     let print_f (name, args, ret_opt) =
       sprintf
         "%s %s(%s)"
-        (debug_pp_ret ret_opt)
+        (opr_opt2str ret_opt)
         name
         (String.concat ~sep:", " (print_args_types args))
     in
@@ -889,7 +876,7 @@ let pp_declare () =
     let print_f (name, args, ret_opt) =
       sprintf
         "declare dso_local %s @%s(%s) #1"
-        (debug_pp_ret ret_opt)
+        (opr_opt2str ret_opt)
         name
         (String.concat ~sep:", " (print_args_types args))
     in

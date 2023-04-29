@@ -33,4 +33,20 @@ Expected successful execution, timed out:
 Expected a runtime exception, timed out:
    ../tests/l3-large/robert-py-abort_abort_abort.l3
 
-l4-basic
+l4-basic: NONE
+l4-large: 3 fails, 4 timeouts
+Expected a runtime exception, failed:
+   ../tests/l4-large/potassium-ex01.l4
+   ../tests/l4-large/vulcan-pyonpyon.l4
+Expected successful execution, failed:
+   ../tests/l4-large/vulcan-nikoniko.l4
+Expected successful execution, timed out:
+   ../tests/l4-large/lando-accidentallyquadratic.l4
+   ../tests/l4-large/luna-lab4_test18.l4
+   ../tests/l4-large/olenna-hard.l4
+   ../tests/l4-large/sparrowhawk-linkedlist3.l4
+
+
+Total so far:
+22 timeouts
+5 fails
