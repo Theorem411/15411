@@ -759,8 +759,10 @@ let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : un
           List.iter [ lhs, AS.L; rhs, AS.L ] ~f:preprocess_opsz
         | ASInstr (LLVM_Set { size = AS.L; lhs; rhs; _ }) ->
           List.iter [ lhs, AS.L; rhs, AS.L ] ~f:preprocess_opsz
-        | ASInstr (LLVM_MovTo { size = AS.L; dest; _ }) -> set_type_if_temp Pointer dest
-        | ASInstr (LLVM_MovFrom { size = AS.L; src; _ }) -> set_type_if_temp Pointer src
+        | ASInstr (LLVM_MovTo { size; dest; src }) ->
+          List.iter [ dest, AS.L; src, size ] ~f:preprocess_opsz
+        | ASInstr (LLVM_MovFrom { size; src; dest }) ->
+          List.iter [ src, AS.L; dest, size ] ~f:preprocess_opsz
         | ASInstr (LLVM_NullCheck { size = AS.L; dest; _ }) ->
           set_type_if_temp Pointer dest
         | ASInstr (LLVM_Call _ as ins) -> preprocess_call ins
