@@ -95,6 +95,7 @@ let print_types () =
 ;;
 
 let set_type (t : Temp.t) typ =
+  (* prerr_endline (sprintf "adding %s -> %s" (Temp.name t) (pp_typ typ)); *)
   let tbl = get_temps_tbl () in
   remove_todo t;
   match TT.find tbl t with
@@ -455,18 +456,13 @@ and pp_instr' : AS.instr -> string = function
   | LLVM_Cmp { dest; lhs; rhs; typ; size = AS.L as size } (*next line*)
   | LLVM_Set { dest; lhs; rhs; typ; size = AS.L as size } ->
     sprintf
-      "%s_i = icmp %s %s %s, %s\n\
-       \t%s_intv = zext i1 %s_i to i64\n\
-       \t%s = inttoptr i64 %s_intv to ptr"
+      "%s_i = icmp %s %s %s, %s\n\t%s = zext i1 %s_i to i32\n"
       (pp_operand dest)
       (pp_set_typ typ)
       (pp_size size)
       (pp_operand lhs ~size)
       (pp_operand rhs ~size)
       (* first line end *)
-      (pp_operand dest)
-      (pp_operand dest)
-      (* second line end *)
       (pp_operand dest)
       (pp_operand dest)
   | LLVM_Cmp { dest; lhs; rhs; typ; size } (*next line*)
@@ -516,7 +512,7 @@ and pp_instr' : AS.instr -> string = function
     sprintf
       "store %s %s, %s %s"
       (pp_size size)
-      (pp_operand src)
+      (pp_operand src ~size)
       (pp_size AS.L)
       (pp_operand dest)
   | LLVM_MovFrom { dest; size; src } ->
@@ -711,6 +707,10 @@ let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : un
         | Nop -> ()
         | Phi _ -> preprocess_phi instr
         | ASInstr (PureBinop { size = AS.L; dest; _ }) -> set_type_if_temp Pointer dest
+        | ASInstr (LLVM_Cmp { size = AS.L; lhs; rhs; _ }) ->
+          List.iter [ lhs, AS.L; rhs, AS.L ] ~f:preprocess_opsz
+        | ASInstr (LLVM_Set { size = AS.L; lhs; rhs; _ }) ->
+          List.iter [ lhs, AS.L; rhs, AS.L ] ~f:preprocess_opsz
         | ASInstr (LLVM_MovTo { size = AS.L; dest; _ }) -> set_type_if_temp Pointer dest
         | ASInstr (LLVM_MovFrom { size = AS.L; src; _ }) -> set_type_if_temp Pointer src
         | ASInstr (LLVM_NullCheck { size = AS.L; dest; _ }) ->
