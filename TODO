@@ -1,0 +1,36 @@
+l1-basic: NONE
+l1-large: 1 timeout
+Expected successful execution, timed out:
+   ../tests/l1-large/kelen-success4.l1 [Compiler time out]
+
+l2-basic: NONE
+l2-large: 7 timeouts
+Expected successful execution, timed out:
+   ../tests/l2-large/hulk-test9-nested-loops.l2
+   ../tests/l2-large/robert-py-regalpar-2-party-harder-large.l2
+   ../tests/l2-large/robert-py-regalpar-2-party-harder-small.l2
+   ../tests/l2-large/robert-py-regalpar-2-party-harder-tiny.l2
+   ../tests/l2-large/tyrion-falsifier.l2
+   ../tests/l2-large/tyrion-truthifier.l2
+   ../tests/l2-large/viserys-test19.l2
+Expected successful execution, failed: [Some XOR issue, will fix it]
+   ../tests/l2-large/ro-return05.l2
+   ../tests/l2-large/velociraptor-return_03.l2
+
+
+l3-basic: NONE
+l3-large: 10 timeouts
+Expected successful execution, timed out:
+   ../tests/l3-large/barsoomian-aoc2019-day2.l3
+   ../tests/l3-large/kylo-humongous-wrath-of-the-temps.l3
+   ../tests/l3-large/lucius-malfoy-call-very-very-many-args.l3
+   ../tests/l3-large/olenna-commodus-constant-propagation.l3
+   ../tests/l3-large/robert-py-n-ary_recursion_1024.l3
+   ../tests/l3-large/tyrion-ack.l3
+   ../tests/l3-large/tyrion-typeydefy.l3
+   ../tests/l3-large/voldemort-bathilda-bagshot.l3
+   ../tests/l3-large/voldemort-myrtle.l3
+Expected a runtime exception, timed out:
+   ../tests/l3-large/robert-py-abort_abort_abort.l3
+
+l4-basic

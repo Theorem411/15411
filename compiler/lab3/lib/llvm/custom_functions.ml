@@ -144,7 +144,7 @@ let format_alloc () =
      %cstm_6 = icmp eq ptr %cstm_5, null\n\
      br i1 %cstm_6, label %c0_alloc7, label %c0_alloc9\n\n\
      c0_alloc7:                                                ; preds = %cstm_1\n\
-     %cstm_8 = tail call i32 @raise(i32 noundef 2) #5\n\
+     %cstm_8 = tail call i32 @raise(i32 noundef 12) #5\n\
      br label %c0_alloc9\n\n\
      c0_alloc9:                                                ; preds = %cstm_7, %cstm_1\n\
      ret ptr %cstm_5\n\
@@ -158,7 +158,7 @@ let format_alloc_array () =
      %cstm_3 = icmp slt i32 %cstm_1, 0\n\
      br i1 %cstm_3, label %c0_alloc_array4, label %c0_alloc_array6\n\n\
      c0_alloc_array4:                                                ; preds = %cstm_2\n\
-     %cstm_5 = tail call i32 @raise(i32 noundef 2) #5\n\
+     %cstm_5 = tail call i32 @raise(i32 noundef 12) #5\n\
      br label %c0_alloc_array6\n\n\
      c0_alloc_array6:                                                ; preds = %cstm_4, \
      %cstm_2\n\
@@ -169,7 +169,7 @@ let format_alloc_array () =
      %cstm_10 = icmp slt i32 %cstm_9, %cstm_1\n\
      br i1 %cstm_10, label %c0_alloc_array11, label %c0_alloc_array13\n\n\
      c0_alloc_array11:                                               ; preds = %cstm_8\n\
-     %cstm_12 = tail call i32 @raise(i32 noundef 2) #5\n\
+     %cstm_12 = tail call i32 @raise(i32 noundef 12) #5\n\
      br label %c0_alloc_array13\n\n\
      c0_alloc_array13:                                               ; preds = %cstm_11, \
      %cstm_8, %cstm_6\n\
