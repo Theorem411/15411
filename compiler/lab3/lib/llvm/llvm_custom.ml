@@ -9,7 +9,7 @@ module TT = Hashtbl.Make (Temp)
 module ST = Hashtbl.Make (String)
 module HeaderAst = Ast
 
-let print_off = false
+let print_off = true
 let preproc_instr_off = false
 
 type temp_type =
