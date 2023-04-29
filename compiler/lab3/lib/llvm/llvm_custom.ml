@@ -529,6 +529,20 @@ and pp_instr' : AS.instr -> string = function
       (Custom_functions.get_efkt_name_ops "check_array")
       (pp_operand index)
       (pp_operand length)
+  | LLVM_MovTo { dest = AS.Imm n; size; src } ->
+    let m = get_new_counter () in
+    sprintf
+      "%%t%d_intptrmoveto%d = inttoptr i32 %d to ptr\n\
+       \tstore %s %s, %s %%t%d_intptrmoveto%d"
+      (Int64.to_int_exn n)
+      m
+      (Int64.to_int_exn n)
+      (* second line done *)
+      (pp_size size)
+      (pp_operand src ~size)
+      (pp_size AS.L)
+      (Int64.to_int_exn n)
+      m
   | LLVM_MovTo { dest; size; src } ->
     sprintf
       "store %s %s, %s %s"
