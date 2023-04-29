@@ -14,7 +14,7 @@ let get_efkt_name_ops = function
   | "check_null" -> "_____JAVAWAY_failifnull"
   | "check_array" -> "_____JAVAWAY_failifoutbounds"
   | "alloc_array" -> CustomAssembly.alloc_array_fname ~unsafe:false
-  | "alloc" -> CustomAssembly.alloc_fname ~unsafe:true
+  | "alloc" -> CustomAssembly.alloc_fname ~unsafe:false
   | s -> failwith "get_efkt_name_ops got sth strange:" ^ s
 ;;
 
@@ -186,7 +186,7 @@ let format_alloc_array () =
 let format_pre () =
   [ ""
   ; "declare dso_local void @raise(i32) #1"
-  ; "declare dso_local ptr @calloc(i64, i64) local_unnamed_addr #1"
+  ; "declare dso_local noalias ptr @calloc(i64, i64) local_unnamed_addr #1"
   ; format_div ()
   ; format_mod ()
   ; format_shl ()
@@ -232,10 +232,8 @@ let get_post (_ : string) : string =
      \"stack-protector-buffer-size\"=\"8\" \"target-cpu\"=\"apple-m1\" \
      \"target-features\"=\"+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.5a,+zcm,+zcz\" \
      }"
-    ^ "\n\
-      \       attributes #2 = { \"frame-pointer\"=\"non-leaf\" \
-       \"no-trapping-math\"=\"true\" \"stack-protector-buffer-size\"=\"8\" \
-       \"target-cpu\"=\"apple-m1\" \
+    ^ "attributes #2 = { \"frame-pointer\"=\"non-leaf\" \"no-trapping-math\"=\"true\" \
+       \"stack-protector-buffer-size\"=\"8\" \"target-cpu\"=\"apple-m1\" \
        \"target-features\"=\"+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.1a,+v8.2a,+v8.3a,+v8.4a,+v8.5a,+v8a,+zcm,+zcz\" \
        }\n\
        attributes #3 = { mustprogress nofree norecurse nosync nounwind ssp willreturn \
@@ -274,21 +272,18 @@ let get_post (_ : string) : string =
      \"unsafe-fp-math\"=\"false\" \"use-soft-float\"=\"false\" }\n\
      attributes #1 = { nounwind }\n\
     \ "
-    ^ "\n\
-      \       attributes #2 = { \"frame-pointer\"=\"non-leaf\" \
+    ^ "attributes #2 = { nounwind \"frame-pointer\"=\"none\" \
        \"no-trapping-math\"=\"true\" \"stack-protector-buffer-size\"=\"8\" \
-       \"target-cpu\"=\"apple-m1\" \
-       \"target-features\"=\"+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.1a,+v8.2a,+v8.3a,+v8.4a,+v8.5a,+v8a,+zcm,+zcz\" \
-       }\n\
-       attributes #3 = { mustprogress nofree norecurse nosync nounwind ssp willreturn \
-       memory(none) uwtable(sync) \"frame-pointer\"=\"non-leaf\" \
+       \"target-cpu\"=\"x86-64\" \"target-features\"=\"+cx8,+fxsr,+mmx,+sse,+sse2,+x87\" \
+       \"tune-cpu\"=\"generic\" }\n\n\
+      \    attributes #3 = { mustprogress nofree norecurse nosync nounwind readnone \
+       willreturn uwtable \"frame-pointer\"=\"none\" \"min-legal-vector-width\"=\"0\" \
        \"no-trapping-math\"=\"true\" \"stack-protector-buffer-size\"=\"8\" \
-       \"target-cpu\"=\"apple-m1\" \
-       \"target-features\"=\"+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.1a,+v8.2a,+v8.3a,+v8.4a,+v8.5a,+v8a,+zcm,+zcz\" \
-       }\n\
-       attributes #4 = { allocsize(0,1) }\n\
-       attributes #5 = { nounwind }\n\
-      \ "
+       \"target-cpu\"=\"x86-64\" \"target-features\"=\"+cx8,+fxsr,+mmx,+sse,+sse2,+x87\" \
+       \"tune-cpu\"=\"generic\" }\n\n\
+      \    attributes #4 = { nounwind allocsize(0,1) }\n\n\
+      \    attributes #5 = { nounwind }\n\
+      \       "
     ^ " \n\
       \         !llvm.module.flags = !{!0}\n\
        !llvm.ident = !{!1}\n\

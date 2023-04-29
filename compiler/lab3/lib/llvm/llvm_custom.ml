@@ -282,18 +282,26 @@ and pp_xor = function
   | _ -> failwith "pp+xor got not imm xor"
 
 and pp_add_offset = function
-  | AS.PureBinop { op = AS.Add; size = AS.L; lhs; rhs = AS.Imm n; dest } ->
+  | AS.PureBinop { op = AS.Add | AS.Sub; size = AS.L; lhs; rhs = AS.Imm n; dest } ->
     let offset_bytes = Int64.( / ) n (Int64.of_int 4) |> Int64.to_int_exn in
     sprintf
       "%s = getelementptr i8, ptr %s, i64 %d"
       (pp_operand dest)
       (pp_operand lhs)
       offset_bytes
+  | AS.PureBinop { op = AS.Add; size = AS.L; lhs; rhs = AS.Temp _ as rhs; dest } ->
+    sprintf
+      "%s_offset = udiv i32 %s, 8\n%s = getelementptr i8, ptr %s, i64 %s_offset"
+      (pp_operand rhs)
+      (pp_operand rhs)
+      (pp_operand dest)
+      (pp_operand lhs)
+      (pp_operand rhs)
   | __instr -> failwith ("pp_add_offset recieved weird input: " ^ AS.format_instr __instr)
 
 and pp_instr' : AS.instr -> string = function
   | PureBinop { op = AS.BitXor; rhs = AS.Imm _; _ } as instr -> pp_xor instr
-  | PureBinop { op = AS.Add; size = AS.L; _ } as instr -> pp_add_offset instr
+  | PureBinop { op = AS.Add | AS.Sub; size = AS.L; _ } as instr -> pp_add_offset instr
   | PureBinop ({ op = AS.BitAnd | AS.BitOr | AS.BitXor; size; _ } as binop) ->
     sprintf
       "%s = %s %s %s, %s"
@@ -326,7 +334,7 @@ and pp_instr' : AS.instr -> string = function
     sprintf "; %s <-%s- %s" (pp_operand dest) (pp_size size) (pp_operand src)
   | Mov { dest; src; size } ->
     sprintf "%s <-%s- %s" (pp_operand dest) (pp_size size) (pp_operand src)
-  | MovSxd { dest; src } -> sprintf "movsxd %s <-- %s" (pp_operand dest) (pp_operand src)
+  | MovSxd { dest; src } -> sprintf "; movsxd %s <-- %s" (pp_operand dest) (pp_operand src)
   | Directive dir -> sprintf "%s" dir
   | Comment comment -> sprintf "/* %s */" comment
   | Jmp l -> "; jump " ^ pp_label l
@@ -703,8 +711,18 @@ let pp_program_helper (prog : program) : string =
   List.map prog ~f:pp_fspace |> String.concat ~sep:"\n"
 ;;
 
+let custom_funs =
+  [ Custom_functions.get_efkt_name_ops "alloc"
+  ; Custom_functions.get_efkt_name_ops "alloc_array"
+  ]
+;;
+
 let pp_declare () =
   let s = !functions_list_ref in
+  (* ignore custom functions *)
+  let s =
+    List.filter s ~f:(fun (a, _, _) -> not (List.mem ~equal:String.equal custom_funs a))
+  in
   let r =
     let print_f (name, args, ret_opt) =
       sprintf
