@@ -517,7 +517,7 @@ and pp_instr' : AS.instr -> string = function
       (pp_size size)
       (pp_operand src ~size)
       (pp_size AS.L)
-      (pp_operand dest)
+      (pp_operand dest ~size:AS.L)
   | LLVM_MovFrom { dest; size; src } ->
     sprintf
       "%s = load %s, %s %s"
