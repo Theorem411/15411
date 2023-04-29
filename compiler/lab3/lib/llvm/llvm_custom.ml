@@ -480,7 +480,8 @@ and pp_instr' : AS.instr -> string = function
   | LLVM_IF { cond; tl; fl } ->
     sprintf "br i1 %s_i, label %s, label %s" (pp_operand cond) (pp_label tl) (pp_label fl)
   | LLVM_Ret None -> "ret void"
-  | LLVM_Ret (Some (src, sz)) -> sprintf "ret %s %s" (pp_size sz) (pp_operand src)
+  | LLVM_Ret (Some (src, sz)) ->
+    sprintf "ret %s %s" (pp_size sz) (pp_operand src ~size:sz)
   | LLVM_Call { dest = Some (dest, sz); args; fname } ->
     sprintf
       "%s = call %s @%s(%s)"
