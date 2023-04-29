@@ -330,6 +330,23 @@ and pp_add_offset = function
       (pp_operand dest)
       (pp_operand lhs)
       n
+  | AS.PureBinop { op = AS.Add; size = AS.L; lhs = AS.Imm _ as lhs; rhs = AS.Imm _ as rhs; dest } ->
+    let n = get_new_counter () in
+    sprintf
+      "%%t%s_int%d = ptrtoint ptr %s to i64\n\
+       \t%%t%s_int_pbadd_added%d = add nsw i64 %%t%s_int%d, %s\n\
+       \t%s = inttoptr i64 %%t%s_int_pbadd_added%d to ptr"
+      (pp_operand lhs)
+      n
+      (pp_operand lhs ~size:AS.L)
+      (pp_operand lhs)
+      n
+      (pp_operand lhs)
+      n
+      (pp_operand rhs)
+      (pp_operand dest)
+      (pp_operand lhs)
+      n
   | AS.PureBinop { op = AS.Add; size = AS.L; lhs; rhs = AS.Imm _ as rhs; dest } ->
     let n = get_new_counter () in
     sprintf
