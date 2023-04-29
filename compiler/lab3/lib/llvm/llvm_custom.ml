@@ -225,11 +225,6 @@ let get_size_str_opt_fun (s : string) =
 ;;
 
 let add_fun_ret (s : Symbol.t) r =
-  prerr_endline
-    ("adding "
-    ^ Symbol.name s
-    ^ ":"
-    ^ (Option.map r ~f:pp_size |> Option.value ~default:"None"));
   let name = Symbol.name s in
   match r, ST.find !fun_ret_size_ref name with
   | _, None -> ST.add_exn ~key:name ~data:r !fun_ret_size_ref
