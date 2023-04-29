@@ -332,29 +332,39 @@ and pp_add_offset = function
       (pp_operand lhs)
       n
   | AS.PureBinop { op = AS.Add; size = AS.L; lhs; rhs = AS.Imm _ as rhs; dest } ->
+    let n = get_new_counter () in
     sprintf
-      "%s_int = ptrtoint ptr %s to i64\n\
-       \t%s_int_pbadd_added = add nsw i64 %s_int, %s\n\
-       \t%s = inttoptr i64 %s_int_pbadd_added to ptr"
+      "%s_int%d = ptrtoint ptr %s to i64\n\
+       \t%s_int_pbadd_added%d = add nsw i64 %s_int%d, %s\n\
+       \t%s = inttoptr i64 %s_int_pbadd_added%d to ptr"
+      (pp_operand lhs)
+      n
       (pp_operand lhs)
       (pp_operand lhs)
+      n
       (pp_operand lhs)
-      (pp_operand lhs)
+      n
       (pp_operand rhs)
       (pp_operand dest)
       (pp_operand lhs)
+      n
   | AS.PureBinop { op = AS.Mul; size = AS.L; lhs; rhs = AS.Imm m; dest } ->
+    let n = get_new_counter () in
     sprintf
-      "%s_int = ptrtoint ptr %s to i64\n\
-       \t%s_intmulted = mul i64 %s_int, %d\n\
-       \t%s = inttoptr i64 %s_intmulted to ptr"
+      "%s_int%d = ptrtoint ptr %s to i64\n\
+       \t%s_intmulted%d = mul i64 %s_int%d, %d\n\
+       \t%s = inttoptr i64 %s_intmulted%d to ptr"
+      (pp_operand lhs)
+      n
       (pp_operand lhs)
       (pp_operand lhs)
+      n
       (pp_operand lhs)
-      (pp_operand lhs)
+      n
       (Int64.to_int_exn m)
       (pp_operand dest)
       (pp_operand lhs)
+      n
   | __instr -> failwith ("pp_add_offset recieved weird input: " ^ AS.format_instr __instr)
 
 and pp_instr' : AS.instr -> string = function
@@ -669,6 +679,8 @@ let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : un
         | Nop -> ()
         | Phi _ -> preprocess_phi instr
         | ASInstr (PureBinop { size = AS.L; dest; _ }) -> set_type_if_temp Pointer dest
+        | ASInstr (LLVM_MovTo { size = AS.L; dest; _ }) -> set_type_if_temp Pointer dest
+        | ASInstr (LLVM_MovFrom { size = AS.L; src; _ }) -> set_type_if_temp Pointer src
         | ASInstr (LLVM_Call _ as ins) -> preprocess_call ins
         | _ -> ());
     if print_off
