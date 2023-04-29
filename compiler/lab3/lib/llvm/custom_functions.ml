@@ -110,7 +110,7 @@ let format_check_null () =
     \ %is_null = icmp eq ptr %ptr, null\n\
     \ br i1 %is_null, label %raise_error, label %exit\n\n\
      raise_error:\n\
-    \ call void @raise(i32 2)\n\
+    \ call void @raise(i32 12)\n\
     \ unreachable\n\n\
      exit:\n\
     \ ret void\n\
@@ -126,7 +126,7 @@ let format_check_array () =
   \ %is_valid = and i1 %is_ge_zero, %is_lt_length\n\
   \ br i1 %is_valid, label %exit, label %raise_error\n\n\
    raise_error:\n\
-  \ call void @raise(i32 2)\n\
+  \ call void @raise(i32 12)\n\
   \ unreachable\n\n\
    exit:\n\
   \ ret void\n\
