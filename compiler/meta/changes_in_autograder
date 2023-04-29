@@ -1,0 +1,2 @@
+- Used `llc` of version 15 (replaced `llc` -> `llc-15`)
+- Used `llc-15` with optimizations of level 2
