@@ -1,0 +1,14 @@
+GIT COMMIT HASH:
+3eb3b59
+rm driver >/dev/null 2>&1 || true
+mlton -output driver sources.mlb
+Already up to date.
+rm -Rf bin
+for l in lab*; do make -C $l clean; done
+mkdir bin
+make -C compiler/lab3
+make[1]: Entering directory '/home/useitkal/dist/compiler/compiler/lab3'
+dune build
+mkdir -p ../../bin
+install _build/default/bin/c0c.exe ../../bin/c0c
+make[1]: Leaving directory '/home/useitkal/dist/compiler/compiler/lab3'

@@ -1,0 +1,54 @@
+BASIC TESTCASES:
+TIMED OUT: 0
+FAIL: 0
+PASS: 115/115
+
+LARGE TESTCASES:
+TIMED OUT: 30
+FAIL: 3
+PASS: 17409 / 17442
+
+Compiler timed out after typechecking: 21
+    ../tests/l1-large/kelen-success4.l1
+    ../tests/l2-large/vulcan-vulcan-baka-mitai.l2
+    ../tests/l2-large/vulcan-vulcan-cruel-angel-thesis.l2
+    ../tests/l2-large/vulcan-vulcan-dragon-night.l2
+    ../tests/l2-large/vulcan-vulcan-gura-gawr.l2
+    ../tests/l2-large/vulcan-vulcan-promise-of-the-world.l2
+    ../tests/l2-large/vulcan-vulcan-ride-on-time.l2
+    ../tests/l2-large/robert-py-regalpar-2-party-harder-large.l2
+    ../tests/l2-large/robert-py-regalpar-2-party-harder-small.l2
+    ../tests/l2-large/robert-py-regalpar-2-party-harder-tiny.l2
+    ../tests/l2-large/tyrion-falsifier.l2
+    ../tests/l2-large/tyrion-truthifier.l2
+    ../tests/l2-large/viserys-test19.l2
+    ../tests/l2-large/vulcan-vulcan-departure.l2
+    ../tests/l3-large/barsoomian-aoc2019-day2.l3
+    ../tests/l3-large/jabba-mutual_recursion.l3
+    ../tests/l3-large/olenna-commodus-constant-propagation.l3
+    ../tests/l3-large/robert-py-n-ary_recursion_1024.l3
+    ../tests/l3-large/robert-py-abort_abort_abort.l3
+    ../tests/l3-large/tyrion-typeydefy.l3
+    ../tests/l3-large/voldemort-myrtle.l3
+
+Compiler timed out while parsing and typechecking: 4
+    ../tests/l4-large/lando-accidentallyquadratic.l4
+    ../tests/l3-large/voldemort-bathilda-bagshot.l3
+    ../tests/l3-large/kylo-humongous-wrath-of-the-temps.l3
+    ../tests/l3-large/lucius-malfoy-call-very-very-many-args.l3 
+
+Program timed out (sigalrm): 4
+    ../tests/l2-large/hulk-test9-nested-loops.l2
+    ../tests/l3-large/tyrion-ack.l3
+    ../tests/l4-large/luna-lab4_test18.l4
+    ../tests/l4-large/olenna-hard.l4
+
+Program failed to terminate due to memory error (possibly stack overflow?)
+    ../tests/l4-large/sparrowhawk-linkedlist3.l4
+
+Expected a runtime exception, failed:
+   ../tests/l4-large/potassium-ex01.l4
+   ../tests/l4-large/vulcan-pyonpyon.l4
+Expected successful execution, failed:
+   ../tests/l4-large/vulcan-nikoniko.l4
+

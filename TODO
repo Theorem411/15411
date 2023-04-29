@@ -4,7 +4,7 @@ Expected successful execution, timed out:
    ../tests/l1-large/kelen-success4.l1 [Compiler time out]
 
 l2-basic: NONE
-l2-large: 7 timeouts
+l2-large: 14 timeouts
 Expected successful execution, timed out:
    ../tests/l2-large/hulk-test9-nested-loops.l2
    ../tests/l2-large/robert-py-regalpar-2-party-harder-large.l2
@@ -13,13 +13,9 @@ Expected successful execution, timed out:
    ../tests/l2-large/tyrion-falsifier.l2
    ../tests/l2-large/tyrion-truthifier.l2
    ../tests/l2-large/viserys-test19.l2
-Expected successful execution, failed: [Some XOR issue, will fix it]
-   ../tests/l2-large/ro-return05.l2
-   ../tests/l2-large/velociraptor-return_03.l2
-
 
 l3-basic: NONE
-l3-large: 10 timeouts
+l3-large: 11 timeouts
 Expected successful execution, timed out:
    ../tests/l3-large/barsoomian-aoc2019-day2.l3
    ../tests/l3-large/kylo-humongous-wrath-of-the-temps.l3
@@ -48,5 +44,5 @@ Expected successful execution, timed out:
 
 
 Total so far:
-22 timeouts
-5 fails
+30 timeouts
+3 fails

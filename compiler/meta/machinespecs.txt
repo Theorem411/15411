@@ -1,0 +1,104 @@
+useitkal@16coretesting:~$ lscpu
+Architecture:                    x86_64
+CPU op-mode(s):                  32-bit, 64-bit
+Byte Order:                      Little Endian
+Address sizes:                   46 bits physical, 48 bits virtual
+CPU(s):                          16
+On-line CPU(s) list:             0-15
+Thread(s) per core:              2
+Core(s) per socket:              8
+Socket(s):                       1
+NUMA node(s):                    1
+Vendor ID:                       GenuineIntel
+CPU family:                      6
+Model:                           85
+Model name:                      Intel(R) Xeon(R) Platinum 8272CL CPU @ 2.60GHz
+Stepping:                        7
+CPU MHz:                         2593.905
+BogoMIPS:                        5187.81
+Virtualization:                  VT-x
+Hypervisor vendor:               Microsoft
+Virtualization type:             full
+L1d cache:                       256 KiB
+L1i cache:                       256 KiB
+L2 cache:                        8 MiB
+L3 cache:                        35.8 MiB
+NUMA node0 CPU(s):               0-15
+Vulnerability Itlb multihit:     KVM: Mitigation: VMX disabled
+Vulnerability L1tf:              Mitigation; PTE Inversion; VMX conditional cache flus
+                                 hes, SMT vulnerable
+Vulnerability Mds:               Mitigation; Clear CPU buffers; SMT Host state unknown
+Vulnerability Meltdown:          Mitigation; PTI
+Vulnerability Mmio stale data:   Vulnerable: Clear CPU buffers attempted, no microcode
+                                 ; SMT Host state unknown
+Vulnerability Retbleed:          Vulnerable
+Vulnerability Spec store bypass: Vulnerable
+Vulnerability Spectre v1:        Mitigation; usercopy/swapgs barriers and __user point
+                                 er sanitization
+Vulnerability Spectre v2:        Mitigation; Retpolines, STIBP disabled, RSB filling, 
+                                 PBRSB-eIBRS Not affected
+Vulnerability Srbds:             Not affected
+Vulnerability Tsx async abort:   Mitigation; Clear CPU buffers; SMT Host state unknown
+Flags:                           fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge 
+                                 mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht sy
+                                 scall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl
+                                  xtopology cpuid pni pclmulqdq vmx ssse3 fma cx16 pci
+                                 d sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdran
+                                 d hypervisor lahf_lm abm 3dnowprefetch invpcid_single
+                                  pti tpr_shadow vnmi ept vpid fsgsbase bmi1 hle avx2 
+                                 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed ad
+                                 x smap clflushopt avx512cd avx512bw avx512vl xsaveopt
+                                  xsavec xsaves md_clear
+
+useitkal@16coretesting:~$ cat /proc/meminfo
+MemTotal:       65855516 kB
+MemFree:        57497500 kB
+MemAvailable:   63779780 kB
+Buffers:          438392 kB
+Cached:          5821128 kB
+SwapCached:            0 kB
+Active:          2701640 kB
+Inactive:        4389708 kB
+Active(anon):       1044 kB
+Inactive(anon):   831796 kB
+Active(file):    2700596 kB
+Inactive(file):  3557912 kB
+Unevictable:       21608 kB
+Mlocked:           18536 kB
+SwapTotal:             0 kB
+SwapFree:              0 kB
+Dirty:                 0 kB
+Writeback:             0 kB
+AnonPages:        836228 kB
+Mapped:           105812 kB
+Shmem:              4160 kB
+KReclaimable:     758564 kB
+Slab:             924132 kB
+SReclaimable:     758564 kB
+SUnreclaim:       165568 kB
+KernelStack:        5984 kB
+PageTables:        12460 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:    32927756 kB
+Committed_AS:    1830768 kB
+VmallocTotal:   34359738367 kB
+VmallocUsed:       42932 kB
+VmallocChunk:          0 kB
+Percpu:            15872 kB
+HardwareCorrupted:     0 kB
+AnonHugePages:    495616 kB
+ShmemHugePages:        0 kB
+ShmemPmdMapped:        0 kB
+FileHugePages:         0 kB
+FilePmdMapped:         0 kB
+HugePages_Total:       0
+HugePages_Free:        0
+HugePages_Rsvd:        0
+HugePages_Surp:        0
+Hugepagesize:       2048 kB
+Hugetlb:               0 kB
+DirectMap4k:      380168 kB
+DirectMap2M:    12201984 kB
+DirectMap1G:    54525952 kB

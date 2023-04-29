@@ -1,0 +1,290 @@
+/usr/local/bin/mlton
+Using MLton...
+make: Entering directory '/home/useitkal/dist/harness'
+make: 'driver' is up to date.
+make: Leaving directory '/home/useitkal/dist/harness'
+-- 15-411 Compiler Tester --
+-- Building compiler (make) --
+make -C compiler/lab3
+make[1]: Entering directory '/home/useitkal/dist/compiler/compiler/lab3'
+dune build
+mkdir -p ../../bin
+install _build/default/bin/c0c.exe ../../bin/c0c
+make[1]: Leaving directory '/home/useitkal/dist/compiler/compiler/lab3'
+[1m-- Testing compiler on l1-basic --[0m
+
+[1m-- Summary --[0m
+l1-basic: passed 16 / 16
+/usr/local/bin/mlton
+Using MLton...
+make: Entering directory '/home/useitkal/dist/harness'
+make: 'driver' is up to date.
+make: Leaving directory '/home/useitkal/dist/harness'
+-- 15-411 Compiler Tester --
+-- Building compiler (make) --
+make -C compiler/lab3
+make[1]: Entering directory '/home/useitkal/dist/compiler/compiler/lab3'
+dune build
+mkdir -p ../../bin
+install _build/default/bin/c0c.exe ../../bin/c0c
+make[1]: Leaving directory '/home/useitkal/dist/compiler/compiler/lab3'
+[1m-- Testing compiler on l2-basic --[0m
+
+[1m-- Summary --[0m
+l2-basic: passed 30 / 30
+/usr/local/bin/mlton
+Using MLton...
+make: Entering directory '/home/useitkal/dist/harness'
+make: 'driver' is up to date.
+make: Leaving directory '/home/useitkal/dist/harness'
+-- 15-411 Compiler Tester --
+-- Building compiler (make) --
+make -C compiler/lab3
+make[1]: Entering directory '/home/useitkal/dist/compiler/compiler/lab3'
+dune build
+mkdir -p ../../bin
+install _build/default/bin/c0c.exe ../../bin/c0c
+make[1]: Leaving directory '/home/useitkal/dist/compiler/compiler/lab3'
+[1m-- Testing compiler on l3-basic --[0m
+
+[1m-- Summary --[0m
+l3-basic: passed 35 / 35
+/usr/local/bin/mlton
+Using MLton...
+make: Entering directory '/home/useitkal/dist/harness'
+make: 'driver' is up to date.
+make: Leaving directory '/home/useitkal/dist/harness'
+-- 15-411 Compiler Tester --
+-- Building compiler (make) --
+make -C compiler/lab3
+make[1]: Entering directory '/home/useitkal/dist/compiler/compiler/lab3'
+dune build
+mkdir -p ../../bin
+install _build/default/bin/c0c.exe ../../bin/c0c
+make[1]: Leaving directory '/home/useitkal/dist/compiler/compiler/lab3'
+[1m-- Testing compiler on l4-basic --[0m
+
+[1m-- Summary --[0m
+l4-basic: passed 44 / 44
+/usr/local/bin/mlton
+Using MLton...
+make: Entering directory '/home/useitkal/dist/harness'
+make: 'driver' is up to date.
+make: Leaving directory '/home/useitkal/dist/harness'
+-- 15-411 Compiler Tester --
+-- Building compiler (make) --
+make -C compiler/lab3
+make[1]: Entering directory '/home/useitkal/dist/compiler/compiler/lab3'
+dune build
+mkdir -p ../../bin
+install _build/default/bin/c0c.exe ../../bin/c0c
+make[1]: Leaving directory '/home/useitkal/dist/compiler/compiler/lab3'
+[1m-- Testing compiler on l1-large --[0m
+[31m-- FAIL: ../tests/l1-large/kelen-success4.l1 --[0m
+[31m   directive: //test return 15000[0m
+[31m     outcome: compiler timed out after typechecking[0m
+
+[1m-- Summary --[0m
+Expected successful execution, timed out:
+   ../tests/l1-large/kelen-success4.l1
+l1-large: passed 3007 / 3008 timed out 1 / 3008
+/usr/local/bin/mlton
+Using MLton...
+make: Entering directory '/home/useitkal/dist/harness'
+make: 'driver' is up to date.
+make: Leaving directory '/home/useitkal/dist/harness'
+-- 15-411 Compiler Tester --
+-- Building compiler (make) --
+make -C compiler/lab3
+make[1]: Entering directory '/home/useitkal/dist/compiler/compiler/lab3'
+dune build
+mkdir -p ../../bin
+install _build/default/bin/c0c.exe ../../bin/c0c
+make[1]: Leaving directory '/home/useitkal/dist/compiler/compiler/lab3'
+[1m-- Testing compiler on l2-large --[0m
+[31m-- FAIL: ../tests/l2-large/hulk-test9-nested-loops.l2 --[0m
+[31m   directive: //test return 1689574054[0m
+[31m     outcome: program timed out (sigalrm)[0m
+[31m-- FAIL: ../tests/l2-large/robert-py-regalpar-2-party-harder-small.l2 --[0m
+[31m   directive: //test return 2097252[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/robert-py-regalpar-2-party-harder-tiny.l2 --[0m
+[31m   directive: //test return 16484[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/robert-py-regalpar-2-party-harder-large.l2 --[0m
+[31m   directive: //test return 33554532[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/tyrion-falsifier.l2 --[0m
+[31m   directive: //test return 1[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/tyrion-truthifier.l2 --[0m
+[31m   directive: //test return 1[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/viserys-test19.l2 --[0m
+[31m   directive: //test return 761[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/vulcan-vulcan-baka-mitai.l2 --[0m
+[31m   directive: //test div-by-zero[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/vulcan-vulcan-departure.l2 --[0m
+[31m   directive: //test return 170005056[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/vulcan-vulcan-dragon-night.l2 --[0m
+[31m   directive: //test div-by-zero[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/vulcan-vulcan-cruel-angel-thesis.l2 --[0m
+[31m   directive: //test div-by-zero[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/vulcan-vulcan-gura-gawr.l2 --[0m
+[31m   directive: //test div-by-zero[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/vulcan-vulcan-promise-of-the-world.l2 --[0m
+[31m   directive: //test div-by-zero[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l2-large/vulcan-vulcan-ride-on-time.l2 --[0m
+[31m   directive: //test div-by-zero[0m
+[31m     outcome: compiler timed out after typechecking[0m
+
+[1m-- Summary --[0m
+Ill-formed test files:
+   ../tests/l2-large/tyrion-falsifier.l2.ll
+   ../tests/l2-large/tyrion-truthifier.l2.ll
+   ../tests/l2-large/viserys-test19.l2.ll
+   ../tests/l2-large/vulcan-vulcan-ride-on-time.l2.ll
+Expected a runtime exception, timed out:
+   ../tests/l2-large/vulcan-vulcan-baka-mitai.l2
+   ../tests/l2-large/vulcan-vulcan-cruel-angel-thesis.l2
+   ../tests/l2-large/vulcan-vulcan-dragon-night.l2
+   ../tests/l2-large/vulcan-vulcan-gura-gawr.l2
+   ../tests/l2-large/vulcan-vulcan-promise-of-the-world.l2
+   ../tests/l2-large/vulcan-vulcan-ride-on-time.l2
+Expected successful execution, timed out:
+   ../tests/l2-large/hulk-test9-nested-loops.l2
+   ../tests/l2-large/robert-py-regalpar-2-party-harder-large.l2
+   ../tests/l2-large/robert-py-regalpar-2-party-harder-small.l2
+   ../tests/l2-large/robert-py-regalpar-2-party-harder-tiny.l2
+   ../tests/l2-large/tyrion-falsifier.l2
+   ../tests/l2-large/tyrion-truthifier.l2
+   ../tests/l2-large/viserys-test19.l2
+   ../tests/l2-large/vulcan-vulcan-departure.l2
+l2-large: passed 4828 / 4846 timed out 14 / 4846
+/usr/local/bin/mlton
+Using MLton...
+make: Entering directory '/home/useitkal/dist/harness'
+make: 'driver' is up to date.
+make: Leaving directory '/home/useitkal/dist/harness'
+-- 15-411 Compiler Tester --
+-- Building compiler (make) --
+make -C compiler/lab3
+make[1]: Entering directory '/home/useitkal/dist/compiler/compiler/lab3'
+dune build
+mkdir -p ../../bin
+install _build/default/bin/c0c.exe ../../bin/c0c
+make[1]: Leaving directory '/home/useitkal/dist/compiler/compiler/lab3'
+[1m-- Testing compiler on l3-large --[0m
+[31m-- FAIL: ../tests/l3-large/barsoomian-aoc2019-day2.l3 --[0m
+[31m   directive: //test return 2842648[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l3-large/jabba-mutual_recursion.l3 --[0m
+[31m   directive: //test return 5000[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l3-large/kylo-humongous-wrath-of-the-temps.l3 --[0m
+[31m   directive: //test return 7998000[0m
+[31m     outcome: compiler timed out while parsing and typechecking[0m
+[31m-- FAIL: ../tests/l3-large/lucius-malfoy-call-very-very-many-args.l3 --[0m
+[31m   directive: //test return 67238978[0m
+[31m     outcome: compiler timed out while parsing and typechecking[0m
+[31m-- FAIL: ../tests/l3-large/olenna-commodus-constant-propagation.l3 --[0m
+[31m   directive: //test return 1[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l3-large/robert-py-abort_abort_abort.l3 --[0m
+[31m   directive: //test abort[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l3-large/robert-py-n-ary_recursion_1024.l3 --[0m
+[31m   directive: //test return 2099200[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l3-large/tyrion-ack.l3 --[0m
+[31m   directive: //test return 32765[0m
+[31m     outcome: program timed out (sigalrm)[0m
+[31m-- FAIL: ../tests/l3-large/tyrion-typeydefy.l3 --[0m
+[31m   directive: //test return 120459[0m
+[31m     outcome: compiler timed out after typechecking[0m
+[31m-- FAIL: ../tests/l3-large/voldemort-bathilda-bagshot.l3 --[0m
+[31m   directive: //test return 0[0m
+[31m     outcome: compiler timed out while parsing and typechecking[0m
+[31m-- FAIL: ../tests/l3-large/voldemort-myrtle.l3 --[0m
+[31m   directive: //test return 32767[0m
+[31m     outcome: compiler timed out after typechecking[0m
+
+[1m-- Summary --[0m
+Ill-formed test files:
+   ../tests/l3-large/barsoomian-aoc2019-day2.l3.ll
+   ../tests/l3-large/jabba-mutual_recursion.l3.ll
+   ../tests/l3-large/olenna-commodus-constant-propagation.l3.ll
+   ../tests/l3-large/robert-py-abort_abort_abort.l3.ll
+   ../tests/l3-large/robert-py-n-ary_recursion_1024.l3.ll
+   ../tests/l3-large/voldemort-myrtle.l3.ll
+Expected successful execution, timed out:
+   ../tests/l3-large/barsoomian-aoc2019-day2.l3
+   ../tests/l3-large/jabba-mutual_recursion.l3
+   ../tests/l3-large/kylo-humongous-wrath-of-the-temps.l3
+   ../tests/l3-large/lucius-malfoy-call-very-very-many-args.l3
+   ../tests/l3-large/olenna-commodus-constant-propagation.l3
+   ../tests/l3-large/robert-py-n-ary_recursion_1024.l3
+   ../tests/l3-large/tyrion-ack.l3
+   ../tests/l3-large/tyrion-typeydefy.l3
+   ../tests/l3-large/voldemort-bathilda-bagshot.l3
+   ../tests/l3-large/voldemort-myrtle.l3
+Expected a runtime exception, timed out:
+   ../tests/l3-large/robert-py-abort_abort_abort.l3
+l3-large: passed 4323 / 4340 timed out 11 / 4340
+/usr/local/bin/mlton
+Using MLton...
+make: Entering directory '/home/useitkal/dist/harness'
+make: 'driver' is up to date.
+make: Leaving directory '/home/useitkal/dist/harness'
+-- 15-411 Compiler Tester --
+-- Building compiler (make) --
+make -C compiler/lab3
+make[1]: Entering directory '/home/useitkal/dist/compiler/compiler/lab3'
+dune build
+mkdir -p ../../bin
+install _build/default/bin/c0c.exe ../../bin/c0c
+make[1]: Leaving directory '/home/useitkal/dist/compiler/compiler/lab3'
+[1m-- Testing compiler on l4-large --[0m
+[31m-- FAIL: ../tests/l4-large/lando-accidentallyquadratic.l4 --[0m
+[31m   directive: //test return 42;[0m
+[31m     outcome: compiler timed out while parsing and typechecking[0m
+[31m-- FAIL: ../tests/l4-large/luna-lab4_test18.l4 --[0m
+[31m   directive: //test return -474400483[0m
+[31m     outcome: program timed out (sigalrm)[0m
+[31m-- FAIL: ../tests/l4-large/potassium-ex01.l4 --[0m
+[31m   directive: //test memerror[0m
+[31m     outcome: program encountered arithmetic error[0m
+[31m-- FAIL: ../tests/l4-large/olenna-hard.l4 --[0m
+[31m   directive: //test return 900000011[0m
+[31m     outcome: program timed out (sigalrm)[0m
+[31m-- FAIL: ../tests/l4-large/sparrowhawk-linkedlist3.l4 --[0m
+[31m   directive: //test return ~2147183648[0m
+[31m     outcome: program failed to terminate due to memory error (possibly stack overflow?)[0m
+[31m-- FAIL: ../tests/l4-large/vulcan-pyonpyon.l4 --[0m
+[31m   directive: //test memerror[0m
+[31m     outcome: LLVM compiler (llc) failed[0m
+[31m-- FAIL: ../tests/l4-large/vulcan-nikoniko.l4 --[0m
+[31m   directive: //test return 0[0m
+[31m     outcome: LLVM compiler (llc) failed[0m
+
+[1m-- Summary --[0m
+Expected a runtime exception, failed:
+   ../tests/l4-large/potassium-ex01.l4
+   ../tests/l4-large/vulcan-pyonpyon.l4
+Expected successful execution, failed:
+   ../tests/l4-large/vulcan-nikoniko.l4
+Expected successful execution, timed out:
+   ../tests/l4-large/lando-accidentallyquadratic.l4
+   ../tests/l4-large/luna-lab4_test18.l4
+   ../tests/l4-large/olenna-hard.l4
+   ../tests/l4-large/sparrowhawk-linkedlist3.l4
+l4-large: passed 5251 / 5258 timed out 4 / 5258
+
+5251 + 4323 + 4828 + 3007
