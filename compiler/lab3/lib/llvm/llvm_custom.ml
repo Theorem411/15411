@@ -15,7 +15,7 @@ let preproc_instr_off = false
 type temp_type =
   | Bool
   | Int
-(* | Pointer [@deriving equal] *)
+  | Pointer [@deriving equal]
 
 let counter_reg : int ref = ref 0
 
@@ -29,7 +29,7 @@ let equal_temp_typ a b =
   match a, b with
   | Bool, Bool -> true
   | Int, Int -> true
-  (* | Pointer, Pointer -> true *)
+  | Pointer, Pointer -> true
   | _ -> false
 ;;
 
@@ -78,9 +78,8 @@ let print_todo_set () =
 let pp_typ = function
   | Bool -> "B"
   | Int -> "I"
+  | Pointer -> "P"
 ;;
-
-(* | Pointer -> "L" *)
 
 let print_types () =
   let tbl = get_temps_tbl () in
@@ -113,6 +112,7 @@ let pp_get_size_temp t =
   match get_type t with
   | Some Bool -> "i32"
   | Some Int -> "i32"
+  | Some Pointer -> "ptr"
   | None ->
     if not print_off then prerr_endline (Temp.name t ^ " defaulted to i32");
     "i32"
@@ -121,6 +121,7 @@ let pp_get_size_temp t =
 let str_to_typ = function
   | "i1" -> Bool
   | "i32" -> Int
+  | "ptr" -> Pointer
   | s -> failwith ("str_to_typ got " ^ s)
 ;;
 
@@ -147,6 +148,7 @@ let pp_get_size_op_opt o =
     (match get_type t with
     | Some Bool -> Some "i32"
     | Some Int -> Some "i32"
+    | Some Pointer -> Some "ptr"
     | None -> None)
   | AS.Imm n -> if not_zero_one n then Some "i32" else None
   | _ -> None
@@ -646,7 +648,11 @@ let preprocess_call instr =
     let ret_opt, sz =
       match c.dest with
       | None -> None, None
-      | Some (op, sz) -> Some op, Some sz
+      | Some (op, sz) ->
+        (match sz with
+        | AS.S -> ()
+        | AS.L -> set_type_if_temp Pointer op);
+        Some op, Some sz
     in
     add_fun (name, args, ret_opt);
     add_fun_ret c.fname sz
@@ -662,6 +668,7 @@ let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : un
         match instr with
         | Nop -> ()
         | Phi _ -> preprocess_phi instr
+        | ASInstr (PureBinop { size = AS.L; dest; _ }) -> set_type_if_temp Pointer dest
         | ASInstr (LLVM_Call _ as ins) -> preprocess_call ins
         | _ -> ());
     if print_off
