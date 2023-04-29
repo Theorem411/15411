@@ -95,7 +95,9 @@ let print_types () =
 ;;
 
 let set_type (t : Temp.t) typ =
-  (* prerr_endline (sprintf "adding %s -> %s" (Temp.name t) (pp_typ typ)); *)
+  if print_off
+  then ()
+  else prerr_endline (sprintf "adding %s -> %s" (Temp.name t) (pp_typ typ));
   let tbl = get_temps_tbl () in
   remove_todo t;
   match TT.find tbl t with
@@ -763,8 +765,7 @@ let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : un
           List.iter [ dest, AS.L; src, size ] ~f:preprocess_opsz
         | ASInstr (LLVM_MovFrom { size; src; dest }) ->
           List.iter [ src, AS.L; dest, size ] ~f:preprocess_opsz
-        | ASInstr (LLVM_NullCheck { size = AS.L; dest; _ }) ->
-          set_type_if_temp Pointer dest
+        | ASInstr (LLVM_NullCheck { dest; _ }) -> set_type_if_temp Pointer dest
         | ASInstr (LLVM_Call _ as ins) -> preprocess_call ins
         | _ -> ());
     if print_off
