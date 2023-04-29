@@ -330,7 +330,8 @@ and pp_add_offset = function
       (pp_operand dest)
       (pp_operand lhs)
       n
-  | AS.PureBinop { op = AS.Add; size = AS.L; lhs = AS.Imm _ as lhs; rhs = AS.Imm _ as rhs; dest } ->
+  | AS.PureBinop
+      { op = AS.Add; size = AS.L; lhs = AS.Imm _ as lhs; rhs = AS.Imm _ as rhs; dest } ->
     let n = get_new_counter () in
     sprintf
       "%%t%s_int%d = ptrtoint ptr %s to i64\n\
@@ -535,6 +536,19 @@ and pp_instr' : AS.instr -> string = function
       (pp_operand src ~size)
       (pp_size AS.L)
       (pp_operand dest ~size:AS.L)
+  | LLVM_MovFrom { dest; size; src = AS.Imm n } ->
+    let m = get_new_counter () in
+    sprintf
+      "%s_intptr%d = inttoptr i32 %d to ptr\n\t%s = load %s, %s %s_intptr%d"
+      (pp_operand dest)
+      m
+      (Int64.to_int_exn n)
+      (* first line done *)
+      (pp_operand dest)
+      (pp_size size)
+      (pp_size AS.L)
+      (pp_operand dest)
+      m
   | LLVM_MovFrom { dest; size; src } ->
     sprintf
       "%s = load %s, %s %s"
@@ -870,7 +884,7 @@ let pp_declare () =
 let preprocess_prog ({ block_info; fname; ret_size; code; _ } as fspace : SSA.fspace) =
   add_fun_ret fname ret_size;
   preprocess_blocks code block_info;
-  let _, real_args = get_args fspace in 
+  let _, real_args = get_args fspace in
   List.iter real_args ~f:(fun (t, sz) -> preprocess_opsz (AS.Temp t, sz));
   List.iter
     ~f:(fun i ->
