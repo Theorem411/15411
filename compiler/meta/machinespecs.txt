@@ -51,7 +51,7 @@ Flags:                           fpu vme de pse tsc msr pae mce cx8 apic sep mtr
                                   xsavec xsaves md_clear
 
 useitkal@16coretesting:~$ cat /proc/meminfo
-MemTotal:       65855516 kB
+MemTotal:       65855516 kB (65Gb)
 MemFree:        57497500 kB
 MemAvailable:   63779780 kB
 Buffers:          438392 kB
