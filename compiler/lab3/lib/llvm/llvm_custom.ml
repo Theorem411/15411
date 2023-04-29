@@ -191,10 +191,13 @@ type program = SSA.program
 let create p = p
 let pp_reg r = "%" ^ AS.format_reg r
 
-let pp_operand = function
-  | AS.Imm n -> Int64.to_string n
-  | AS.Temp t -> Temp.name t
-  | AS.Reg r -> pp_reg r
+let pp_operand ?(size = AS.S) op =
+  match op, size with
+  | AS.Imm n, AS.L ->
+    if AS.equal_operand (AS.Imm Int64.zero) op then "null" else Int64.to_string n
+  | AS.Imm n, _ -> Int64.to_string n
+  | AS.Temp t, _ -> Temp.name t
+  | AS.Reg r, _ -> pp_reg r
 ;;
 
 let pp_pure_operation = function
@@ -414,6 +417,8 @@ and pp_instr' : AS.instr -> string = function
   | Ret -> "; ret %EAX"
   | Set c ->
     sprintf "; %s %s" (c.typ |> AS.sexp_of_set_t |> string_of_sexp) (pp_operand c.src)
+  | Cmp { size = AS.L as size; lhs; rhs } ->
+    sprintf "; cmp%s %s, %s" (pp_size size) (pp_operand lhs ~size) (pp_operand rhs ~size)
   | Cmp { size; lhs; rhs } ->
     sprintf "; cmp%s %s, %s" (pp_size size) (pp_operand lhs) (pp_operand rhs)
   | AssertFail -> "call void @raise(i32 6) ;"
@@ -452,6 +457,23 @@ and pp_instr' : AS.instr -> string = function
       scale
       offset
   | LLVM_Jmp l -> sprintf "br label %s" (pp_label l)
+  | LLVM_Cmp { dest; lhs; rhs; typ; size = AS.L as size } (*next line*)
+  | LLVM_Set { dest; lhs; rhs; typ; size = AS.L as size } ->
+    sprintf
+      "%s_i = icmp %s %s %s, %s\n\
+       \t%s_intv = zext i1 %s_i to i64\n\
+       \t%s = inttoptr i64 %s_intv to ptr"
+      (pp_operand dest)
+      (pp_set_typ typ)
+      (pp_size size)
+      (pp_operand lhs ~size)
+      (pp_operand rhs ~size)
+      (* first line end *)
+      (pp_operand dest)
+      (pp_operand dest)
+      (* second line end *)
+      (pp_operand dest)
+      (pp_operand dest)
   | LLVM_Cmp { dest; lhs; rhs; typ; size } (*next line*)
   | LLVM_Set { dest; lhs; rhs; typ; size } ->
     sprintf
@@ -459,8 +481,8 @@ and pp_instr' : AS.instr -> string = function
       (pp_operand dest)
       (pp_set_typ typ)
       (pp_size size)
-      (pp_operand lhs)
-      (pp_operand rhs)
+      (pp_operand lhs ~size)
+      (pp_operand rhs ~size)
       (pp_operand dest)
       (pp_operand dest)
       (pp_size size)
@@ -524,6 +546,11 @@ let pp_phi ({ self; alt_selves } : SSA.phi) : string =
       set_type self (str_to_typ x);
       x
   in
+  let format_oprnd' op =
+    match phi_size with
+    | "ptr" -> if AS.equal_operand (AS.Imm Int64.zero) op then "null" else pp_operand op
+    | _ -> pp_operand op
+  in
   sprintf
     "\t%s = phi %s %s"
     (* "\t%s = phi (phi_size) %s" *)
@@ -532,7 +559,7 @@ let pp_phi ({ self; alt_selves } : SSA.phi) : string =
     (List.filter_map alt_selves ~f:(fun (l, op) ->
          if not (is_goodblock l)
          then None
-         else Some (sprintf "[%s, %s]" (pp_operand op) (pp_bt l)))
+         else Some (sprintf "[%s, %s]" (format_oprnd' op) (pp_bt l)))
     |> String.concat ~sep:", ")
 ;;
 
@@ -650,18 +677,28 @@ let preprocess_phi (s : SSA.instr) =
   | _ -> failwith "preprocess_phi got no phi"
 ;;
 
+let preprocess_opsz (op, sz) =
+  match sz with
+  | AS.S -> ()
+  | AS.L -> set_type_if_temp Pointer op
+;;
+
 let preprocess_call instr =
   match instr with
   | AS.LLVM_Call c ->
     let name = Symbol.name c.fname in
-    let args = List.map ~f:(fun (o, _) -> o) c.args in
+    let args =
+      List.map
+        ~f:(fun (op, sz) ->
+          preprocess_opsz (op, sz);
+          op)
+        c.args
+    in
     let ret_opt, sz =
       match c.dest with
       | None -> None, None
       | Some (op, sz) ->
-        (match sz with
-        | AS.S -> ()
-        | AS.L -> set_type_if_temp Pointer op);
+        preprocess_opsz (op, sz);
         Some op, Some sz
     in
     add_fun (name, args, ret_opt);
@@ -681,6 +718,8 @@ let preprocess_block_instrs (code : SSA.instr SSA.IH.t) (block : SSA.block) : un
         | ASInstr (PureBinop { size = AS.L; dest; _ }) -> set_type_if_temp Pointer dest
         | ASInstr (LLVM_MovTo { size = AS.L; dest; _ }) -> set_type_if_temp Pointer dest
         | ASInstr (LLVM_MovFrom { size = AS.L; src; _ }) -> set_type_if_temp Pointer src
+        | ASInstr (LLVM_NullCheck { size = AS.L; dest; _ }) ->
+          set_type_if_temp Pointer dest
         | ASInstr (LLVM_Call _ as ins) -> preprocess_call ins
         | _ -> ());
     if print_off
