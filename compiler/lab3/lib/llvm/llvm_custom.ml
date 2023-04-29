@@ -850,9 +850,11 @@ let pp_declare () =
   r
 ;;
 
-let preprocess_prog ({ block_info; fname; ret_size; code; _ } : SSA.fspace) =
+let preprocess_prog ({ block_info; fname; ret_size; code; _ } as fspace : SSA.fspace) =
   add_fun_ret fname ret_size;
   preprocess_blocks code block_info;
+  let _, real_args = get_args fspace in 
+  List.iter real_args ~f:(fun (t, sz) -> preprocess_opsz (AS.Temp t, sz));
   List.iter
     ~f:(fun i ->
       if not print_off then prerr_endline (sprintf "%d's loop" i);
