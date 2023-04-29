@@ -9,7 +9,7 @@ module TT = Hashtbl.Make (Temp)
 module ST = Hashtbl.Make (String)
 module HeaderAst = Ast
 
-let print_off = true
+let print_off = false
 let preproc_instr_off = false
 
 type temp_type =
@@ -906,7 +906,7 @@ let preprocess_prog ({ block_info; fname; ret_size; code; _ } as fspace : SSA.fs
     ~f:(fun i ->
       if not print_off then prerr_endline (sprintf "%d's loop" i);
       preprocess_blocks_phi code block_info)
-    []
+    [ 0; 1; 2 ]
 ;;
 
 let pp_program (prog : program) : string =
