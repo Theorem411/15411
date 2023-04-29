@@ -17,6 +17,14 @@ type temp_type =
   | Int
 (* | Pointer [@deriving equal] *)
 
+let counter_reg : int ref = ref 0
+
+let get_new_counter () =
+  let x = !counter_reg in
+  counter_reg := x + 1;
+  x
+;;
+
 let equal_temp_typ a b =
   match a, b with
   | Bool, Bool -> true
@@ -282,30 +290,57 @@ and pp_xor = function
   | _ -> failwith "pp+xor got not imm xor"
 
 and pp_add_offset = function
-  | AS.PureBinop { op = (AS.Add | AS.Sub) as op; size = AS.L; lhs; rhs = AS.Imm n; dest }
-    ->
+  | AS.PureBinop { op = AS.Add; size = AS.L; lhs; rhs = AS.Temp _ as rhs; dest } ->
+    let n = get_new_counter () in
     sprintf
-      "%s_int_pbadd = ptrtoint ptr %s to i64\n\
-      \t%s_int_pbadd = mul i64 %s_int, %d\n\
-      \t%s = inttoptr i64 %s_int_pbadd to ptr"
+      "%s_int_rhs%d = ptrtoint ptr %s to i64\n\
+       \t%s_int_pbadd_rhs%d = ptrtoint ptr %s to i64\n\
+       \t%s_int_pbadd_added_rhs%d = sub nsw i64 %s_int_pbadd_rhs%d, %s_int_rhs%d\n\
+       \t%s = inttoptr i64 %s_int_pbadd_added_rhs%d to ptr"
+      (pp_operand rhs)
+      n
+      (pp_operand rhs)
+      (pp_operand lhs)
+      n
+      (pp_operand lhs)
+      (pp_operand lhs)
+      n
+      (pp_operand lhs)
+      n
+      (pp_operand rhs)
+      n
       (pp_operand dest)
       (pp_operand lhs)
-      (match op with
-      | AS.Add -> ""
-      | _ -> "-")
-      offset_bytes
-  | AS.PureBinop { op = AS.Add; size = AS.L; lhs; rhs = AS.Temp _ as rhs; dest } ->
+      n
+  | AS.PureBinop { op = AS.Sub; size = AS.L; lhs; rhs = AS.Imm _ as rhs; dest } ->
+    let n = get_new_counter () in
+    sprintf
+      "%s_int_pbadd%d = ptrtoint ptr %s to i64\n\
+       \t%s_int_pbadd_added%d = sub nsw i64 %s_int_pbadd%d, %s\n\
+       \t%s = inttoptr i64 %s_int_pbadd_added%d to ptr"
+      (pp_operand lhs)
+      n
+      (pp_operand lhs)
+      (pp_operand lhs)
+      n
+      (pp_operand lhs)
+      n
+      (pp_operand rhs)
+      (pp_operand dest)
+      (pp_operand lhs)
+      n
+  | AS.PureBinop { op = AS.Add; size = AS.L; lhs; rhs = AS.Imm _ as rhs; dest } ->
     sprintf
       "%s_int = ptrtoint ptr %s to i64\n\
-       \t%s_offset = udiv i64 %s_int, 8\n\
-       \t%s = getelementptr i8, ptr %s, i64 %s_offset"
-      (pp_operand rhs)
-      (pp_operand rhs)
-      (pp_operand rhs)
+       \t%s_int_pbadd_added = add nsw i64 %s_int, %s\n\
+       \t%s = inttoptr i64 %s_int_pbadd_added to ptr"
+      (pp_operand lhs)
+      (pp_operand lhs)
+      (pp_operand lhs)
+      (pp_operand lhs)
       (pp_operand rhs)
       (pp_operand dest)
       (pp_operand lhs)
-      (pp_operand rhs)
   | AS.PureBinop { op = AS.Mul; size = AS.L; lhs; rhs = AS.Imm m; dest } ->
     sprintf
       "%s_int = ptrtoint ptr %s to i64\n\
