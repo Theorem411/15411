@@ -54,6 +54,16 @@ let add_fun f =
   else set_funs (f :: !functions_list_ref)
 ;;
 
+let temp_bool_ref : TS.t ref = ref TS.empty
+
+let add_temp_bool (t : AS.operand) =
+  match t with
+  | AS.Temp t -> temp_bool_ref := TS.add !temp_bool_ref t
+  | _ -> ()
+;;
+
+let is_temp_bool (t : Temp.t) = TS.exists !temp_bool_ref ~f:(Temp.equal t)
+
 let print_todo_set () =
   let s = get_todo_set () in
   let r =
@@ -253,22 +263,37 @@ and pp_xor = function
   | AS.PureBinop ({ op = AS.BitXor; size; rhs = AS.Imm n; _ } as binop) ->
     if Int64.equal Int64.one n
     then (
-      let lhs_final =
+      let lhs_final, still_bool =
         match binop.lhs with
-        | AS.Temp _ -> sprintf "%s_i" (pp_operand binop.lhs)
-        | _ -> pp_operand binop.lhs
+        | AS.Temp t ->
+          if is_temp_bool t
+          then sprintf "%s_i" (pp_operand binop.lhs), true
+          else pp_operand binop.lhs, false
+        | _ -> pp_operand binop.lhs, false
       in
-      sprintf
-        "%s = %s %s %s, %s\n\t%s_i = %s i1 %s, %s"
-        (pp_operand binop.dest)
-        (pp_pure_operation binop.op)
-        (pp_size size)
-        (pp_operand binop.lhs)
-        (pp_operand binop.rhs)
-        (pp_operand binop.dest)
-        (pp_pure_operation binop.op)
-        lhs_final
-        (pp_operand binop.rhs))
+      if still_bool
+      then (
+        add_temp_bool binop.dest;
+        sprintf
+          "%s = %s %s %s, %s\n\t%s_i = %s i1 %s, %s"
+          (pp_operand binop.dest)
+          (pp_pure_operation binop.op)
+          (pp_size size)
+          (pp_operand binop.lhs)
+          (pp_operand binop.rhs)
+          (* second line *)
+          (pp_operand binop.dest)
+          (pp_pure_operation binop.op)
+          lhs_final
+          (pp_operand binop.rhs))
+      else
+        sprintf
+          "%s = %s %s %s, %s"
+          (pp_operand binop.dest)
+          (pp_pure_operation binop.op)
+          (pp_size size)
+          (pp_operand binop.lhs)
+          (pp_operand binop.rhs))
     else
       sprintf
         "%s = %s %s %s, %s"
@@ -462,6 +487,7 @@ and pp_instr' : AS.instr -> string = function
   | LLVM_Jmp l -> sprintf "br label %s" (pp_label l)
   | LLVM_Cmp { dest; lhs; rhs; typ; size = AS.L as size } (*next line*)
   | LLVM_Set { dest; lhs; rhs; typ; size = AS.L as size } ->
+    add_temp_bool dest;
     sprintf
       "%s_i = icmp %s %s %s, %s\n\t%s = zext i1 %s_i to i32\n"
       (pp_operand dest)
@@ -474,6 +500,7 @@ and pp_instr' : AS.instr -> string = function
       (pp_operand dest)
   | LLVM_Cmp { dest; lhs; rhs; typ; size } (*next line*)
   | LLVM_Set { dest; lhs; rhs; typ; size } ->
+    add_temp_bool dest;
     sprintf
       "%s_i = icmp %s %s %s, %s\n\t%s = zext i1 %s_i to %s"
       (pp_operand dest)
