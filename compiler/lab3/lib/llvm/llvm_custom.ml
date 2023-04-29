@@ -295,7 +295,7 @@ and pp_add_offset = function
     sprintf
       "%s_int_rhs%d = ptrtoint ptr %s to i64\n\
        \t%s_int_pbadd_rhs%d = ptrtoint ptr %s to i64\n\
-       \t%s_int_pbadd_added_rhs%d = sub nsw i64 %s_int_pbadd_rhs%d, %s_int_rhs%d\n\
+       \t%s_int_pbadd_added_rhs%d = add nsw i64 %s_int_pbadd_rhs%d, %s_int_rhs%d\n\
        \t%s = inttoptr i64 %s_int_pbadd_added_rhs%d to ptr"
       (pp_operand rhs)
       n
