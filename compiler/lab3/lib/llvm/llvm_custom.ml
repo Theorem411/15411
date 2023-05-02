@@ -890,6 +890,10 @@ let pp_program_helper (prog : program) : string =
 let custom_funs =
   [ Custom_functions.get_efkt_name_ops "alloc"
   ; Custom_functions.get_efkt_name_ops "alloc_array"
+  ; CustomAssembly.alloc_array_fname ~unsafe:true
+  ; CustomAssembly.alloc_array_fname ~unsafe:false
+  ; CustomAssembly.alloc_fname ~unsafe:true
+  ; CustomAssembly.alloc_fname ~unsafe:false
   ]
 ;;
 

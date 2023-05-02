@@ -216,6 +216,7 @@ let compile (cmd : cmd_line_args) : unit =
   in
   Singlepass.set_llvm_off llvm_off;
   Codegen_l4.set_llvm_off llvm_off;
+  Custom_functions.set_unsafe cmd.unsafe;
   (* ***********************************************************)
   (* ssa + global copy-const *)
   (* let ssa_off = false in *)
