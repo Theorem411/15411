@@ -11,6 +11,7 @@ module TS = TComp.Set
 module TH : Hashtbl.S with type key := Temp.t
 module IComp : Comparable.S with type t := int
 module IS = IComp.Set
+module IM = IComp.Map
 module IH : Hashtbl.S with type key := int
 
 type params = Temp.t TM.t
@@ -92,6 +93,13 @@ type fspace =
   }
 
 type program = fspace list
+
+(*_ cfg related functions *)
+val to_cfg : fspace -> Cfg.cfg_input
+
+(*_ tuse related functions *)
+val tuse_remove_ln : IS.t TH.t -> Temp.t -> int -> unit
+val tuse_add_ln : IS.t TH.t -> Temp.t -> int -> unit
 
 (*_ ssa step functions *)
 val global_rename : AS.program -> program_ssa

@@ -209,7 +209,7 @@ let compile (cmd : cmd_line_args) : unit =
   (* ssa + global copy-const *)
   let ssa_off = false in
   (* register coalescing *)
-  Coalesce.set_coalesce_off true;
+  Coalesce.set_coalesce_off false;
   (* COMMON GROUP *)
   let common_off = false in
   (* peephole *)
@@ -271,9 +271,12 @@ let compile (cmd : cmd_line_args) : unit =
       (* print_endline (Ssa.pp_program assem_ssa'); *)
       say_if cmd.verbose (fun () -> "Starting propogation ...");
       let assem_ssa_prop = Propagation.propagate assem_ssa' in
+      (* *)
+      say_if cmd.verbose (fun () -> "Starting CSE ...");
+      let assem_ssa_cse = Cse.cse assem_ssa_prop in
       (* print_endline (Ssa.pp_program assem_ssa_prop); *)
       say_if cmd.verbose (fun () -> "Doing phi_opt");
-      let assem_ssa_phi_opt = Propagation.phiopt assem_ssa_prop in
+      let assem_ssa_phi_opt = Propagation.phiopt assem_ssa_cse in
       (* print_endline "assem_ssa_phi_opt"; *)
       (* print_endline (Ssa.pp_program assem_ssa_phi_opt); *)
       say_if cmd.verbose (fun () -> "Starting de-ssa ...");
