@@ -671,12 +671,15 @@ let reconstruct_blocks
   let extra_moves = List.map phies ~f:mapf |> List.concat |> LM.of_alist_multi in
   (*_ feed extra moves to corresponding labels in l2instrs *)
   let assemble ~key:l ~(data : AS.instr list) : unit =
-    let code_rev = LT.find_exn l2instrs l |> List.rev in
-    let jmp, rest_rev = split_jmp code_rev in
-    let code =
-      jmp @ List.rev (fixed_extra_moves (List.rev data)) @ rest_rev |> List.rev
-    in
-    LT.update l2instrs l ~f:(fun _ -> code)
+    match (LT.find l2instrs l) with 
+    | Some code -> 
+      let code_rev = List.rev code in
+      let jmp, rest_rev = split_jmp code_rev in
+      let newcode =
+        jmp @ List.rev (fixed_extra_moves (List.rev data)) @ rest_rev |> List.rev
+      in
+      LT.update l2instrs l ~f:(fun _ -> newcode)
+    | None -> () (*_ blc has been deleted *)
   in
   let () = LM.iteri extra_moves ~f:assemble in
   (*_ construct AS.block using l2instrs and block_info *)

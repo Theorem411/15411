@@ -176,11 +176,18 @@ let cleanup (fspace : SSA.fspace) (dead : Label.bt list) : SSA.fspace =
 let cse_fspace (fspace : SSA.fspace) : SSA.fspace =
   (*_ to cfg *)
   let cfg_input = SSA.to_cfg fspace in
+  (* let () = printf "wtf is this cfg_input? %s\n" (Cfg.pp_cfg_input cfg_input) in *)
   let ({ dead; _ } : Cfg.cfg_output) = Cfg.create cfg_input in
+  (* let () = printf "before cleanup:\n %s\n" (SSA.pp_fspace fspace) in
+  let () = printf "dead = %s\n" (List.map dead ~f:Label.name_bt |> String.concat) in
+  let () = printf "cfg = %s\n" (List.map (Cfg.IM.to_alist cfg.rev_post_order_i2b) ~f:(fun (i, b) -> sprintf "%s:%s" (Label.name_bt b) (Int.to_string i)) |> String.concat ~sep:", ") in *)
   (*_ some preprocess *)
   let fspace = cleanup fspace dead in
+  let () = printf "after cleanup:\n %s\n" (SSA.pp_fspace fspace) in
   let cfg_input = SSA.to_cfg fspace in
   let ({ cfg; dead } : Cfg.cfg_output) = Cfg.create cfg_input in
+  (* let () = printf "dead = %s\n" (List.map dead ~f:Label.name_bt |> String.concat) in *)
+  (* let () = prerr_endline (sprintf "graph after cleanup: %s\n" (Cfg.pp_graph cfg.graph)) in *)
   let () = if List.length dead <> 0 then failwith "wtf" else () in
   (*_ *)
   let ({ code; tuse; block_info; _ } : SSA.fspace) = fspace in
@@ -198,6 +205,7 @@ let cse_fspace (fspace : SSA.fspace) : SSA.fspace =
     List.iter blclist ~f:(fun l ->
       cse_block bk dt code tuse ln2blc (LM.find_exn lab2blc l))
   in
+  let () = printf "after cse:\n%s" (SSA.pp_fspace fspace) in
   fspace
 ;;
 

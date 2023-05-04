@@ -16,3 +16,4 @@ type dom_relation =
   | Nope
 
 val is_dominate : t -> Label.bt -> Label.bt -> dom_relation
+val pp_dom : int array -> string

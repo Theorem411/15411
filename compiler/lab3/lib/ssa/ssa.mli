@@ -113,6 +113,7 @@ val ssa : AS.program -> program
 val de_ssa : program -> AS.program
 
 (*_ debug function: will delete later *)
+val pp_fspace : fspace -> string
 val pp_instr : int -> instr -> string
 val pp_program_ssa : program_ssa -> AS.program -> string
 val pp_program_phi : program_phi -> program_ssa -> string
