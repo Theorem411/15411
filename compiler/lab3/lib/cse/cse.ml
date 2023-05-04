@@ -165,8 +165,9 @@ let cleanup (fspace : SSA.fspace) (dead : Label.bt list) : SSA.fspace =
     List.filter block_info ~f:(fun blc -> not (LS.mem dead_blcs blc.label))
   in
   let () = IS.iter dead_lns ~f:(fun dln -> IH.remove code dln) in
+  let tuse_lst = TH.to_alist tuse in
   let () =
-    TH.iteri tuse ~f:(fun ~key:t ~data:lns ->
+    List.iter tuse_lst ~f:(fun (t, lns) ->
       TH.update tuse t ~f:(fun _ -> IS.diff lns dead_lns))
   in
   { fspace with code; block_info = block_info'; tuse }
