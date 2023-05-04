@@ -274,9 +274,12 @@ let compile (cmd : cmd_line_args) : unit =
       (* *)
       say_if cmd.verbose (fun () -> "Starting CSE ...");
       let assem_ssa_cse = Cse.cse assem_ssa_prop in
-      (* print_endline (Ssa.pp_program assem_ssa_prop); *)
+      (* printf "after cse: \n%s" (Ssa.pp_program assem_ssa_cse); *)
+      say_if cmd.verbose (fun () -> "Starting propagation after CSE ...");
+      let assem_ssa_prop = Propagation.propagate assem_ssa_cse in
+      (* printf "prop after cse: \n%s" (Ssa.pp_program assem_ssa_prop); *)
       say_if cmd.verbose (fun () -> "Doing phi_opt");
-      let assem_ssa_phi_opt = Propagation.phiopt assem_ssa_cse in
+      let assem_ssa_phi_opt = Propagation.phiopt assem_ssa_prop in
       (* print_endline "assem_ssa_phi_opt"; *)
       (* print_endline (Ssa.pp_program assem_ssa_phi_opt); *)
       say_if cmd.verbose (fun () -> "Starting de-ssa ...");

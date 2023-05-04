@@ -17,3 +17,5 @@ type dom_relation =
 
 val is_dominate : t -> Label.bt -> Label.bt -> dom_relation
 val pp_dom : int array -> string
+val pp_dt : Label.bt list LM.t -> string
+val pp_dt_rev : Label.bt LM.t -> string

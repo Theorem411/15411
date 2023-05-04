@@ -120,14 +120,14 @@ let dominator_tree (cfg : Cfg.t) : t =
         | Some lst -> lst))
   in
   let dt = LM.of_hashtbl_exn dt in
-  let () = prerr_endline (sprintf "dt = %s\n" (pp_dt dt)) in
+  (* let () = prerr_endline (sprintf "dt = %s\n" (pp_dt dt)) in *)
   (*_ build dt_rev *)
   let dt_rev =
     Array.mapi dom ~f:(fun idx idom -> Cfg.i2b cfg idx, Cfg.i2b cfg idom)
     |> Array.to_list
     |> LM.of_alist_exn
   in
-  let () = prerr_endline (sprintf "dt_rev = %s\n" (pp_dt_rev dt_rev)) in
+  (* let () = prerr_endline (sprintf "dt_rev = %s\n" (pp_dt_rev dt_rev)) in *)
   { entry = cfg.entry; dt; dt_rev }
 ;;
 
