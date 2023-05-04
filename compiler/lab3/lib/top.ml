@@ -271,6 +271,7 @@ let compile (cmd : cmd_line_args) : unit =
       (* print_endline (Ssa.pp_program assem_ssa'); *)
       say_if cmd.verbose (fun () -> "Starting propogation ...");
       let assem_ssa_prop = Propagation.propagate assem_ssa' in
+      (* printf "before cse: \n%s" (Ssa.pp_program assem_ssa_prop); *)
       (* *)
       say_if cmd.verbose (fun () -> "Starting CSE ...");
       let assem_ssa_cse = Cse.cse assem_ssa_prop in
