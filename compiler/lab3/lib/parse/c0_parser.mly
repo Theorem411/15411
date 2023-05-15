@@ -33,10 +33,13 @@ let mark
 %token <Int32.t> Dec_const
 %token <Int32.t> Hex_const
 %token <Symbol.t> Ident
+%token <Symbol.t> TypeIdent
 %token Return
 %token Int Bool
 %token True False
-// %token Mains
+%token Struct
+%token NULL Alloc Alloc_array
+%token L_square R_square Dot Arrow
 %token If Else While For
 %token Plus Minus Star Slash Percent
 %token Assign Plus_eq Minus_eq Star_eq Slash_eq Percent_eq 
@@ -50,7 +53,8 @@ let mark
 %token BAnd_eq Bor_eq BXor_eq
 %token Minus_minus Plus_plus
 %token QuestionMark Colon
-%token Void Comma Assert Typedef
+%token Void Comma Assert 
+%token Typedef
 
 (* Unary is a dummy terminal.
  * We need dummy terminals if we wish to assign a precedence
@@ -74,6 +78,8 @@ let mark
 %left Plus Minus
 %left Star Slash Percent
 %right Unary
+%right Plus_plus Minus_minus
+%nonassoc Dot Arrow L_square
 
 %nonassoc else_hack_1
 %nonassoc Else
@@ -126,8 +132,17 @@ m(x) :
 type_ :
   | Int { Ast.T.RealTyp Int }
   | Bool { Ast.T.RealTyp Bool}
-  | ident = Ident;
-    { Ast.T.FakeTyp (ident) }
+  | typeident = TypeIdent;
+    { Ast.T.FakeTyp (typeident) }
+  | t = type_; Star;
+    {Ast.T.Star t} 
+  | t = type_; L_square; R_square;
+    {Ast.T.Array t} 
+  | Struct; ident = Ident
+    {Ast.T.Struct ident} 
+  (* not sure may be I will remove it *)
+  | Struct; ident = TypeIdent
+    {Ast.T.Struct ident} 
   ;
 
 ret_type : 
@@ -165,9 +180,6 @@ simp :
     op = asnop;
     rhs = m(exp);
       { Ast.Assign {left=lhs; right=rhs; asgnop=op} }
-  | lhs = m(exp);
-    op = postop;
-    { Ast.PostOp {left=lhs; op=op}  }
   | d = decl;
       { Ast.Declare d }
   | e = m(exp);
@@ -183,21 +195,59 @@ simpopt :
 exp :
   | L_paren; e = exp; R_paren;
       { e }
+  | lhs = m(exp);
+    op = postop;
+    { Ast.PostOp {left=lhs; op=op}  }
   | c = int_const;
       { Ast.Const c }
   | True; { Ast.True }
   | False; { Ast.False }
-//   | Main;
-//       { Ast.Var (Symbol.symbol "main") }
+  | NULL; { Ast.Null }
   | ident = Ident;
       { Ast.Var ident }
   | ident = Ident; args = arg_list;
       { Ast.Call {name = ident; args = args} }
   | u = unop; { u }
+  | e = m(exp);
+    Dot;
+    ident = Ident; 
+    { Ast.StructDot {field = ident; str = e} }
+  | e = m(exp);
+    Dot;
+    ident = TypeIdent; 
+    { Ast.StructDot {field = ident; str = e} }
+  | e = m(exp);
+    Arrow;
+    ident = Ident; 
+    { Ast.StructArr {field = ident; str = e} }
+  | e = m(exp);
+    Arrow;
+    ident = TypeIdent; 
+    { Ast.StructArr {field = ident; str = e} }
   | lhs = m(exp);
     op = binop;
     rhs = m(exp);
       { Ast.Binop { op; lhs; rhs; } }
+  | Alloc;
+    L_paren;
+    t = type_;
+    R_paren;
+    { Ast.Alloc t }
+  | Alloc_array;
+    L_paren;
+    typ = type_;
+    Comma;
+    e = m(exp);
+    R_paren;
+    { Ast.Alloc_array {typ; len = e} }
+  | lhs = m(exp);
+    L_square;
+    rhs = m(exp);
+    R_square; 
+    { Ast.ArrAccess {arr = lhs; idx = rhs} }
+  | Star;
+    e = m(exp); %prec Unary
+    { Ast.Deref e }
   | cond = m(exp); 
     QuestionMark; 
     f = m(exp);
@@ -290,6 +340,20 @@ param :
         Ast.Param {t = t; name = ident}
     }
 
+field :
+    | t = type_ ; ident = Ident; Semicolon {
+      (ident, t)
+    }
+    | t = type_ ; ident = TypeIdent; Semicolon {
+      (ident, t)
+    }
+
+field_list :
+  | (* empty *)
+    { [] }
+  | f = field; fs = field_list;
+    {f :: fs}
+
 param_follow :
   | (* empty *)
       { [] }
@@ -301,7 +365,21 @@ param_list:
     | L_paren; R_paren; {[]}
     | L_paren; p = param; ps = param_follow  ; R_paren; {
         p :: ps
-    }   
+    }
+
+sdecl : 
+  | Struct; ident = Ident; Semicolon;
+    {Ast.Sdecl ident}   
+  (*not sure*)
+  | Struct; ident = TypeIdent; Semicolon;
+    {Ast.Sdecl ident}   
+
+sdef : 
+  | Struct; ident = Ident; L_brace; lst = field_list ; R_brace; Semicolon;
+    {Ast.Sdef {sname = ident; ssig = lst}}   
+  (*not sure*)
+  | Struct; ident = TypeIdent; L_brace; lst = field_list ; R_brace; Semicolon;
+    {Ast.Sdef {sname = ident; ssig = lst}}   
 
 fdecl: 
     | r_opt = ret_type; ident = Ident; params = param_list; Semicolon
@@ -315,6 +393,8 @@ gdecl:
     | fundec = m(fdecl)  {fundec}
     | fundef = m(fdefn)  {fundef}
     | tdef = m(typedef)  {tdef}
+    | sdefx = m(sdef)  {sdefx}
+    | sdeclx = m(sdecl)  {sdeclx}
 
 (* See the menhir documentation for %inline.
  * This allows us to factor out binary operators while still
@@ -387,9 +467,9 @@ asnop :
 
 
 postop : 
-  | Plus_plus 
+  | Plus_plus ;
       { Ast.Plus }
-  | Minus_minus 
+  | Minus_minus ;
       { Ast.Minus }
   ;
 %%

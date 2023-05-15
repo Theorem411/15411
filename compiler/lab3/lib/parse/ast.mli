@@ -11,7 +11,7 @@
  *)
 
 open Core
-module T = Ctype
+module T = Ctype_l4
 
 type binop =
   | Plus
@@ -82,6 +82,29 @@ type exp =
       { name : Symbol.t
       ; args : mexp list
       }
+  | Null
+  | Deref of mexp
+  | ArrAccess of
+      { arr : mexp
+      ; idx : mexp
+      }
+  | StructDot of
+      { str : mexp
+      ; field : Symbol.t
+      }
+  | StructArr of
+      { str : mexp
+      ; field : Symbol.t
+      }
+  | Alloc of T.tau
+  | Alloc_array of
+      { typ : T.tau
+      ; len : mexp
+      }
+  | PostOp of
+      { left : mexp
+      ; op : binop
+      }
 
 and mexp = exp Mark.t
 
@@ -95,10 +118,6 @@ type stm =
       { left : mexp
       ; right : mexp
       ; asgnop : binop option
-      }
-  | PostOp of
-      { left : mexp
-      ; op : binop
       }
   | Return of mexp option
   | Exp of mexp
@@ -146,6 +165,11 @@ type gdecl =
       ; ret_type : T.tau option
       ; params : param list
       ; body : mstm (* Block of mstm list *)
+      }
+  | Sdecl of Symbol.t
+  | Sdef of
+      { sname : Symbol.t
+      ; ssig : (Symbol.t * T.tau) list
       }
 
 and mgdecl = gdecl Mark.t

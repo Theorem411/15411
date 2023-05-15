@@ -72,6 +72,31 @@ let hex_constant s lexbuf =
   in
   T.Hex_const i32
 
+module StringSet = Set.Make (String)
+
+let type_names = ref StringSet.empty
+let is_typename id = StringSet.mem !type_names id
+let add_type id = type_names := StringSet.add !type_names id
+let last_ident = ref ""
+let update_last_ident name = last_ident := name
+
+let get_last_ident () =
+  if String.equal !last_ident "" then "" else !last_ident
+;;
+
+let in_typedef = ref false
+let is_in_typedef () = !in_typedef
+let set_in_typedef v = in_typedef := v
+
+let handle_semicolon () =
+  if is_in_typedef ()
+  then (
+    set_in_typedef false;
+    let name = get_last_ident () in
+    add_type name)
+  else update_last_ident ""
+;;
+
 }
 
 let ident = ['A'-'Z' 'a'-'z' '_']['A'-'Z' 'a'-'z' '0'-'9' '_']*
@@ -90,9 +115,13 @@ rule initial = parse
   | '}' { T.R_brace }
   | '(' { T.L_paren }
   | ')' { T.R_paren }
+  | '[' { T.L_square }
+  | ']' { T.R_square }
 
-  | ';' { T.Semicolon }
+  | ';' { handle_semicolon (); T.Semicolon }
   | ',' { T.Comma }
+  | '.' { T.Dot }
+  | "->" { T.Arrow }
 
   | '='  { T.Assign }
   | "+=" { T.Plus_eq }
@@ -136,15 +165,14 @@ rule initial = parse
   | "++" { T.Plus_plus}
 
   | "assert" { T.Assert }
-  (* | "main"   { T.Main } *)
   | "return" { T.Return }
 
   | "bool"    { T.Bool }
   | "char"    { assert false }
   | "int"     { T.Int }
   | "void"    { T.Void }
-  | "struct"  { assert false }
-  | "typedef" { T.Typedef }
+  | "struct"  { T.Struct }
+  | "typedef" { set_in_typedef true; T.Typedef }
 
   | "if"    { T.If}
   | "else"  { T.Else }
@@ -154,9 +182,9 @@ rule initial = parse
   | "true"  { T.True }
   | "false" { T.False }
 
-  | "NULL"        { assert false }
-  | "alloc"       { assert false }
-  | "alloc_array" { assert false }
+  | "NULL"        { T.NULL}
+  | "alloc"       { T.Alloc }
+  | "alloc_array" { T.Alloc_array}
 
   | "string"   { assert false }
   | "continue" { assert false }
@@ -165,7 +193,12 @@ rule initial = parse
   | dec_num as n { dec_constant n lexbuf }
   | hex_num as n { hex_constant n lexbuf }
 
-  | ident as name { T.Ident (Symbol.symbol name) }
+  | ident as name { 
+    update_last_ident name;
+    if is_typename name 
+    then T.TypeIdent (Symbol.symbol name) 
+    else T.Ident (Symbol.symbol name)
+   }
 
   | "/*" { comment 1 lexbuf }
   | "*/" { error lexbuf ~msg:"Unbalanced comments.";
@@ -202,5 +235,6 @@ and comment_line = parse
            T.Eof
          }
   | _    { comment_line lexbuf }
+
 
 {}

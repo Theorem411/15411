@@ -11,7 +11,7 @@
  *)
 
 open Core
-module T = Ctype
+module T = Ctype_l4
 
 type binop =
   | Plus
@@ -82,6 +82,29 @@ type exp =
       { name : Symbol.t
       ; args : mexp list
       }
+  | Null
+  | Deref of mexp
+  | ArrAccess of
+      { arr : mexp
+      ; idx : mexp
+      }
+  | StructDot of
+      { str : mexp
+      ; field : Symbol.t
+      }
+  | StructArr of
+      { str : mexp
+      ; field : Symbol.t
+      }
+  | Alloc of T.tau
+  | Alloc_array of
+      { typ : T.tau
+      ; len : mexp
+      }
+  | PostOp of
+      { left : mexp
+      ; op : binop
+      }
 
 and mexp = exp Mark.t
 
@@ -95,10 +118,6 @@ type stm =
       { left : mexp
       ; right : mexp
       ; asgnop : binop option
-      }
-  | PostOp of
-      { left : mexp
-      ; op : binop
       }
   | Return of mexp option
   | Exp of mexp
@@ -146,6 +165,11 @@ type gdecl =
       ; ret_type : T.tau option
       ; params : param list
       ; body : mstm (* Block of mstm list *)
+      }
+  | Sdecl of Symbol.t
+  | Sdef of
+      { sname : Symbol.t
+      ; ssig : (Symbol.t * T.tau) list
       }
 
 and mgdecl = gdecl Mark.t
@@ -195,6 +219,15 @@ module Print = struct
         (String.concat ~sep:"," (List.map args ~f:pp_mexp))
     | Ternary t ->
       sprintf "(%s ? %s : %s)" (pp_mexp t.cond) (pp_mexp t.first) (pp_mexp t.second)
+    | Null -> "null"
+    | Deref p -> sprintf "DEREF_STAR(%s)" (pp_mexp p)
+    | ArrAccess { arr; idx } -> sprintf "%s[%s]" (pp_mexp arr) (pp_mexp idx)
+    | StructDot { str; field } -> sprintf "%s.%s" (pp_mexp str) (Symbol.name field)
+    | StructArr { str; field } -> sprintf "%s->%s" (pp_mexp str) (Symbol.name field)
+    | Alloc tau -> sprintf "alloc(%s)" (T._tau_tostring tau)
+    | Alloc_array { typ; len } ->
+      sprintf "calloc(%s, %s)" (T._tau_tostring typ) (pp_mexp len)
+    | PostOp { left = e; op } -> sprintf "%s%s%s" (pp_mexp e) (pp_binop op) (pp_binop op)
 
   and pp_mexp e = pp_exp (Mark.data e)
 
@@ -224,7 +257,6 @@ module Print = struct
       sprintf "%s = %s;" (pp_mexp lhs) (pp_mexp rhs)
     | Assign { left = lhs; right = rhs; asgnop = Some op } ->
       sprintf "%s %s= %s;" (pp_mexp lhs) (pp_binop op) (pp_mexp rhs)
-    | PostOp { left = e; op } -> sprintf "%s%s%s" (pp_mexp e) (pp_binop op) (pp_binop op)
     | Exp e -> sprintf "%s" (pp_mexp e)
     | If { elsestm = None; thenstm = t; cond = e } ->
       sprintf "if (%s) [\n%s;]" (pp_mexp e) (pp_mstm t)
@@ -267,6 +299,15 @@ module Print = struct
         ; params : param list
         ; body : mstm (* Block of mstm list *)
         } -> sprintf "%s %s;" (pp_fundec name ret_type params) (pp_mstm body)
+    | Sdecl s -> sprintf "declare struct %s " (Symbol.name s)
+    | Sdef { sname; ssig } ->
+      sprintf
+        "struct %s [%s]"
+        (Symbol.name sname)
+        (String.concat
+           ~sep:","
+           (List.map ssig ~f:(fun (name, t) ->
+                sprintf "%s %s" (T._tau_tostring t) (Symbol.name name))))
 
   (* and pp_gdecl gdecls = String.concat ~sep:"\n" (List.map gdecls ~f:pp_gdecl_single) *)
   and pp_mgdecl gd = pp_gdecl_single (Mark.data gd)

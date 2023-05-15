@@ -1,7 +1,7 @@
 open Core
 module Typ = Ast.T
 module Ast = Ast
-module AstElab = Aste
+module AstElab = Aste_l4
 (* module SymbolMap = Hashtbl.Make (Symbol) *)
 
 let to_pure = function
@@ -40,6 +40,24 @@ let to_efkt = function
   | _ -> failwith "Not an effect binop"
 ;;
 
+let to_binop : Ast.binop option -> AstElab.binop option = function
+  | None -> None
+  | Some b ->
+    (match b with
+    | Plus -> Some (AstElab.Pure AstElab.Plus)
+    | Minus -> Some (AstElab.Pure AstElab.Minus)
+    | Times -> Some (AstElab.Pure AstElab.Times)
+    | Divided_by -> Some (AstElab.Efkt AstElab.Divided_by)
+    | Modulo -> Some (AstElab.Efkt AstElab.Modulo)
+    | B_and -> Some (AstElab.Pure AstElab.BitAnd)
+    | B_xor -> Some (AstElab.Pure AstElab.BitXor)
+    | B_or -> Some (AstElab.Pure AstElab.BitOr)
+    | ShiftL -> Some (AstElab.Efkt AstElab.ShiftL)
+    | ShiftR -> Some (AstElab.Efkt AstElab.ShiftR)
+    | Less | Less_eq | Greater | Greater_eq | Equals | Not_equals | L_and | L_or ->
+      failwith "Not expected to get compare in to_binop")
+;;
+
 let copy_mark (a : 'a Mark.t) (b : 'b) : 'b Mark.t = Mark.map ~f:(fun _ -> b) a
 
 let give_out (l : 'a Mark.t) =
@@ -61,12 +79,20 @@ let rec check_rec_dcl (v : Symbol.t) (e : Ast.exp) : unit =
   | _ -> ()
 ;;
 
+let rec vldt_lval l =
+  match Mark.data l with
+  | Ast.Var _ -> ()
+  | Ast.StructDot { str; _ } -> vldt_lval str
+  | Ast.StructArr { str; _ } -> vldt_lval str
+  | Ast.ArrAccess { arr; _ } -> vldt_lval arr
+  | Ast.Deref p -> vldt_lval p
+  | _ -> raise (Failure ("Invalid lval" ^ give_out l))
+;;
+
+(*_ validates if m is the lvalue *)
 let vldt_assign m =
   match Mark.data m with
-  | Ast.Assign { left = l; _ } ->
-    (match Mark.data l with
-    | Ast.Var _ -> ()
-    | _ -> raise (Failure ("Invalid asign" ^ give_out l)))
+  | Ast.Assign { left = l; _ } -> vldt_lval l
   | _ -> ()
 ;;
 
@@ -165,9 +191,26 @@ let rec elab_mexp (m_e : Ast.mexp) : AstElab.mexp =
   | Ast.Call { name; args } ->
     let argsnew = List.map ~f:elab_mexp args in
     copy_mark m_e (AstElab.Call { name; args = argsnew })
+  | Ast.Null -> copy_mark m_e AstElab.Null
+  | Deref exp -> copy_mark m_e (AstElab.Deref (elab_mexp exp))
+  | ArrAccess { arr; idx } ->
+    copy_mark m_e (AstElab.ArrAccess { arr = elab_mexp arr; idx = elab_mexp idx })
+  | StructDot { str; field } ->
+    let str = elab_mexp str in
+    copy_mark
+      m_e
+      (match Mark.data str with
+      | AstElab.Deref d -> AstElab.StructArr { field; str = d }
+      | _ -> AstElab.StructDot { field; str })
+  | StructArr { str; field } ->
+    copy_mark m_e (AstElab.StructArr { field; str = elab_mexp str })
+  | Alloc t -> copy_mark m_e (AstElab.Alloc t)
+  | Alloc_array { typ; len } ->
+    copy_mark m_e (AstElab.Alloc_array { typ; len = elab_mexp len })
+  | PostOp _ -> failwith "Postop insider expression that is not naked"
 ;;
 
-let elab_assign_with_op
+let elab_assign_with_op_to_var
     (m_l : Ast.mexp)
     (v : Symbol.t)
     (op : Ast.binop)
@@ -196,33 +239,38 @@ let elab_assign m_s =
     | Ast.Var v ->
       (match asgnop with
       | None -> AstElab.Assign { var = v; exp = elab_mexp m_r }
-      | Some op -> elab_assign_with_op m_l v op m_r m_s)
-    | _ -> failwith "LHS is not a var")
+      | Some op -> elab_assign_with_op_to_var m_l v op m_r m_s)
+    | Ast.StructDot _ | Ast.StructArr _ | Ast.ArrAccess _ | Ast.Deref _ ->
+      vldt_lval m_l;
+      AstElab.Asop { dest = elab_mexp m_l; exp = elab_mexp m_r; op = to_binop asgnop }
+    | _ -> failwith "LHS is not a lvalue")
   | _ -> failwith "elab_assign recieved not assign"
 ;;
 
-let elab_postop m_s =
-  let s = Mark.data m_s in
-  match s with
+let elab_postop m_e =
+  let e = Mark.data m_e in
+  match e with
   | Ast.PostOp { left = m_l; op } ->
-    let l = Mark.data m_l in
-    (match l with
-    | Ast.Var v ->
-      (match op with
-      | Ast.Plus | Ast.Minus ->
-        AstElab.Assign
-          { var = v
-          ; exp =
-              copy_mark
-                m_s
-                (AstElab.PureBinop
-                   { op = to_pure op
-                   ; lhs = elab_mexp m_l
-                   ; rhs = copy_mark m_l (AstElab.Const Int32.one)
-                   })
-          }
-      | _ -> failwith "post op is not + or -")
-    | _ -> failwith "LHS is not a var")
+    (match op with
+    | Ast.Plus ->
+      elab_assign
+        (copy_mark
+           m_e
+           (Ast.Assign
+              { left = m_l
+              ; asgnop = Some Ast.Plus
+              ; right = copy_mark m_e (Ast.Const Int32.one)
+              }))
+    | Ast.Minus ->
+      elab_assign
+        (copy_mark
+           m_e
+           (Ast.Assign
+              { left = m_l
+              ; asgnop = Some Ast.Minus
+              ; right = copy_mark m_e (Ast.Const Int32.one)
+              }))
+    | _ -> failwith "post op is not + or -")
   | _ -> failwith "elab_postop recieved not a postop"
 ;;
 
@@ -279,6 +327,7 @@ and elab_stm_exp e =
   | Ast.Call { name; args } ->
     let argsnew = List.map ~f:elab_mexp args in
     AstElab.NakedCall { name; args = argsnew }
+  | Ast.PostOp {left; _} -> vldt_lval left; (elab_postop e)
   | _ -> AstElab.NakedExpr (elab_mexp e)
 
 and elab m_s : AstElab.stm Mark.t =
@@ -294,7 +343,6 @@ and elab m_s : AstElab.stm Mark.t =
       (match Mark.data m_s with
       | Ast.Nop -> AstElab.Nop
       | Ast.Assign _ -> elab_assign m_s
-      | Ast.PostOp _ -> elab_postop m_s
       | Ast.Return _ -> elab_return m_s
       | Ast.Exp e -> elab_stm_exp e
       | Ast.If _ -> elab_if m_s
@@ -324,7 +372,12 @@ and elaborate' (s : Ast.mgdecl) : AstElab.mglob =
   let res =
     match Mark.data s with
     | Ast.Typedef { old_name; new_name } ->
-      AstElab.Typedef { told = old_name; tnew = new_name }
+      let new_name_symbol =
+        match new_name with
+        | Typ.FakeTyp s -> s
+        | _ -> failwith "New typedef name is not symbol"
+      in
+      AstElab.Typedef { told = old_name; tnew = new_name_symbol }
     | Ast.FunDec { name; ret_type; params } ->
       AstElab.Fundecl
         { fsig = to_fsig params ret_type; f = name; args = to_arg_list params }
@@ -335,6 +388,8 @@ and elaborate' (s : Ast.mgdecl) : AstElab.mglob =
         ; args = to_arg_list params
         ; fdef = elaborate_stmts [ body ]
         }
+    | Ast.Sdecl s -> AstElab.Sdecl s
+    | Ast.Sdef { sname; ssig } -> AstElab.Sdef { sname; ssig }
   in
   copy_mark s res
 

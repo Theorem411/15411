@@ -1,0 +1,22 @@
+
+typedef int mandarin;
+typedef bool shanghainese;
+
+struct fuku {
+	mandarin **peach;
+};
+
+struct boba {
+	struct fuku am;
+};
+
+mandarin orange_crush();
+
+int fancy_shirt(shanghainese a);
+
+shanghainese sxy_man(int b, mandarin c);
+
+void iphone();
+
+
+

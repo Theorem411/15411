@@ -1,76 +1,37 @@
 open Core
-module AS = Assem_new
+module AS = Assem_l4
+module R = Register
+
+let as_to_reg_enum : AS.reg -> R.reg_enum = function
+  | AS.EAX -> R.EAX
+  | AS.EDX -> R.EDX
+  | AS.ECX -> R.ECX
+  | AS.ESI -> R.ESI
+  | AS.EDI -> R.EDI
+  | AS.EBX -> R.EBX
+  | AS.R8D -> R.R8D
+  | AS.R9D -> R.R9D
+  | AS.R10D -> R.R10D
+  | AS.R11D -> R.R11D
+  | AS.R12D -> R.R12D
+  | AS.R13D -> R.R13D
+  | AS.R14D -> R.R14D
+  | AS.R15D -> R.R15D
+  | AS.RBP -> R.RBP
+  | AS.RSP -> R.RSP
+;;
 
 type operand =
-  | Imm of Int32.t
-  | Reg of AS.reg
-  | Mem of int
+  | Imm of Int64.t
+  | Stack of int
+  | Reg of R.reg
 [@@deriving equal, compare, sexp]
 
-let __format_reg = function
-  | AS.EAX -> "%eax"
-  | AS.EBX -> "%ebx"
-  | AS.RBX -> "%rbx"
-  | AS.ECX -> "%ecx"
-  | AS.RCX -> "%rcx"
-  | AS.EDX -> "%edx"
-  | AS.RDX -> "%rdx"
-  | AS.ESI -> "%esi"
-  | AS.RSI -> "%rsi"
-  | AS.EDI -> "%edi"
-  | AS.RDI -> "%rdi"
-  | AS.R8D -> "%r8d"
-  | AS.R9D -> "%r9d"
-  | AS.R10D -> "%r10d"
-  | AS.R11D -> "%r11d"
-  | AS.R12D -> "%r12d"
-  | AS.R13D -> "%r13d"
-  | AS.R14D -> "%r14d"
-  | AS.R15D -> "%r15d"
-  | AS.RBP -> "%rbp"
-  | AS.RSP -> "%rsp"
-;;
-
-let __format_reg_quad = function
-  | AS.EAX -> "%rax"
-  | AS.RBX -> "%rbx"
-  | AS.EBX -> "%rbx"
-  | AS.ECX -> "%rcx"
-  | AS.RCX -> "%rcx"
-  | AS.EDX -> "%rdx"
-  | AS.RDX -> "%rdx"
-  | AS.ESI -> "%rsi"
-  | AS.RSI -> "%rsi"
-  | AS.EDI -> "%rdi"
-  | AS.RDI -> "%rdi"
-  | AS.R8D -> "%r8"
-  | AS.R9D -> "%r9"
-  | AS.R10D -> "%r10"
-  | AS.R11D -> "%r11"
-  | AS.R12D -> "%r12"
-  | AS.R13D -> "%r13"
-  | AS.R14D -> "%r14"
-  | AS.R15D -> "%r15"
-  | AS.RBP -> "%rbp"
-  | AS.RSP -> "%rsp"
-;;
-
-let __format_reg_word = function
-  | AS.EAX -> "%al"
-  | AS.ECX -> "%cl"
-  | r -> failwith ("word not supported yet for " ^ __format_reg r)
-;;
-
-(* Mem n means that the varialbe is in -n(%rbp) *)
-let format_operand ?(quad = false) ?(word = false) = function
-  | Imm n -> "$" ^ Int32.to_string n
-  | Reg r ->
-    (match quad, word with
-    | true, false -> __format_reg_quad r
-    | false, true -> __format_reg_word r
-    | false, false -> __format_reg r
-    | _, _ -> failwith "can not have both quad and word true")
-  | Mem n -> string_of_int n ^ "(%rsp)"
+(* Stack n means that the varialbe is in -n(%rbp) *)
+let format_operand = function
+  | Imm n -> "$" ^ Int64.to_string n
+  | Reg r -> R.format_reg r
+  | Stack n -> if n = 0 then "(%rsp)" else string_of_int (8 * n) ^ "(%rsp)"
 ;;
 
 type operation =
@@ -83,10 +44,12 @@ type operation =
   | IDiv
   | Mod
   | Cltd
+  | Cqde
   | Mov
   | Movl
   | Movq
   | Movzx
+  | Movsx
   | Pushq
   | Popq
   | And
@@ -97,43 +60,64 @@ type operation =
   | Sal
   | Sar
   | Call
+  | Test
+  | Div
+  | Movsl
 [@@deriving equal, compare, sexp]
 
+type size =
+  | Q
+  | L
+[@@deriving equal, compare, sexp]
+
+type mem =
+  | Mem of
+      { disp : int option
+      ; base_reg : R.reg
+      ; idx_reg : R.reg option
+      ; scale : int option
+      }
+[@@deriving equal, compare, sexp]
+
+let to_size = function
+  | AS.L -> Q
+  | AS.S -> L
+;;
+
+let format_size = function
+  | Q -> "q"
+  | L -> "l"
+;;
+
 let format_operation = function
-  | Add -> "addl"
-  | Sub -> "subl"
+  | Add -> "add"
+  | Sub -> "sub"
   | Addq -> "addq"
   | Subq -> "subq"
-  | Mul -> "imull"
+  | Mul -> "imul"
   | IDiv -> "idivl"
-  (* | Mov -> "movl" *)
   | Mov -> "mov"
   | Cltd -> "cltd"
+  | Cqde -> "cdqe"
   | Pushq -> "pushq"
   | Popq -> "popq"
   | Movq -> "movq"
-  | IMul -> "lol"
+  | IMul -> "imul"
   | Movl -> "movl"
   | Movzx -> "movzx"
+  | Movsx -> "movsx"
   | And -> "and"
   | Or -> "or"
   | Xor -> "xor"
-  | Not -> "not"
+  | Not -> "notl"
   | Cmp -> "cmp"
   | Mod -> "mod"
   | Sal -> "sal"
   | Sar -> "sar"
   | Call -> "call"
-  (* | Sete -> "sete"
-  | Setne -> "setne"
-  | Setl -> "setl"
-  | Setle -> "setle"
-  | Setg -> "setg"
-  | Setge -> "setge"
-  | Jz -> "jz"
-  | Je -> "je"
-  | Jmp -> "jmp" *)
-  (* | _ -> raise (Failure "no such operation is allowed (yet).") *)
+  | Test -> "test"
+  | Div -> "div"
+  | Movsl -> "movsl"
 ;;
 
 let format_jump j =
@@ -142,13 +126,13 @@ let format_jump j =
   | Some x ->
     (match x with
     | AS.Je -> "je" (*_ jump if p1 == p2 *)
-    (* AS.| Jz  _ jump if p1 == 0 *)
     | AS.Jne -> "jne" (*_ jump if p1 != p2 *)
-    (*AS. | Jnz _ jump if p1 != 0 *)
     | AS.Jl -> "jl" (*_ jump if p1 < p2 *)
     | AS.Jge -> "jge" (*_ jump if p1 >= p2 *)
     | AS.Jle -> "jle" (*_ jump if p1 <= p2 *)
-    | AS.Jg -> "jg" (*_ jump if p1 > p2 *))
+    | AS.Jg -> "jg" (*_ jump if p1 > p2 *)
+    | AS.Js -> "js"
+    | AS.Jb -> "jb")
 ;;
 
 let format_set = function
@@ -160,11 +144,28 @@ let format_set = function
   | AS.Setle -> "setle"
 ;;
 
+let integer_formatting (d : int) = if d < 0 then "-", -d else "+", d
+
+let format_mem = function
+  | Mem { disp; base_reg; idx_reg; scale } ->
+    (match idx_reg, scale, disp with
+    | Some idx, Some sc, Some disp ->
+      let sign2, disp = integer_formatting disp in
+      sprintf "%s%d(%s,%s,%d)" sign2 disp (R.format_reg base_reg) (R.format_reg idx) sc
+    | Some idx, Some sc, None ->
+      sprintf "(%s,%s,%d)" (R.format_reg base_reg) (R.format_reg idx) sc
+    | Some _, None, _ -> failwith "no scale when idx is at memory"
+    | None, Some _, _ -> failwith "no index register when given scale"
+    | None, None, Some disp -> sprintf "%d(%s)" disp (R.format_reg base_reg)
+    | None, None, None -> sprintf "(%s)" (R.format_reg base_reg))
+;;
+
 type instr =
   | BinCommand of
       { op : operation
       ; dest : operand
       ; src : operand
+      ; size : size
       }
   | UnCommand of
       { op : operation
@@ -175,6 +176,17 @@ type instr =
   | Cmp of
       { rhs : operand
       ; lhs : operand
+      ; size : size
+      }
+  | Test of
+      { rhs : operand
+      ; lhs : operand
+      ; size : size
+      }
+  | Lea of
+      { dest : operand
+      ; src : mem
+      ; size : size
       }
   | Lbl of Label.t
   | Jump of
@@ -188,30 +200,52 @@ type instr =
   | Comment of string
   | FunName of string
   | Call of string
+  | JumpToF of string
   | Ret
+  | MovFrom of
+      { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | MovTo of
+      { dest : operand
+      ; size : size
+      ; src : operand
+      }
+  | Movsxd of
+      { dest : operand
+      ; src : operand
+      }
 [@@deriving equal, compare, sexp]
 
 let format = function
-  | BinCommand { op = (Addq | Subq) as bop; src = s; dest = d } ->
-    sprintf
-      "\t%s\t%s, %s"
-      (format_operation bop)
-      (format_operand ~quad:true s)
-      (format_operand ~quad:true d)
-  | BinCommand { op = (Sal | Sar | Movzx) as bop; src = s; dest = d } ->
-    sprintf
-      "\t%s\t%s, %s"
-      (format_operation bop)
-      (format_operand ~word:true s)
-      (format_operand d)
+  | BinCommand { op = (Addq | Subq) as bop; src = s; dest = d; _ } ->
+    sprintf "\t%s\t%s, %s" (format_operation bop) (format_operand s) (format_operand d)
+  | BinCommand { op = (Sal | Sar | Movzx) as bop; src = s; dest = d; _ } ->
+    sprintf "\t%s\t%s, %s" (format_operation bop) (format_operand s) (format_operand d)
   | BinCommand binop ->
     sprintf
-      "\t%s\t%s, %s"
+      "\t%s%s\t%s, %s"
       (format_operation binop.op)
+      (format_size binop.size)
+      (format_operand binop.src)
+      (format_operand binop.dest)
+  | MovTo binop ->
+    sprintf
+      "\tmov%s\t%s, (%s)"
+      (format_size binop.size)
+      (format_operand binop.src)
+      (format_operand binop.dest)
+  | Movsxd binop ->
+    sprintf "\tmovsxd\t%s, %s" (format_operand binop.src) (format_operand binop.dest)
+  | MovFrom binop ->
+    sprintf
+      "\tmov%s\t(%s), %s"
+      (format_size binop.size)
       (format_operand binop.src)
       (format_operand binop.dest)
   | UnCommand { op = (Pushq | Popq) as unop; src = s } ->
-    sprintf "\t%s\t%s" (format_operation unop) (format_operand ~quad:true s)
+    sprintf "\t%s\t%s" (format_operation unop) (format_operand s)
   | UnCommand unop ->
     sprintf "\t%s\t%s" (format_operation unop.op) (format_operand unop.src)
   | ZeroCommand z -> sprintf "\t%s" (format_operation z.op)
@@ -219,14 +253,30 @@ let format = function
   | Comment comment -> sprintf "/* %s */" comment
   | FunName s -> sprintf "%s:" s
   | Ret -> sprintf "\t%s" "ret"
-  | Cmp { rhs; lhs } -> sprintf "\tcmp\t%s, %s" (format_operand lhs) (format_operand rhs)
+  | Cmp { rhs; lhs; size } ->
+    (match rhs with
+    | _ ->
+      sprintf
+        "\tcmp%s\t%s, %s"
+        (format_size size)
+        (format_operand rhs)
+        (format_operand lhs))
+  | Test { rhs; lhs; size } ->
+    sprintf
+      "\ttest%s\t%s, %s"
+      (format_size size)
+      (format_operand lhs)
+      (format_operand rhs)
+  | Lea { dest; src; size } ->
+    sprintf "\tlea%s\t%s, %s" (format_size size) (format_mem src) (format_operand dest)
   | Lbl l -> Label.name l ^ ":"
   | Jump { op; label } -> sprintf "\t%s\t%s" (format_jump op) (Label.name label)
-  | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand ~word:true src)
+  | Set { op; src } -> sprintf "\t%s\t%s" (format_set op) (format_operand src)
   | Call fname -> sprintf "\tcall\t%s" fname
+  | JumpToF fname -> sprintf "\tjmp\t%s" fname
 ;;
 
-let format_list l = List.map ~f: format l |> String.concat ~sep:"\n";;
+let format_list l = List.map ~f:format l |> String.concat ~sep:"\n"
 
 let pure_to_opr = function
   | AS.Add -> Add
@@ -248,45 +298,33 @@ let unary_to_opr = function
   | AS.BitNot -> Not
 ;;
 
-let callee_saved oper =
-  match oper with
-  | Reg r ->
-    (match r with
-    | AS.EBX | AS.RSP | AS.RBP -> true
-    | AS.R12D | AS.R13D | AS.R14D | AS.R15D -> true
-    | _ -> false)
-  | _ -> raise (Failure "callee_saved can be applied only on Reg reg")
-;;
-
-let caller_saved oper =
-  match oper with
-  | Reg r ->
-    (match r with
-    | AS.EAX | AS.EDI | AS.ESI | AS.EDX -> true
-    | AS.ECX | AS.R8D | AS.R9D | AS.R10D | AS.R11D -> true
-    | _ -> false)
-  | _ -> raise (Failure "caller_saved can be applied only on Reg reg")
-;;
-
-let all_available_regs =
-  [ (* AS.EAX *)
-    (* AS.EDX *)
-    (* AS.EDI
-  ; AS.ESI (* ; AS.ECX removed for now because of shift operators *)
-  ; AS.R8D
-  ; AS.R9D
-  ; AS.R10D
-  ; AS.EBX *)
-    (* AS.R12D
-  ; AS.R13D
-  ; AS.R14D
-  ; AS.R15D *)
-  ]
-;;
-
 let is_reg = function
   | Reg _ -> true
   | _ -> false
 ;;
 
-let __FREE_REG = Reg AS.R11D
+let get_free (sz : size) : operand =
+  Reg
+    { reg = R.R11D
+    ; size =
+        (match sz with
+        | L -> 4
+        | Q -> 8)
+    }
+;;
+
+let get_memfree (sz : size) : operand =
+  Reg
+    { reg = R.R10D
+    ; size =
+        (match sz with
+        | L -> 4
+        | Q -> 8)
+    }
+;;
+
+let of_size (size : size) =
+  match size with
+  | L -> 4
+  | Q -> 8
+;;

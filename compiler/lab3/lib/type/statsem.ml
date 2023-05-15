@@ -37,7 +37,9 @@ let t_defined tdef (t : T.tau) = TM.find tdef t
 let v_defined vdef (v : Temp.t) : bool = Temp.Set.mem vdef v *)
 
 let validate_args tdef (args : Symbol.t list) : unit =
+  (*_ args names are not type names *)
   let arg_f arg = if TM.mem tdef (T.FakeTyp arg) then raise TypeError else () in
+  (*_ args names are unique *)
   let args_set = SS.of_list args in
   if Int.equal (SS.length args_set) (List.length args) then () else raise TypeError;
   List.iter args ~f:arg_f
@@ -262,6 +264,7 @@ let static_semantic_gdecl (gdecl : A.mglob) ({ fdef; fdec; tdef } : global_ctx)
     { fdef = fdef'; fdec = fdec'; tdef }
 ;;
 
+(*_ collect all the temps that are used *)
 let all_func_used (prog : A.program) : SS.t =
   let rec all_func_used_exp (mexp : A.mexp) =
     match Mark.data mexp with
@@ -331,6 +334,7 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) =
   let fold_f global_ctx mglob = static_semantic_gdecl mglob global_ctx in
   let global_ctx_hdr = List.fold hdr ~init:global_ctx_init ~f:fold_f in
   let () = if SS.length global_ctx_hdr.fdef = 0 then () else raise TypeError in
+  (*_ for src file assume *)
   let global_ctx_init' =
     { fdef =
         SM.key_set global_ctx_hdr.fdec (*_ f declared in hdr are considered defined *)
@@ -338,7 +342,6 @@ let static_semantic ~(hdr : A.program) ~(src : A.program) =
     ; tdef = global_ctx_hdr.tdef
     }
   in
-  (* let () = printf "wtf---------" in *)
   (* let fold_f global_ctx mglob = static_semantic_gdecl mglob global_ctx in *)
   let global_ctx_src = List.fold src ~init:global_ctx_init' ~f:fold_f in
   (*_ main function is defined *)

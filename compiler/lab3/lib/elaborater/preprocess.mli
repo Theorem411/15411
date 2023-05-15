@@ -1,2 +1,3 @@
-module AstElab = Aste
-val rename: AstElab.program -> AstElab.program -> AstElab.program 
+module AstElab = Aste_l4
+module Asts = Asts
+val rename: AstElab.program -> Asts.program -> Asts.program 

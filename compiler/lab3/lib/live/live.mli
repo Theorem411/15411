@@ -1,5 +1,2 @@
-(* open Core
-module AS = Assem
-
-
-val mk_graph: AS.instr list -> Graph.t *)
+module B = Block
+val mk_graph_fspace : B.fspace -> Graph.t

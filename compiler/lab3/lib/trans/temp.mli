@@ -21,3 +21,4 @@ val create : unit -> t
 
 (* returns the name of a temp *)
 val name : t -> string
+val get_counter : unit -> int
